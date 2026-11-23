@@ -1,0 +1,49 @@
+/* VoidIcons theme tokens — starter palettes; replace hex values here to match your exact app theme. */
+:root { --vi-bg: #101416; --vi-surface: #171d1f; --vi-fg: #e8eeeb; --vi-muted: #9ba9a2; --vi-accent: #70d6c5; }
+[data-void-theme="harbor-glass"] {
+  --vi-bg: #10191B;
+  --vi-surface: #172326;
+  --vi-line: #2B3A3B;
+  --vi-fg: #E8F5F2;
+  --vi-muted: #9CBAB4;
+  --vi-accent: #70D6C5;
+}
+[data-void-theme="obsidian-frost"] {
+  --vi-bg: #10151D;
+  --vi-surface: #18212C;
+  --vi-line: #2D3948;
+  --vi-fg: #EDF3FA;
+  --vi-muted: #A4B4C8;
+  --vi-accent: #A7C4E8;
+}
+[data-void-theme="crimson-dusk"] {
+  --vi-bg: #191316;
+  --vi-surface: #241A1F;
+  --vi-line: #403039;
+  --vi-fg: #F6EAEC;
+  --vi-muted: #C2A2A9;
+  --vi-accent: #E38B98;
+}
+[data-void-theme="emerald-matrix"] {
+  --vi-bg: #0F1814;
+  --vi-surface: #17231D;
+  --vi-line: #2C3D33;
+  --vi-fg: #E7F6ED;
+  --vi-muted: #A0C4AE;
+  --vi-accent: #65D69A;
+}
+[data-void-theme="violet-nebula"] {
+  --vi-bg: #17131F;
+  --vi-surface: #211B2B;
+  --vi-line: #3A3149;
+  --vi-fg: #F1EDFB;
+  --vi-muted: #B6A9CF;
+  --vi-accent: #B7A0F3;
+}
+.void-icon { width: 24px; height: 24px; display: inline-block; vertical-align: middle; flex: none; }
+.void-icon--muted { opacity: .9; }
+.void-icon--small { width: 16px; height: 16px; }
+.void-icon--large { width: 32px; height: 32px; }
+/* For inline SVGs from currentColor/: set color on the SVG or its parent. */
+.void-icon-current { color: var(--vi-fg); }
+.void-icon-current .accent, .void-icon-current .accent-fill { color: var(--vi-accent); }

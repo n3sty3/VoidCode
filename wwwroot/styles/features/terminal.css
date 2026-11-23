@@ -1,0 +1,276 @@
+/* styles/features/terminal.css — the terminal pane and the "fix with AI" banner. */
+/* ---------- terminal ---------- */
+#terminal-panel {
+  flex-shrink: 0;
+  min-height: 44px;
+  /* dynamic: the panel sizes to its content and stops at 46vh, so Problems,
+     Output and the console are never a fixed 200px box full of empty scroll */
+  height: auto;
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--seam);
+  background: var(--glass-fill-well);
+}
+#terminal-panel.collapsed { height: 44px !important; }
+#terminal-panel.collapsed #terminal-body { display: none; }
+
+/* expanded: content-sized (see height:auto above) but never a sliver */
+#terminal-panel:not(.collapsed) { min-height: 150px; }
+
+/* Problems / Output / Debug are list views: give them a real, filled height
+   instead of a content-sized box with dead space and a lonely scrollbar */
+#terminal-panel[data-active-view="problems"],
+#terminal-panel[data-active-view="tests"],
+#terminal-panel[data-active-view="debug"] {
+  height: 38vh;
+  max-height: 46vh;
+}
+
+#terminal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 16px 12px;
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- terminal fix with ai banner ---------- */
+.terminal-ai-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  margin: 4px 0 8px;
+  border-radius: var(--r-control);
+  background: var(--coral-wash);
+  border: 1px solid var(--coral);
+  animation: rise var(--dur-short) var(--ease);
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-sparkle-dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--glass-press);
+  color: var(--coral);
+  flex-shrink: 0;
+}
+
+.banner-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0;
+}
+
+.banner-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--coral);
+}
+
+.banner-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-code);
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#terminal-output { flex: 1; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: var(--text-soft); line-height: 1.55; user-select: text; }
+.term-err { color: var(--coral); }
+
+.terminal-host {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-code);
+  background: var(--ink-deep);
+  border: 1px solid var(--hairline);
+}
+
+.term-instance {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px 8px;
+}
+
+.term-instance.is-hidden {
+  display: none !important;
+}
+
+.term-instance .xterm {
+  height: 100%;
+  padding: 0;
+}
+
+.term-instance .xterm-viewport {
+  border-radius: 0;
+  background: transparent !important;
+}
+
+.term-instance .xterm-viewport::-webkit-scrollbar { width: 10px; }
+.term-instance .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
+.term-instance .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--thumb);
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+  background-clip: padding-box;
+}
+.term-instance .xterm-viewport:hover::-webkit-scrollbar-thumb {
+  background: var(--glass-rim);
+  background-clip: padding-box;
+}
+
+.term-instance .xterm-screen {
+  background: transparent !important;
+}
+
+.term-instance .xterm .xterm-selection div { border-radius: var(--r-xs); }
+
+.terminal-controls-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.terminal-quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.term-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass-hover);
+  color: var(--text-soft);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.term-chip:hover { background: var(--glass-press); color: var(--text); }
+.term-chip--accent {
+  color: var(--glacier);
+  background: var(--glacier-wash);
+  border-color: var(--glacier-line);
+}
+
+.terminal-suggest-popover {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-card);
+  z-index: 100;
+  overflow: hidden;
+  box-shadow: 0 -16px 36px -8px var(--glass-shade);
+}
+
+.suggest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--seam);
+  background: var(--glass-fill-well);
+  font-size: var(--fs-xs);
+}
+.suggest-title { font-weight: 600; color: var(--glacier); font-family: var(--font-ui); }
+.suggest-hint { color: var(--text-faint); font-family: var(--font-ui); }
+
+.suggest-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suggest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--text-soft);
+  transition: background-color var(--dur-micro) var(--ease);
+}
+.suggest-item.is-selected, .suggest-item:hover {
+  background: var(--glass-press);
+  color: var(--text);
+}
+
+.suggest-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.suggest-cmd {
+  font-family: var(--font-code);
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+.suggest-desc {
+  font-family: var(--font-ui);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.suggest-badge {
+  font-size: var(--fs-xs);
+  padding: 0 4px;
+  border-radius: var(--r-xs);
+  background: var(--glass-hover);
+  color: var(--glacier);
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+}

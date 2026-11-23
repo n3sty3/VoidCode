@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="harbor">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VoidCode is a local autonomous coding environment with direct file, search, binary inspection, and PowerShell tools.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' http://workspace.local; img-src 'self' data: blob: http://workspace.local; font-src 'self' data:; worker-src 'self' blob:; frame-src 'self' data: blob: http://workspace.local; connect-src 'self'; object-src 'none'; base-uri 'self' http://workspace.local; form-action 'none'">
+  <title>VoidCode</title>
+  <link rel="stylesheet" href="vendor/fonts/fonts.css">
+  <link rel="preload" as="style" href="vendor/xterm/xterm.css" id="xterm-stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/addon-fit.js"></script>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+  <script src="vendor/vs/loader.js"></script>
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <div class="field" aria-hidden="true">
+    <div class="field-light field-light--tide"></div>
+    <div class="field-light field-light--glow"></div>
+    <div class="field-light field-light--ember"></div>
+    <div class="field-light field-light--deep"></div>
+    <div class="field-sheen"></div>
+  </div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="warp"/>
+        <feGaussianBlur in="warp" stdDeviation="2" result="soft"/>
+        <feDisplacementMap in="SourceGraphic" in2="soft" scale="38" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <linearGradient id="vc-flame" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" style="stop-color: var(--mark-stop-1)"/>
+        <stop offset="0.55" style="stop-color: var(--mark-stop-2)"/>
+        <stop offset="1" style="stop-color: var(--mark-stop-3)"/>
+      </linearGradient>
+      <linearGradient id="vc-flame-harbor" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" stop-color="#8CF0DC"/><stop offset="0.55" stop-color="#2BB8C6"/><stop offset="1" stop-color="#1A6FAE"/>
+      </linearGradient>
+      <linearGradient id="vc-flame-obsidian" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" stop-color="#EEF1FA"/><stop offset="0.55" stop-color="#A3ADC6"/><stop offset="1" stop-color="#5E688A"/>
+      </linearGradient>
+      <linearGradient id="vc-flame-crimson" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" stop-color="#FF9A7A"/><stop offset="0.55" stop-color="#F0486F"/><stop offset="1" stop-color="#C3174F"/>
+      </linearGradient>
+      <linearGradient id="vc-flame-emerald" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" stop-color="#9CF7C0"/><stop offset="0.55" stop-color="#2FD283"/><stop offset="1" stop-color="#0E8F55"/>
+      </linearGradient>
+      <linearGradient id="vc-flame-nebula" x1="0.3" y1="0" x2="0.7" y2="1">
+        <stop offset="0" stop-color="#E0D2FF"/><stop offset="0.55" stop-color="#9B7BF0"/><stop offset="1" stop-color="#5F3FC4"/>
+      </linearGradient>
+      <path id="vc-mark-geom" fill-rule="evenodd" d="M256 56 C300 120 392 210 392 318 A136 136 0 0 1 120 318 C120 210 212 120 256 56Z M232.20 322.00 L188.10 366.10 L187.18 367.12 L186.36 368.22 L185.65 369.40 L185.07 370.64 L184.60 371.94 L184.27 373.27 L184.07 374.63 L184.00 376.00 L184.07 377.37 L184.27 378.73 L184.60 380.06 L185.07 381.36 L185.65 382.60 L186.36 383.78 L187.18 384.88 L188.10 385.90 L189.12 386.82 L190.22 387.64 L191.40 388.35 L192.64 388.93 L193.94 389.40 L195.27 389.73 L196.63 389.93 L198.00 390.00 L199.37 389.93 L200.73 389.73 L202.06 389.40 L203.36 388.93 L204.60 388.35 L205.78 387.64 L206.88 386.82 L207.90 385.90 L261.90 331.90 L262.82 330.88 L263.64 329.78 L264.35 328.60 L264.93 327.36 L265.40 326.06 L265.73 324.73 L265.93 323.37 L266.00 322.00 L265.93 320.63 L265.73 319.27 L265.40 317.94 L264.93 316.64 L264.35 315.40 L263.64 314.22 L262.82 313.12 L261.90 312.10 L207.90 258.10 L206.88 257.18 L205.78 256.36 L204.60 255.65 L203.36 255.07 L202.06 254.60 L200.73 254.27 L199.37 254.07 L198.00 254.00 L196.63 254.07 L195.27 254.27 L193.94 254.60 L192.64 255.07 L191.40 255.65 L190.22 256.36 L189.12 257.18 L188.10 258.10 L187.18 259.12 L186.36 260.22 L185.65 261.40 L185.07 262.64 L184.60 263.94 L184.27 265.27 L184.07 266.63 L184.00 268.00 L184.07 269.37 L184.27 270.73 L184.60 272.06 L185.07 273.36 L185.65 274.60 L186.36 275.78 L187.18 276.88 L188.10 277.90Z M324.00 392.00 L325.37 391.93 L326.73 391.73 L328.06 391.40 L329.36 390.93 L330.60 390.35 L331.78 389.64 L332.88 388.82 L333.90 387.90 L334.82 386.88 L335.64 385.78 L336.35 384.60 L336.93 383.36 L337.40 382.06 L337.73 380.73 L337.93 379.37 L338.00 378.00 L337.93 376.63 L337.73 375.27 L337.40 373.94 L336.93 372.64 L336.35 371.40 L335.64 370.22 L334.82 369.12 L333.90 368.10 L332.88 367.18 L331.78 366.36 L330.60 365.65 L329.36 365.07 L328.06 364.60 L326.73 364.27 L325.37 364.07 L324.00 364.00 L274.00 364.00 L272.63 364.07 L271.27 364.27 L269.94 364.60 L268.64 365.07 L267.40 365.65 L266.22 366.36 L265.12 367.18 L264.10 368.10 L263.18 369.12 L262.36 370.22 L261.65 371.40 L261.07 372.64 L260.60 373.94 L260.27 375.27 L260.07 376.63 L260.00 378.00 L260.07 379.37 L260.27 380.73 L260.60 382.06 L261.07 383.36 L261.65 384.60 L262.36 385.78 L263.18 386.88 L264.10 387.90 L265.12 388.82 L266.22 389.64 L267.40 390.35 L268.64 390.93 L269.94 391.40 L271.27 391.73 L272.63 391.93 L274.00 392.00Z"/>
+      <symbol id="vc-mark" viewBox="0 0 512 512">
+        <use href="#vc-mark-geom" fill="url(#vc-flame)"/>
+      </symbol>
+      <symbol id="vc-mark-harbor" viewBox="0 0 512 512"><use href="#vc-mark-geom" fill="url(#vc-flame-harbor)"/></symbol>
+      <symbol id="vc-mark-obsidian" viewBox="0 0 512 512"><use href="#vc-mark-geom" fill="url(#vc-flame-obsidian)"/></symbol>
+      <symbol id="vc-mark-crimson" viewBox="0 0 512 512"><use href="#vc-mark-geom" fill="url(#vc-flame-crimson)"/></symbol>
+      <symbol id="vc-mark-emerald" viewBox="0 0 512 512"><use href="#vc-mark-geom" fill="url(#vc-flame-emerald)"/></symbol>
+      <symbol id="vc-mark-nebula" viewBox="0 0 512 512"><use href="#vc-mark-geom" fill="url(#vc-flame-nebula)"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- STAGE 1: OPERATOR SIGN-IN / PROFILE GATE -->
+  <div id="auth-gate" class="stage-overlay" style="display: none;">
+    <div class="stage-caption-bar" data-native-drag="true">
+      <div class="win-caption-group">
+        <button class="icon-btn icon-btn--sm win-cap-btn" data-win-cmd="window_minimize" aria-label="Minimize window" title="Minimize">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true"><path d="M2 6h8"/></svg>
+        </button>
+        <button class="icon-btn icon-btn--sm win-cap-btn" data-win-cmd="window_maximize" aria-label="Maximize window" title="Maximize">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2.25" y="2.25" width="7.5" height="7.5" rx="1.2"/></svg>
+        </button>
+        <button class="icon-btn icon-btn--sm icon-btn--danger win-cap-btn" data-win-cmd="window_close" aria-label="Close window" title="Close">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="auth-card glass glass--float" role="dialog" aria-labelledby="auth-heading">
+      <div class="auth-brand">
+        <div class="drop drop--sm">
+          <svg viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark"/></svg>
+        </div>
+        <div>
+          <h2 id="auth-heading">VoidCode</h2>
+          <p class="auth-sub">Stored on this device only</p>
+        </div>
+      </div>
+
+      <div class="settings-tabs-nav auth-tabs" role="tablist">
+        <button class="settings-tab-btn active" id="tab-btn-login" type="button" role="tab" aria-selected="true" aria-controls="auth-form" tabindex="0">Sign in</button>
+        <button class="settings-tab-btn" id="tab-btn-register" type="button" role="tab" aria-selected="false" aria-controls="auth-form" tabindex="-1">Create account</button>
+      </div>
+
+      <form id="auth-form" class="auth-body">
+        <div class="form-group">
+          <label for="auth-username">Username</label>
+          <input type="text" id="auth-username" placeholder="operator" autocomplete="username" required />
+                    <small class="field-help">Display name for this device. Editable, not an account.</small>
+        </div>
+        <div class="form-group" id="auth-role-group" style="display: none;">
+          <label for="auth-role">Role or specialization</label>
+          <input type="text" id="auth-role" placeholder="Systems engineer" />
+        </div>
+        <div class="form-group">
+          <label for="auth-password">Passphrase</label>
+          <input type="password" id="auth-password" placeholder="Local passphrase" autocomplete="current-password" required />
+                    <small class="field-help">Never sent anywhere. It cannot be recovered if lost.</small>
+        </div>
+        <div id="auth-error-msg" class="connection-feedback err" style="display: none;"></div>
+        <div class="auth-actions">
+          <button type="submit" class="btn btn--primary" id="btn-auth-submit">Continue</button>
+          <button type="button" class="btn btn--link" id="btn-auth-guest">Skip — use as guest</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- STAGE 2: WORKSPACE SWITCHER MODAL -->
+  <div id="project-hub" class="modal-overlay" style="display: none;">
+    <div class="hub-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="hub-heading">
+      <header class="hub-head">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark"/></svg>
+          <h2 id="hub-heading">Workspaces</h2>
+        </div>
+        <div class="hub-head-right">
+          <span class="win-item-meta" id="hub-operator-label">Local session</span>
+          <button class="btn btn--quiet btn--xs" id="btn-hub-resume" type="button">Close</button>
+        </div>
+      </header>
+
+      <div class="hub-grid">
+        <div class="hub-actions-col">
+          <h3>Actions</h3>
+          <button type="button" class="hub-action-tile" id="btn-hub-open-pc">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span class="win-item-title">Open folder</span>
+            <kbd>Ctrl O</kbd>
+          </button>
+
+          <button type="button" class="hub-action-tile" id="btn-hub-new-project">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="win-item-title">New project folder</span>
+            <kbd>New</kbd>
+          </button>
+
+          <button type="button" class="hub-action-tile" id="btn-hub-customize">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+            <span class="win-item-title">Settings &amp; models</span>
+            <kbd>Ctrl ,</kbd>
+          </button>
+        </div>
+
+        <div class="hub-recents-col">
+          <h3>Recent workspaces</h3>
+          <div id="hub-recents-list" class="hub-recents-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 3: FULL IDE WORKBENCH -->
+  <div id="app">
+    <header id="topbar" class="glass glass--bar" data-native-drag="true">
+      <div class="top-left">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark"/></svg>
+          <span class="brand-name">VoidCode</span>
+        </div>
+
+        <button class="chip-btn" id="btn-open-hub" title="Switch project (Project Hub)"><span class="icon" data-icon="folder" data-variant="muted"></span>
+          <span id="current-workspace-label">Open folder</span>
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <!-- workspace trust state (restricted until the folder is trusted) -->
+        <span class="val-badge" id="workspace-trust-badge" role="status" style="display: none;">Restricted</span>
+      </div>
+
+      <button class="search-field" id="btn-quick-open" title="Search files, commands, or windows (Ctrl+P)"><span class="icon" data-icon="search" data-variant="muted"></span>
+        <span class="search-label-full">Search files or commands</span>
+        <span class="search-label-short">Search</span>
+        <kbd>Ctrl P</kbd>
+      </button>
+
+      <div class="top-right">
+        <div class="window-dock" id="top-tools-dock" role="toolbar" aria-label="Floating tools">
+          <button class="dock-btn" id="btn-open-preview" title="Live HTML, Markdown, and image preview">
+            <span>Preview</span>
+          </button>
+          <button class="dock-btn" id="btn-open-history" title="Chat history (Ctrl+H)">
+            <span>History</span>
+          </button>
+          <button class="dock-btn" id="btn-open-timeline" title="Checkpoints timeline">
+            <span>Timeline</span>
+          </button>
+          <button class="dock-btn" id="btn-open-prompts" title="Playbooks">
+            <span>Playbooks</span>
+          </button>
+          <button class="dock-btn" id="btn-open-inspector" title="Binary inspector">
+            <span>Inspector</span>
+          </button>
+          <button class="dock-btn" id="btn-open-customize" title="Themes and glass optics">
+            <span>Themes</span>
+          </button>
+        </div>
+
+        <button class="icon-btn top-tools-overflow" id="btn-more-tools" aria-label="More workspace tools" aria-haspopup="menu" aria-expanded="false" aria-controls="top-tools-menu" title="More workspace tools"><span class="icon" data-icon="more-horizontal" data-variant="muted"></span>
+        </button>
+
+        <button class="chip-btn chip-btn--model" id="btn-open-settings" title="Configure model & settings">
+          <span id="active-model-label">deepseek/deepseek-chat</span>
+        </button>
+
+        <button class="chip-btn" id="btn-operator-pill" title="Operator profile">
+          <svg class="operator-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+          <span id="topbar-operator-name">operator</span>
+        </button>
+      </div>
+
+      <div class="win-caption-group" role="group" aria-label="Window controls">
+        <button class="icon-btn icon-btn--sm win-cap-btn" data-win-cmd="window_minimize" aria-label="Minimize window" title="Minimize">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true"><path d="M2 6h8"/></svg>
+        </button>
+        <button class="icon-btn icon-btn--sm win-cap-btn" data-win-cmd="window_maximize" aria-label="Maximize window" title="Maximize">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2.25" y="2.25" width="7.5" height="7.5" rx="1.2"/></svg>
+        </button>
+        <button class="icon-btn icon-btn--sm icon-btn--danger win-cap-btn" data-win-cmd="window_close" aria-label="Close window" title="Close">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="workspace">
+      <!-- activity rail: one icon per section, no repeated labels -->
+      <nav id="activity-rail" aria-label="Sections">
+        <div class="rail-group" role="tablist" aria-label="Panels">
+          <button type="button" class="rail-btn is-active" id="tab-nav-files" role="tab" aria-selected="true" aria-label="Files" title="Files (Ctrl+Shift+E)">
+            <span class="icon" data-icon="folder" data-variant="ui"></span>
+          </button>
+          <button type="button" class="rail-btn" id="tab-nav-search" role="tab" aria-selected="false" aria-label="Search" title="Search (Ctrl+Shift+F)">
+            <span class="icon" data-icon="search" data-variant="muted"></span>
+          </button>
+          <button type="button" class="rail-btn" id="tab-nav-git" role="tab" aria-selected="false" aria-label="Source control" title="Source Control (Ctrl+Shift+G)">
+            <span class="icon" data-icon="git-branch" data-variant="muted"></span>
+            <span class="rail-badge" id="git-badge-count" style="display: none;">0</span>
+          </button>
+          <button type="button" class="rail-btn" id="tab-nav-debug" role="tab" aria-selected="false" aria-label="Run and debug" title="Run &amp; Debug (Ctrl+Shift+D)">
+            <span class="icon" data-icon="play" data-variant="muted"></span>
+          </button>
+        </div>
+
+        <div class="rail-group rail-group--bottom">
+          <button type="button" class="rail-btn is-open" id="btn-toggle-pane-files" aria-pressed="true" aria-label="Toggle sidebar" title="Toggle sidebar (Ctrl+B)">
+            <span class="icon" data-icon="sidebar-left" data-variant="muted"></span>
+          </button>
+          <button type="button" class="rail-btn is-open" id="btn-toggle-pane-terminal" aria-pressed="true" aria-label="Toggle terminal" title="Toggle terminal (Ctrl+`)">
+            <span class="icon" data-icon="panel-bottom" data-variant="muted"></span>
+          </button>
+          <button type="button" class="rail-btn is-open" id="btn-toggle-pane-agent" aria-pressed="true" aria-label="Toggle agent" title="Toggle agent sidebar">
+            <span class="icon" data-icon="panel-right" data-variant="muted"></span>
+          </button>
+          <button type="button" class="rail-btn" id="btn-settings-toggle" aria-label="Settings" title="Settings (Ctrl+,)">
+            <span class="icon" data-icon="settings" data-variant="muted"></span>
+          </button>
+        </div>
+      </nav>
+
+      <aside id="sidebar-explorer" class="glass pane" style="width: 256px;">
+        <!-- VIEW 1: FILES EXPLORER -->
+        <div class="sidebar-view" id="view-files">
+          <div class="pane-head">
+            <span class="pane-title">Files</span>
+            <div class="pane-actions">
+              <button class="icon-btn icon-btn--sm" id="btn-open-workspace" aria-label="Browse folder from PC" title="Browse folder from PC">
+                <span class="icon" data-icon="folder-open" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-new-file" aria-label="New file" title="New file">
+                <span class="icon" data-icon="file-plus" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-new-folder" aria-label="New folder" title="New folder">
+                <span class="icon" data-icon="folder" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-refresh-tree" aria-label="Refresh files" title="Refresh files">
+                <span class="icon" data-icon="refresh" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-close-pane-files" aria-label="Hide Files sidebar" title="Hide Files sidebar (Ctrl+B)">
+                <span class="icon" data-icon="close" data-variant="muted"></span>
+              </button>
+            </div>
+          </div>
+          <div id="file-tree-container">
+            <div class="empty-state explorer-empty-state">
+              <p>No folder open</p>
+              <p class="empty-hint">Open a local folder to browse files, search, and run tools.</p>
+              <button class="btn btn--quiet btn--xs explorer-empty-cta" id="btn-explorer-open-folder" type="button">Open folder</button>
+            </div>
+          </div>
+          <div class="sidebar-section-accordion" id="sidebar-outline-section">
+            <div class="sidebar-section-header" id="sidebar-outline-header">
+              <svg class="tree-chevron expanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              <span>Outline</span>
+            </div>
+            <div class="sidebar-outline-container" id="sidebar-outline-container">
+              <div class="outline-empty">No symbols detected in current file.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: SEARCH & REPLACE -->
+        <div class="sidebar-view" id="view-search" style="display: none;">
+          <div class="pane-head">
+            <span class="pane-title">Search &amp; Replace</span>
+            <div class="pane-actions">
+              <button class="icon-btn icon-btn--sm" id="btn-refresh-search" aria-label="Refresh search" title="Refresh search"><span class="icon" data-icon="refresh" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-clear-search" aria-label="Clear search" title="Clear search"><span class="icon" data-icon="close" data-variant="muted"></span>
+              </button>
+            </div>
+          </div>
+          <div class="search-panel-body">
+            <div class="search-scope" id="search-scope">Searching this workspace</div>
+          <div class="search-input-group">
+              <div class="search-box-row">
+                <button type="button" class="icon-btn icon-btn--sm search-toggle-btn" id="btn-toggle-replace" title="Toggle Replace" aria-label="Toggle Replace">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <div class="search-input-wrap">
+                  <input type="text" id="global-search-input" placeholder="Search files..." spellcheck="false" autocomplete="off" />
+                  <div class="search-modifiers">
+                    <button type="button" class="mod-btn" id="btn-mod-case" title="Match Case (Alt+C)" aria-label="Match Case">Aa</button>
+                    <button type="button" class="mod-btn" id="btn-mod-word" title="Match Whole Word (Alt+W)" aria-label="Match Whole Word">\b</button>
+                    <button type="button" class="mod-btn" id="btn-mod-regex" title="Use Regular Expression (Alt+R)" aria-label="Use Regex">.*</button>
+                  </div>
+                </div>
+              </div>
+              <div class="replace-box-row" id="replace-box-row" style="display: none;">
+                <div class="search-input-wrap search-input-wrap--replace">
+                  <input type="text" id="global-replace-input" placeholder="Replace with..." spellcheck="false" autocomplete="off" />
+                  <div class="search-modifiers">
+                    <button type="button" class="mod-btn mod-btn--action" id="btn-action-replace-all" title="Replace All across workspace" aria-label="Replace All">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="search-filters-toggle">
+                <button type="button" class="search-filters-btn" id="btn-toggle-filters">
+                  <span>Filters</span>
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+              <div class="search-filters-container" id="search-filters-container" style="display: none;">
+                <input type="text" id="search-filter-include" class="filter-input" placeholder="files to include (e.g. *.cs, src/)" spellcheck="false" />
+                <input type="text" id="search-filter-exclude" class="filter-input" placeholder="files to exclude (e.g. *.min.js)" spellcheck="false" />
+              </div>
+            </div>
+            <div class="search-status-bar" id="search-status-bar">No search executed.</div>
+            <div class="search-results-tree" id="search-results-tree" role="tree" aria-label="Search results"></div>
+          </div>
+        </div>
+
+        <!-- VIEW 3: SOURCE CONTROL / GIT -->
+        <div class="sidebar-view" id="view-git" style="display: none;">
+          <div class="pane-head">
+            <span class="pane-title">Git</span>
+            <div class="pane-actions">
+              <button class="icon-btn icon-btn--sm" id="btn-git-pull" aria-label="Pull from remote" title="Pull from remote"><span class="icon" data-icon="arrow-down" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-git-push" aria-label="Push to remote" title="Push to remote"><span class="icon" data-icon="arrow-up-right" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-git-stash" aria-label="Stash changes" title="Stash changes"><span class="icon" data-icon="layers" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-git-history" aria-label="Commit history" title="View commit history"><span class="icon" data-icon="history" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-refresh-git" aria-label="Refresh Git status" title="Refresh Git status"><span class="icon" data-icon="refresh" data-variant="muted"></span>
+              </button>
+            </div>
+          </div>
+          <div class="git-panel-body">
+            <button type="button" class="git-branch-banner" id="git-branch-banner" title="Click to switch or create branch"><span class="icon" data-icon="git-branch" data-variant="ui"></span>
+              <span id="git-branch-label">main</span>
+              <svg class="branch-chevron" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="git-commit-box">
+              <div class="git-commit-row-top">
+                <textarea id="git-commit-message" placeholder="Message (Ctrl+Enter to commit)" rows="2"></textarea>
+                <button type="button" class="icon-btn icon-btn--sm" id="btn-git-ai-commit" title="Generate conventional commit message with AI" aria-label="Generate commit message with AI">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                </button>
+              </div>
+              <button type="button" class="btn btn--accent-soft btn--sm git-commit-btn" id="btn-git-commit">Commit</button>
+            </div>
+            <div class="git-changes-sections" id="git-changes-sections">
+              <div class="git-section" id="git-section-staged">
+                <div class="git-section-header">
+                  <span class="git-section-title">Staged Changes</span>
+                  <div class="git-section-right">
+                    <button class="icon-btn icon-btn--sm" id="btn-git-unstage-all" aria-label="Unstage all changes" title="Unstage all changes"><span class="icon" data-icon="minus" data-variant="muted"></span>
+                    </button>
+                    <span class="git-count-badge" id="git-staged-count">0</span>
+                  </div>
+                </div>
+                <div class="git-files-list" id="git-staged-list"></div>
+              </div>
+              <div class="git-section" id="git-section-working">
+                <div class="git-section-header">
+                  <span class="git-section-title">Changes</span>
+                  <div class="git-section-right">
+                    <button class="icon-btn icon-btn--sm" id="btn-git-stage-all" aria-label="Stage all changes" title="Stage all changes"><span class="icon" data-icon="plus" data-variant="muted"></span>
+                    </button>
+                    <span class="git-count-badge" id="git-working-count">0</span>
+                  </div>
+                </div>
+                <div class="git-files-list" id="git-working-list"></div>
+              </div>
+            </div>
+            <section id="git-hunk-review" class="git-hunk-review" style="display: none;" aria-labelledby="git-hunk-review-title">
+              <div class="git-hunk-review-head">
+                <div class="git-hunk-review-copy">
+                  <h2 id="git-hunk-review-title">Review hunks</h2>
+                  <span id="git-hunk-review-path"></span>
+                </div>
+                <button type="button" class="icon-btn icon-btn--sm" id="btn-close-git-hunks" aria-label="Close hunk review" title="Close hunk review">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+              <div id="git-hunk-list" class="git-hunk-list"></div>
+            </section>
+            <div id="git-notice-banner" class="git-notice" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- VIEW 4: RUN & DEBUG -->
+        <div class="sidebar-view" id="view-debug" style="display: none;">
+          <div class="pane-head">
+            <span class="pane-title">Run &amp; Debug</span>
+            <div class="pane-actions">
+              <button class="icon-btn icon-btn--sm" id="btn-sidebar-debug-start" aria-label="Start Debugging (F5)" title="Start Debugging (F5)"><span class="icon" data-icon="play" data-variant="ui"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm icon-btn--danger" id="btn-sidebar-debug-stop" aria-label="Stop Debugging" title="Stop Debugging" style="display: none;"><span class="icon" data-icon="stop" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-debug-clear-all-bps" aria-label="Clear All Breakpoints" title="Clear All Breakpoints"><span class="icon" data-icon="trash" data-variant="muted"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="debug-sidebar-body">
+            <!-- ONE idle state, with the action, instead of four "Not X" symptoms -->
+            <div class="debug-idle" id="debug-idle">
+              <p>No active session. Press <kbd>F5</kbd> to start debugging.</p>
+              <button type="button" class="btn btn--accent-soft btn--xs" id="btn-debug-idle-start">Start debugging</button>
+            </div>
+
+            <!-- DEBUG TARGET CHIP -->
+            <div class="debug-target-row">
+              <span class="debug-target-label">Target:</span>
+              <span class="debug-target-file" id="debug-target-file">Active file</span>
+            </div>
+
+            <!-- VARIABLES SECTION -->
+            <div class="debug-section" id="debug-sec-variables">
+              <div class="debug-section-head" id="debug-head-variables">
+                <span class="debug-section-title">Variables</span>
+                <span class="debug-badge" id="debug-var-count">0</span>
+              </div>
+              <div class="debug-section-body" id="debug-variables-list">
+                <div class="debug-empty-state">Shown when paused</div>
+              </div>
+            </div>
+
+            <!-- WATCH SECTION -->
+            <div class="debug-section" id="debug-sec-watch">
+              <div class="debug-section-head" id="debug-head-watch">
+                <span class="debug-section-title">Watch</span>
+                <button type="button" class="icon-btn icon-btn--xs" id="btn-add-watch" aria-label="Add watch expression" title="Add Expression">+</button>
+              </div>
+              <div class="debug-section-body" id="debug-watch-list">
+                <div class="debug-empty-state">No watch expressions</div>
+              </div>
+            </div>
+
+            <!-- CALL STACK SECTION -->
+            <div class="debug-section" id="debug-sec-callstack">
+              <div class="debug-section-head" id="debug-head-callstack">
+                <span class="debug-section-title">Call Stack</span>
+                <span class="debug-badge" id="debug-stack-count">0</span>
+              </div>
+              <div class="debug-section-body" id="debug-callstack-list">
+                <div class="debug-empty-state">No active session</div>
+              </div>
+            </div>
+
+            <!-- BREAKPOINTS SECTION -->
+            <div class="debug-section" id="debug-sec-breakpoints">
+              <div class="debug-section-head" id="debug-head-breakpoints">
+                <span class="debug-section-title">Breakpoints</span>
+                <span class="debug-badge" id="debug-bp-count">0</span>
+              </div>
+              <div class="debug-section-body" id="debug-breakpoints-list">
+                <div class="debug-empty-state">No breakpoints</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="resizer-v" id="resizer-left" role="separator" aria-label="Resize files pane" aria-orientation="vertical" aria-valuemin="180" aria-valuemax="480" aria-valuenow="256" tabindex="0"></div>
+
+      <main id="center-panel" class="glass pane pane--editor">
+        <div id="editor-breadcrumbs" class="editor-breadcrumbs">
+          <svg class="breadcrumb-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="breadcrumb-item" id="breadcrumb-workspace">workspace</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-item breadcrumb-item--active" id="breadcrumb-file">No file open</span>
+        </div>
+
+        <div id="editor-tabs-bar">
+          <div class="tabs-list" id="tabs-list"></div>
+          <div class="pane-actions">
+            <div id="editor-context-actions" class="context-action-group"></div>
+            <div class="smart-run-control" id="smart-run-group">
+              <button type="button" class="btn btn--primary btn--xs smart-run-btn" id="btn-smart-run" title="Run Project or File Without Debugging (Ctrl+F5)">
+                <span class="icon icon-run" data-icon="play" data-variant="ui"></span>
+                <span class="icon icon-stop" data-icon="stop" data-variant="ui" style="display: none;"></span>
+                <span id="smart-run-label">Run</span>
+              </button>
+              <button type="button" class="icon-btn icon-btn--xs smart-run-menu-btn" id="btn-smart-run-options" aria-label="Run configurations" title="Select Run Configuration"><span class="icon" data-icon="chevron-down" data-variant="muted"></span>
+              </button>
+              <div class="smart-run-dropdown glass glass--float" id="smart-run-dropdown" style="display: none;">
+                <div class="run-dropdown-head">Run Configurations</div>
+                <div class="run-dropdown-list" id="smart-run-alternatives"></div>
+              </div>
+            </div>
+            <button class="icon-btn icon-btn--sm" id="btn-inline-ai-trigger" aria-label="AI Inline Assist" title="AI Inline Assist (Ctrl+K)"><span class="icon" data-icon="spark" data-variant="ui"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-editor-open-pc-file" aria-label="Open file from PC" title="Open file from PC Explorer"><span class="icon" data-icon="folder-open" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-save-file" aria-label="Save file" title="Save file (Ctrl+S)"><span class="icon" data-icon="save" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-document-symbols" aria-label="Document symbols" title="Go to Symbol (Ctrl+Shift+O)"><span class="icon" data-icon="layers" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-split-editor" aria-label="Split editor right" title="Split Editor Right (Ctrl+\)"><span class="icon" data-icon="columns" data-variant="muted"></span>
+            </button>
+          </div>
+        </div>
+
+        <div id="editor-container">
+          <!-- FLOATING DEBUG ACTION TOOLBAR -->
+          <div id="debug-floating-toolbar" class="debug-toolbar glass glass--float" style="display: none;" role="toolbar" aria-label="Debug controls">
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-continue" title="Continue (F5)" aria-label="Continue"><span class="icon" data-icon="play" data-variant="ui"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-pause" title="Pause (F6)" aria-label="Pause" style="display: none;"><span class="icon" data-icon="pause" data-variant="muted"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-step-over" title="Step Over (F10)" aria-label="Step Over"><span class="icon" data-icon="step-over" data-variant="muted"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-step-into" title="Step Into (F11)" aria-label="Step Into"><span class="icon" data-icon="step-into" data-variant="muted"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-step-out" title="Step Out (Shift+F11)" aria-label="Step Out"><span class="icon" data-icon="step-out" data-variant="muted"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm" id="btn-dbg-restart" title="Restart (Ctrl+Shift+F5)" aria-label="Restart"><span class="icon" data-icon="refresh" data-variant="muted"></span>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sm icon-btn--danger" id="btn-dbg-stop" title="Stop Debugging (Shift+F5)" aria-label="Stop Debugging"><span class="icon" data-icon="stop" data-variant="muted"></span>
+            </button>
+          </div>
+
+          <!-- INLINE AI ASSIST WIDGET (Ctrl+K) -->
+          <div id="inline-ai-widget" class="inline-ai-widget glass glass--float" style="display: none;" role="dialog" aria-label="Inline AI Code Assistant">
+            <div class="inline-ai-header">
+              <div class="inline-ai-badge">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                <span>Inline Assist</span>
+              </div>
+              <span class="inline-ai-context-pill" id="inline-ai-context-pill">Ln 1-10</span>
+              <button type="button" class="icon-btn icon-btn--sm inline-ai-close" id="btn-inline-ai-close" aria-label="Close Inline Assist (Esc)" title="Close (Esc)">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+
+            <div class="inline-ai-chips" id="inline-ai-chips">
+              <button type="button" class="inline-chip-btn" data-inline-action="refactor">Refactor</button>
+              <button type="button" class="inline-chip-btn" data-inline-action="comments">Add comments</button>
+              <button type="button" class="inline-chip-btn" data-inline-action="fix">Fix bugs</button>
+              <button type="button" class="inline-chip-btn" data-inline-action="optimize">Optimize</button>
+              <button type="button" class="inline-chip-btn" data-inline-action="tests">Generate tests</button>
+            </div>
+
+            <div class="inline-ai-input-row">
+              <input type="text" id="inline-ai-input" class="inline-ai-input" placeholder="Instruct AI to edit, refactor, or generate (Ctrl+Enter)..." autocomplete="off" />
+              <button type="button" class="btn btn--primary btn--xs" id="btn-inline-ai-submit" title="Generate (Ctrl+Enter)">
+                <span>Run</span>
+                <kbd>Enter</kbd>
+              </button>
+            </div>
+
+            <div class="inline-ai-status-row" id="inline-ai-status-row" style="display: none;">
+              <div class="inline-ai-spinner"></div>
+              <span class="inline-ai-status-text" id="inline-ai-status-text">Generating code...</span>
+              <button type="button" class="btn btn--quiet btn--xs" id="btn-inline-ai-cancel">Cancel</button>
+            </div>
+
+            <div class="inline-ai-diff-banner" id="inline-ai-diff-banner" style="display: none;">
+              <div class="diff-summary-info">
+                <span class="diff-stats" id="inline-diff-stats">+0 / -0 lines</span>
+                <span class="diff-hint">Previewing proposed edit</span>
+              </div>
+              <div class="diff-actions">
+                <button type="button" class="btn btn--primary btn--xs" id="btn-inline-ai-accept" title="Accept edit (Ctrl+Enter)">
+                  <span>Accept</span>
+                  <kbd>Ctrl Enter</kbd>
+                </button>
+                <button type="button" class="btn btn--quiet btn--xs" id="btn-inline-ai-discard" title="Discard edit (Esc)">
+                  <span>Discard</span>
+                  <kbd>Esc</kbd>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="editor-workspace-split" class="editor-workspace-split">
+            <div id="editor-pane-primary" class="editor-subpane">
+              <div id="monaco-mount"></div>
+            </div>
+            <div id="editor-split-divider" class="editor-split-divider" style="display: none;" role="separator" aria-orientation="vertical" aria-label="Resize split editor, use arrow keys" tabindex="0">
+              <div class="split-divider-handle"></div>
+            </div>
+            <div id="editor-pane-secondary" class="editor-subpane" style="display: none;">
+              <div class="secondary-pane-header">
+                <span class="secondary-pane-title" id="secondary-editor-title">No file open</span>
+                <div class="secondary-pane-actions">
+                  <button type="button" class="icon-btn icon-btn--sm" id="btn-close-split" aria-label="Close split" title="Close Split (Ctrl+\)"><span class="icon" data-icon="close" data-variant="muted"></span>
+                  </button>
+                </div>
+              </div>
+              <div id="monaco-mount-secondary"></div>
+            </div>
+          </div>
+          <div id="monaco-diff-mount" style="display: none;"></div>
+          <div id="no-file-state" class="center-empty-state">
+            <div class="empty-mark" aria-hidden="true">
+              <svg viewBox="0 0 512 512"><use href="#vc-mark"/></svg>
+            </div>
+            <h1>No file open</h1>
+            <p>Open a folder, pick a file, or press <kbd>Ctrl P</kbd> to jump anywhere.</p>
+            <div class="empty-cta-row">
+              <button class="btn btn--primary" id="btn-empty-choose-project" type="button">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                <span>Choose project</span>
+              </button>
+              <button class="btn btn--quiet" id="btn-empty-open-file" type="button">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                <span>Open file</span>
+              </button>
+              <button class="btn btn--link" id="btn-empty-customize" type="button">Recent projects</button>
+            </div>
+            <div id="empty-recents-list" class="empty-recents-list" style="display: none;"></div>
+            <dl class="keys">
+              <div><dt>Search workspace</dt><dd><kbd>Ctrl Shift F</kbd></dd></div>
+              <div><dt>Quick open</dt><dd><kbd>Ctrl P</kbd></dd></div>
+              <div><dt>Toggle files</dt><dd><kbd>Ctrl B</kbd></dd></div>
+              <div><dt>Terminal</dt><dd><kbd>Ctrl `</kbd></dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <div class="resizer-h" id="resizer-terminal" role="separator" aria-label="Resize terminal" aria-orientation="horizontal" aria-valuemin="80" aria-valuemax="540" aria-valuenow="200" tabindex="0"></div>
+
+        <div id="terminal-panel">
+          <div class="shell-head">
+            <div class="bottom-panel-nav" role="tablist" aria-label="Bottom views">
+              <button type="button" class="bottom-nav-btn is-active" id="btn-view-terminal" role="tab" aria-selected="true">Terminal</button>
+              <button type="button" class="bottom-nav-btn" id="btn-view-problems" role="tab" aria-selected="false">
+                <span>Problems</span>
+                <span class="badge" id="problems-count-badge">0</span>
+              </button>
+              <button type="button" class="bottom-nav-btn" id="btn-view-tests" role="tab" aria-selected="false">
+                <span>Output</span>
+                <span class="badge" id="tests-count-badge" style="display: none;">0</span>
+              </button>
+              <button type="button" class="bottom-nav-btn" id="btn-view-debug" role="tab" aria-selected="false">Debug Console</button>
+            </div>
+            <span class="head-divider" aria-hidden="true"></span>
+            <div class="terminal-tab-strip" id="terminal-tab-strip">
+              <div class="terminal-tabs-list" id="terminal-tabs-list" role="tablist" aria-label="Terminal sessions">
+                <div class="term-session-tab is-active" data-term-id="term-1" role="tab" aria-selected="true" tabindex="0" title="PowerShell 1">
+                  <span class="term-tab-label">PowerShell 1</span>
+                  <button type="button" class="term-tab-close" aria-label="Close PowerShell 1" title="Close session">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="icon-btn icon-btn--sm" id="btn-add-terminal-tab" title="New Terminal (Ctrl+Shift+`)" aria-label="New Terminal">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button type="button" class="icon-btn icon-btn--sm" id="btn-terminal-shell-menu" title="Select shell profile" aria-label="Select shell profile" aria-haspopup="menu" aria-expanded="false" aria-controls="terminal-profile-menu">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <span class="console-status" id="console-status" role="status" aria-live="polite">
+              <span class="console-chip" id="console-chip-shell">powershell</span>
+              <span class="console-sep" aria-hidden="true">&middot;</span>
+              <span class="console-chip" id="console-chip-workspace">no folder</span>
+              <span class="console-branch" id="console-chip-branch" hidden></span>
+            </span>
+            <div class="pane-actions">
+              <button class="icon-btn icon-btn--sm" id="btn-term-suggest-toggle" aria-label="Command cheat sheet" title="Command cheat sheet (Ctrl+Space)">
+                <span class="icon" data-icon="book-open" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm icon-btn--danger" id="btn-kill-terminal" aria-label="Stop running process" title="Stop running process">
+                <span class="icon" data-icon="stop" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-clear-terminal" aria-label="Clear terminal" title="Clear terminal">
+                <span class="icon" data-icon="trash" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-toggle-terminal" aria-label="Collapse terminal" aria-expanded="true" title="Collapse terminal">
+                <span class="icon" data-icon="chevron-down" data-variant="muted"></span>
+              </button>
+              <button class="icon-btn icon-btn--sm" id="btn-close-pane-terminal" aria-label="Hide Terminal pane" title="Hide Terminal pane (Ctrl+`)">
+                <span class="icon" data-icon="close" data-variant="muted"></span>
+              </button>
+            </div>
+          </div>
+          <div id="terminal-body">
+            <!-- TERMINAL FIX WITH AI BANNER -->
+            <div class="terminal-ai-banner glass glass--float" id="terminal-ai-banner" style="display: none;" role="alert">
+              <div class="banner-left">
+                <div class="ai-sparkle-dot">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                </div>
+                <div class="banner-copy">
+                  <span class="banner-title">Execution Error Detected</span>
+                  <span class="banner-sub" id="terminal-ai-error-snippet">Process returned non-zero exit code</span>
+                </div>
+              </div>
+              <div class="banner-actions">
+                <button type="button" class="btn btn--primary btn--xs" id="btn-terminal-fix-ai" title="Send error and source code to Agent to diagnose and fix automatically"><span class="icon" data-icon="spark" data-variant="ui"></span>
+                  <span>Fix with AI</span>
+                </button>
+                <button type="button" class="btn btn--quiet btn--xs" id="btn-terminal-explain-ai" title="Ask Agent to explain this error">Explain</button>
+                <button type="button" class="icon-btn icon-btn--sm" id="btn-terminal-dismiss-banner" aria-label="Dismiss banner" title="Dismiss"><span class="icon" data-icon="close" data-variant="muted"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- VoidShell: our own console. No PTY, no PowerShell in the default session. -->
+            <div id="void-console" class="vc" role="region" aria-label="Console">
+              <div id="vc-log" class="vc-log" role="log" aria-live="polite"></div>
+              <div class="vc-input-row">
+                <span id="vc-prompt" class="vc-prompt">void</span>
+                <input id="vc-input" class="vc-input" type="text" autocomplete="off" spellcheck="false" aria-label="Console input" />
+              </div>
+            </div>
+
+            <!-- xterm stays only for the optional `sys` PTY sessions -->
+            <div id="terminal-host" class="terminal-host" tabindex="0" role="region" aria-label="Interactive terminal" hidden></div>
+            <div class="terminal-controls-stage">
+              <div id="terminal-suggest-popover" class="terminal-suggest-popover glass glass--float" style="display: none;" role="listbox" aria-label="Terminal command suggestions">
+                <div class="suggest-header">
+                  <span class="suggest-title">Command Palette &amp; Help</span>
+                  <span class="suggest-hint">Tab to complete, Esc to dismiss</span>
+                </div>
+                <div class="suggest-list" id="terminal-suggest-list"></div>
+              </div>
+              <div class="terminal-quick-chips" id="terminal-quick-chips" role="toolbar" aria-label="Quick terminal commands" hidden></div>
+            </div>
+
+            <!-- PROBLEMS & DIAGNOSTICS VIEW (Ctrl+Shift+M) -->
+            <div id="problems-panel-view" class="problems-panel-view" style="display: none;">
+              <div class="problems-toolbar">
+                <span class="problems-summary" id="problems-summary-text">No problems detected in workspace</span>
+                <button type="button" class="btn btn--quiet btn--xs" id="btn-refresh-problems">Refresh</button>
+              </div>
+              <div class="problems-list" id="problems-list">
+                <div class="empty-state">
+                  <p>No problems have been detected in the current workspace.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TESTS RUNNER VIEW -->
+            <div id="tests-panel-view" class="tests-panel-view" style="display: none;">
+              <div class="tests-toolbar">
+                <div class="tests-runner-info">
+                  <span class="tests-runner-badge" id="tests-runner-badge">Auto</span>
+                  <span class="tests-summary" id="tests-summary-text">No test run recorded</span>
+                </div>
+                <div class="tests-actions">
+                  <button type="button" class="btn btn--primary btn--xs" id="btn-run-all-tests" title="Run all workspace tests"><span class="icon" data-icon="play" data-variant="ui"></span>
+                    <span>Run All Tests</span>
+                  </button>
+                  <button type="button" class="btn btn--quiet btn--xs" id="btn-run-failed-tests" style="display: none;" title="Rerun failing tests">Rerun Failed</button>
+                  <button type="button" class="btn btn--quiet btn--xs btn--danger" id="btn-cancel-tests" style="display: none;" title="Stop test execution">Cancel</button>
+                </div>
+              </div>
+              <div class="tests-list" id="tests-list">
+                <div class="empty-state">
+                  <p>No tests executed yet.</p>
+                  <p class="empty-hint">Click Run All Tests to discover and execute project test cases.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- DEBUG CONSOLE VIEW -->
+            <div id="debug-panel-view" class="debug-panel-view" style="display: none;">
+              <div class="debug-console-output" id="debug-console-output" role="log" aria-label="Debug console output"></div>
+              <div class="debug-console-input-row">
+                <span class="debug-prompt">&gt;</span>
+                <input type="text" id="debug-console-input" aria-label="Evaluate expression in debug context" placeholder="Evaluate expression in debug context..." autocomplete="off" spellcheck="false" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <div class="resizer-v" id="resizer-right" role="separator" aria-label="Resize agent pane" aria-orientation="vertical" aria-valuemin="320" aria-valuemax="760" aria-valuenow="370" tabindex="0"></div>
+
+      <aside id="sidebar-agent" class="glass pane" style="width: 370px;">
+        <div class="pane-head">
+          <span class="pane-title" id="active-session-title">Agent</span>
+          <div class="pane-actions">
+            <button type="button" class="btn btn--quiet btn--xs agent-token-pill" id="btn-agent-token-pill" style="display: none;" title="Context token usage (click to open Agent Context Inspector)">~0 tok</button>
+            <button class="icon-btn icon-btn--sm" id="btn-sidebar-history" aria-label="Chat history" title="Chat history (Ctrl+H)"><span class="icon" data-icon="history" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-attach-pc-file" aria-label="Attach files from PC" title="Attach files from PC Explorer"><span class="icon" data-icon="paperclip" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-clear-chat" aria-label="New conversation" title="New conversation"><span class="icon" data-icon="plus" data-variant="muted"></span>
+            </button>
+            <button class="icon-btn icon-btn--sm" id="btn-close-pane-agent" aria-label="Hide Agent sidebar" title="Hide Agent sidebar"><span class="icon" data-icon="close" data-variant="muted"></span>
+            </button>
+          </div>
+        </div>
+
+        <div id="agent-chat-container" aria-live="polite">
+          <div class="agent-welcome-card">
+            <h2>What should we build?</h2>
+            <p>Ask for multi-file edits, attach context with <kbd>@</kbd>, or start from a task below.</p>
+            <div class="agent-starter-grid">
+              <button type="button" class="agent-starter-pill" data-quick-prompt="@folder Explain the project architecture and entry points.">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+                <span>Explain project architecture</span>
+              </button>
+              <button type="button" class="agent-starter-pill" data-quick-prompt="@git Review my working tree changes for bugs or edge cases.">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                <span>Review uncommitted git diff</span>
+              </button>
+              <button type="button" class="agent-starter-pill" data-quick-prompt="@problems Diagnose and fix the active workspace problems.">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                <span>Diagnose &amp; fix problems</span>
+              </button>
+              <button type="button" class="agent-starter-pill" data-quick-prompt="Write comprehensive unit tests for the active file.">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Generate unit tests</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button id="agent-scroll-latest" class="agent-scroll-btn" type="button" aria-label="Scroll to latest message" style="display: none;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+          <span>Latest</span>
+        </button>
+        <div id="agent-input-container">
+          <div id="agent-mention-popover" class="mention-popover glass glass--float" style="display: none;" role="listbox" aria-label="Insert context mention">
+            <div class="mention-header">Mention Context (@)</div>
+            <div class="mention-list" id="agent-mention-list"></div>
+          </div>
+          <div id="attached-context-bar" style="display: none;"></div>
+          <div class="composer glass glass--lens">
+            <div class="agent-status-wrap" id="agent-status-banner" role="status" style="display: none;">
+              <span class="run-indicator idle" id="agent-status-dot" aria-hidden="true"></span>
+              <span id="agent-status-label">Idle</span>
+            </div>
+            <textarea id="agent-input-text" rows="3" aria-label="Message the agent" placeholder="Describe a task, bug, or feature to build... (Type @ to mention files, git, terminal)"></textarea>
+            <div class="agent-input-footer">
+              <div class="agent-footer-left">
+                <button class="icon-btn icon-btn--xs" id="btn-composer-attach-pc" type="button" aria-label="Attach file from PC" title="Attach file from PC"><span class="icon" data-icon="paperclip" data-variant="muted"></span></button>
+                <button class="btn btn--quiet btn--xs" id="btn-attach-active-file" type="button" title="Attach active editor tab">
+                  <span>+ Tab</span>
+                </button>
+                <div class="agent-mode-toggle" id="agent-mode-toggle" role="group" aria-label="Agent mode">
+                  <button class="mode-btn is-active" type="button" data-mode="act" aria-pressed="true" title="Act: the agent makes changes directly">Act</button>
+                  <button class="mode-btn" type="button" data-mode="plan" aria-pressed="false" title="Plan: read-only, proposes steps for approval">Plan</button>
+                </div>
+                <button class="btn btn--quiet btn--xs authority-mode" id="btn-agent-authority-mode" type="button" title="Open Agent permission settings">Review</button>
+              </div>
+              <div class="agent-btn-group">
+                <button id="btn-cancel-agent" class="btn btn--quiet btn--xs" style="display:none;">Stop</button>
+                <button id="btn-send-agent" class="btn btn--primary btn--xs agent-send-btn" aria-label="Send message" title="Send message (Enter)">
+                  <span>Send</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer id="statusbar">
+      <div class="status-left">
+        <button type="button" class="status-git-branch" id="status-git-branch" title="Git branch (click to switch / create)" style="display: none;"><span class="icon" data-icon="git-branch" data-variant="muted"></span>
+          <span id="status-branch-name">main</span>
+        </button>
+        <span id="status-workspace">No folder</span>
+      </div>
+      <div class="status-right">
+        <button type="button" id="status-update" style="display: none;" title="New VoidCode update available on GitHub (click to download)">Update available</button>
+        <span id="status-checkpoints">0 checkpoints</span>
+        <button type="button" id="status-runtime" style="display: none;" title="Active runtime / interpreter (click to switch)">Runtime</button>
+        <button type="button" id="status-autosave" title="Auto save: click to change (Off, After delay, On focus loss)">Auto save: Off</button>
+        <button type="button" id="status-lsp" title="Language server status">LSP: Idle</button>
+        <span id="status-cursor">Ln 1, Col 1</span>
+        <span id="status-lang">Plain text</span>
+        <span id="status-eol">EOL: Unknown</span>
+        <span id="status-encoding">Encoding: Unknown</span>
+      </div>
+    </footer>
+
+    <!-- CONTEXT MENU -->
+    <div id="tree-context-menu" class="context-menu glass glass--float" style="display: none;" role="menu" aria-label="File actions">
+      <div class="ctx-item" id="ctx-new-file" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg>
+        <span class="ctx-label">New file</span>
+      </div>
+      <div class="ctx-item" id="ctx-new-folder" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="ctx-label">New folder</span>
+      </div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-send-agent" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        <span class="ctx-label">Attach to message</span>
+        <span class="ctx-hint">@file</span>
+      </div>
+      <div class="ctx-item" id="ctx-inspect-file" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span class="ctx-label">Inspect binary or hash</span>
+      </div>
+      <div class="ctx-item" id="ctx-reveal-explorer" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14 21 3"/></svg>
+        <span class="ctx-label">Reveal in Explorer</span>
+      </div>
+      <div class="ctx-item" id="ctx-copy-path" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span class="ctx-label">Copy full path</span>
+      </div>
+      <div class="ctx-item" id="ctx-copy-rel-path" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span class="ctx-label">Copy relative path</span>
+      </div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-rename" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        <span class="ctx-label">Rename</span>
+        <span class="ctx-hint">F2</span>
+      </div>
+      <div class="ctx-item danger" id="ctx-delete" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <span class="ctx-label">Delete</span>
+        <span class="ctx-hint">Del</span>
+      </div>
+    </div>
+
+    <!-- EDITOR TAB CONTEXT MENU -->
+    <div id="tab-context-menu" class="context-menu glass glass--float" style="display: none;" role="menu" aria-label="Editor tab actions">
+      <div class="ctx-group-label" aria-hidden="true">Editor tabs</div>
+      <div class="ctx-item" data-tab-act="pin" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z"/></svg>
+        <span class="ctx-label">Pin / Unpin tab</span>
+      </div>
+      <div class="ctx-item" data-tab-act="close" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        <span class="ctx-label">Close</span>
+        <span class="ctx-hint">Ctrl+W</span>
+      </div>
+      <div class="ctx-item" data-tab-act="close-others" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 9l6 6m0-6-6 6"/></svg>
+        <span class="ctx-label">Close others</span>
+      </div>
+      <div class="ctx-item" data-tab-act="close-saved" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+        <span class="ctx-label">Close saved</span>
+      </div>
+      <div class="ctx-item" data-tab-act="close-all" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m-9 0v14h10V6"/></svg>
+        <span class="ctx-label">Close all</span>
+      </div>
+      <div class="ctx-sep" aria-hidden="true"></div>
+      <div class="ctx-item" data-tab-act="split" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span class="ctx-label">Split editor right</span>
+        <span class="ctx-hint">Alt+Click</span>
+      </div>
+      <div class="ctx-item" data-tab-act="copy-path" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span class="ctx-label">Copy relative path</span>
+      </div>
+      <div class="ctx-item" data-tab-act="reveal" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="ctx-label">Reveal in File Explorer</span>
+      </div>
+    </div>
+
+    <!-- TERMINAL SHELL PROFILE POPUP -->
+    <div id="terminal-profile-menu" class="context-menu glass glass--float" style="display: none;" role="menu" aria-label="Terminal profiles">
+      <div class="ctx-group-label" aria-hidden="true">Shell profile</div>
+      <div class="ctx-item" data-shell-profile="powershell" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span class="ctx-label">PowerShell</span>
+        <span class="ctx-hint">pwsh</span>
+      </div>
+      <div class="ctx-item" data-shell-profile="cmd" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m7 15 3-3-3-3m5 6h5"/></svg>
+        <span class="ctx-label">Command Prompt (cmd)</span>
+        <span class="ctx-hint">cmd</span>
+      </div>
+      <div class="ctx-item" data-shell-profile="bash" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span class="ctx-label">Git Bash</span>
+        <span class="ctx-hint">bash</span>
+      </div>
+      <div class="ctx-item" data-shell-profile="wsl" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/></svg>
+        <span class="ctx-label">WSL (Linux)</span>
+        <span class="ctx-hint">wsl</span>
+      </div>
+    </div>
+
+    <!-- TOP TOOL OVERFLOW MENU -->
+    <div id="top-tools-menu" class="context-menu glass glass--float" style="display: none;" role="menu" aria-label="Workspace tools">
+      <div class="ctx-group-label" aria-hidden="true">Workspace views</div>
+      <button type="button" class="ctx-item" data-tool-window="win-preview" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="ctx-label">Live preview</span>
+        <span class="ctx-hint">HTML / MD</span>
+      </button>
+      <button type="button" class="ctx-item" data-tool-window="win-history" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5m4-1v5l4 2"/></svg>
+        <span class="ctx-label">Chat history</span>
+        <span class="ctx-hint">Ctrl+H</span>
+      </button>
+      <button type="button" class="ctx-item" data-tool-window="win-timeline" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 12h6m6 0h6"/></svg>
+        <span class="ctx-label">Activity timeline</span>
+        <span class="ctx-hint">Rollbacks</span>
+      </button>
+      <button type="button" class="ctx-item" data-tool-window="win-prompts" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+        <span class="ctx-label">Playbooks</span>
+        <span class="ctx-hint">Prompts</span>
+      </button>
+      <div class="ctx-sep" aria-hidden="true"></div>
+      <div class="ctx-group-label" aria-hidden="true">System &amp; tasks</div>
+      <button type="button" class="ctx-item" data-tool-action="health" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span class="ctx-label">Environment health</span>
+        <span class="ctx-hint">LSP / Tools</span>
+      </button>
+      <button type="button" class="ctx-item" data-tool-action="tasks" role="menuitem">
+        <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span class="ctx-label">Run workspace task</span>
+        <span class="ctx-hint">Build / Test</span>
+      </button>
+    </div>
+
+    <!-- MINI WINDOW 1: CHAT HISTORY & SAVED SESSIONS -->
+    <section id="win-history" class="mini-window glass glass--float" style="display: none; top: 72px; right: 456px; width: 380px;" aria-label="Chat history" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-history">
+        <div class="mini-win-title"><span class="icon" data-icon="history" data-variant="muted"></span>
+          <h3>Chat history</h3>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-new-session" type="button">New session</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-history" aria-label="Close chat history">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="mini-win-body" id="history-sessions-list"></div>
+    </section>
+
+    <!-- MINI WINDOW 2: CHECKPOINTS & ACTIVITY TIMELINE -->
+    <section id="win-timeline" class="mini-window glass glass--float" style="display: none; top: 96px; left: 280px; width: 420px;" aria-label="Activity timeline" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-timeline">
+        <div class="mini-win-title"><span class="icon" data-icon="timeline" data-variant="muted"></span>
+          <h3>Activity timeline</h3>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-clear-timeline" type="button">Clear log</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-timeline" aria-label="Close activity timeline">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="mini-win-body" id="timeline-entries-list"></div>
+    </section>
+
+    <!-- MINI WINDOW 3: PLAYBOOKS & SAVED PROMPTS -->
+    <section id="win-prompts" class="mini-window glass glass--float" style="display: none; top: 112px; left: 340px; width: 440px;" aria-label="Playbooks" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-prompts">
+        <div class="mini-win-title"><span class="icon" data-icon="book-open" data-variant="muted"></span>
+          <h3>Playbooks</h3>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-add-playbook" type="button">Save new</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-prompts" aria-label="Close playbooks">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="mini-win-body" id="playbooks-list"></div>
+    </section>
+
+    <!-- MINI WINDOW 4: BINARY & FILE INSPECTOR -->
+    <section id="win-inspector" class="mini-window glass glass--float" style="display: none; top: 128px; left: 390px; width: 480px;" aria-label="Binary inspector" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-inspector">
+        <div class="mini-win-title"><span class="icon" data-icon="layers" data-variant="muted"></span>
+          <h3>Binary and hash inspector</h3>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-inspector-browse-pc" type="button">Browse PC</button>
+          <button class="btn btn--quiet btn--xs" id="btn-inspect-active" type="button">Active tab</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-inspector" aria-label="Close inspector">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="mini-win-body">
+        <div class="input-with-btn">
+          <input type="text" id="inspector-path-input" placeholder="Relative or full file path (e.g. bin/Release/VoidCode.exe)" />
+          <button class="btn btn--primary" id="btn-run-inspector" type="button">Analyze</button>
+        </div>
+        <pre class="inspector-output" id="inspector-output-box">Click Browse PC or select a file from the explorer context menu to inspect PE headers, architecture, SHA-256 hash, and extracted ASCII strings.</pre>
+        <div class="dialog-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-send-inspection-agent" type="button">Send report to agent</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MINI WINDOW 5: QUICK THEMES, GLASS OPTICS & LAYOUT PALETTE -->
+    <section id="win-customize" class="mini-window glass glass--float" style="display: none; top: 84px; right: 220px; width: 420px;" aria-label="Customize workspace" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-customize">
+        <div class="mini-win-title"><span class="icon" data-icon="palette" data-variant="muted"></span>
+          <h3>Themes and glass optics</h3>
+        </div>
+        <div class="mini-win-actions">
+          <button class="icon-btn icon-btn--sm" data-close-window="win-customize" aria-label="Close customize window">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="mini-win-body">
+        <div class="form-group">
+          <div class="label-row">
+            <label>Liquid glass theme</label>
+            <span class="val-badge" id="lbl-active-theme">Harbor</span>
+          </div>
+          <div class="theme-grid">
+            <button type="button" class="theme-tile is-active" data-theme-pick="harbor">
+              <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-harbor"/></svg>
+              <span>Harbor glass</span>
+            </button>
+            <button type="button" class="theme-tile" data-theme-pick="obsidian">
+              <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-obsidian"/></svg>
+              <span>Obsidian frost</span>
+            </button>
+            <button type="button" class="theme-tile" data-theme-pick="crimson">
+              <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-crimson"/></svg>
+              <span>Crimson dusk</span>
+            </button>
+            <button type="button" class="theme-tile" data-theme-pick="emerald">
+              <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-emerald"/></svg>
+              <span>Emerald matrix</span>
+            </button>
+            <button type="button" class="theme-tile" data-theme-pick="nebula">
+              <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-nebula"/></svg>
+              <span>Violet nebula</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-well">
+          <div class="label-row">
+            <label for="slider-glass-blur">Refraction blur</label>
+            <span class="val-badge" id="lbl-blur-val">22px</span>
+          </div>
+          <input type="range" class="glass-slider" id="slider-glass-blur" min="6" max="40" step="2" value="22" />
+        </div>
+
+        <div class="control-well">
+          <div class="label-row">
+            <label for="slider-field-opacity">Ambient light field</label>
+            <span class="val-badge" id="lbl-field-val">55%</span>
+          </div>
+          <input type="range" class="glass-slider" id="slider-field-opacity" min="0" max="90" step="5" value="55" />
+        </div>
+
+        <div class="form-group">
+          <label>Toggle workspace panels &amp; tools</label>
+          <div class="persona-pills">
+            <button type="button" class="persona-pill" data-toggle-pane="files">Files sidebar</button>
+            <button type="button" class="persona-pill" data-toggle-pane="terminal">Terminal panel</button>
+            <button type="button" class="persona-pill" data-toggle-pane="agent">Agent sidebar</button>
+            <button type="button" class="persona-pill" data-toggle-win="win-preview">Live preview</button>
+            <button type="button" class="persona-pill" data-toggle-win="win-history">History</button>
+            <button type="button" class="persona-pill" data-toggle-win="win-timeline">Timeline</button>
+            <button type="button" class="persona-pill" data-toggle-win="win-prompts">Playbooks</button>
+            <button type="button" class="persona-pill" data-toggle-win="win-inspector">Inspector</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MINI WINDOW 6: LIVE WEB (HTML/SVG), MARKDOWN & IMAGE PREVIEW SCREEN -->
+    <section id="win-preview" class="mini-window glass glass--float" style="display: none; top: 76px; left: 268px; width: 620px; height: 540px;" aria-label="Live file preview" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-preview">
+        <div class="mini-win-title"><span class="icon" data-icon="eye" data-variant="muted"></span>
+          <h3 id="preview-win-title">Live preview</h3>
+          <span class="val-badge" id="preview-mode-badge">Ready</span>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-preview-viewport" type="button" title="Toggle desktop or mobile viewport width">Desktop</button>
+          <button class="btn btn--quiet btn--xs" id="btn-preview-refresh" type="button" title="Reload preview">Refresh</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-preview" aria-label="Close preview window">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="preview-stage">
+        <iframe id="preview-iframe" class="preview-frame" title="Sandboxed HTML and SVG live preview" sandbox="allow-scripts" referrerpolicy="no-referrer" style="display: none;"></iframe>
+        <div id="preview-markdown" class="preview-markdown-body" style="display: none;"></div>
+        <div id="preview-image-stage" class="preview-image-wrap" style="display: none;">
+          <div id="preview-image-holder"></div>
+          <div class="win-item-meta" id="preview-image-meta"></div>
+        </div>
+        <div id="preview-empty" class="empty-state">
+          <p>Open an HTML, SVG, Markdown, or image file to preview it live.</p>
+          <p class="empty-hint">Edits in the code editor update the preview automatically as you type.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MINI WINDOW 7: SIDE-BY-SIDE DIFF VIEWER FOR AGENT EDITS -->
+    <section id="win-diff" class="mini-window glass glass--float" style="display: none; top: 80px; left: 220px; width: 780px; height: 540px;" aria-label="Code diff viewer" role="dialog">
+      <header class="mini-win-head" data-drag-window="win-diff">
+        <div class="mini-win-title"><span class="icon" data-icon="columns" data-variant="muted"></span>
+          <h3 id="diff-win-title">Change diff</h3>
+          <span class="val-badge val-badge--mono" id="diff-win-stats">Before vs After</span>
+        </div>
+        <div class="mini-win-actions">
+          <button class="btn btn--quiet btn--xs" id="btn-diff-prev-change" type="button" title="Previous change">Prev</button>
+          <button class="btn btn--quiet btn--xs" id="btn-diff-next-change" type="button" title="Next change">Next</button>
+          <button class="icon-btn icon-btn--sm" data-close-window="win-diff" aria-label="Close diff window">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="diff-review-toolbar" class="diff-toolbar-strip" style="display: none;"></div>
+      <div id="diff-hunks-bar" class="diff-toolbar-strip" style="display: none;"></div>
+      <div id="diff-editor-mount" class="diff-mount"></div>
+    </section>
+
+    <!-- AGENT CONTEXT INSPECTOR MODAL -->
+    <div id="context-inspector-modal" class="modal-overlay" style="display: none;">
+      <div class="app-modal-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="context-inspector-title">
+        <header class="mini-win-head">
+          <div class="mini-win-title">
+            <span class="icon" data-icon="layers" data-variant="muted"></span>
+            <h3 id="context-inspector-title">Agent context inspector</h3>
+          </div>
+          <div class="mini-win-actions">
+            <button class="btn btn--quiet btn--xs" id="btn-refresh-context-inspector" type="button">Refresh</button>
+            <button class="icon-btn icon-btn--sm" id="btn-close-context-inspector" type="button" aria-label="Close context inspector">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="app-modal-body">
+          <div class="context-budget-panel">
+            <p class="context-budget-summary" id="context-inspector-summary" role="status" aria-live="polite">Inspecting next-turn payload...</p>
+            <div class="budget-meter" aria-hidden="true"><div class="budget-meter-fill" id="context-budget-fill"></div></div>
+          </div>
+          <div id="context-inspector-list" class="modal-rows-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENVIRONMENT HEALTH & CAPABILITIES MODAL -->
+    <div id="health-modal" class="modal-overlay" style="display: none;">
+      <div class="app-modal-card app-modal-card--wide glass glass--float" role="dialog" aria-modal="true" aria-labelledby="health-modal-title">
+        <header class="mini-win-head">
+          <div class="mini-win-title">
+            <span class="icon" data-icon="sliders" data-variant="muted"></span>
+            <h3 id="health-modal-title">Environment health &amp; tooling</h3>
+          </div>
+          <div class="mini-win-actions">
+            <button class="btn btn--quiet btn--xs" id="btn-open-about-from-health" type="button">About VoidCode</button>
+            <button class="btn btn--quiet btn--xs" id="btn-refresh-health-modal" type="button">Re-scan</button>
+            <button class="icon-btn icon-btn--sm" id="btn-close-health-modal" type="button" aria-label="Close health modal">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="app-modal-body">
+          <pre id="health-install-log" class="inspector-output" style="display: none; flex-shrink: 0; min-height: 110px; max-height: 165px; overflow-y: auto; padding: 10px 14px; margin: 0 0 12px 0; line-height: 1.5; font-size: 12px; white-space: pre-wrap; word-break: break-word;"></pre>
+          <div id="health-modal-body" class="modal-rows-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT VOIDCODE & SYSTEM INFO MODAL -->
+    <div id="about-modal" class="modal-overlay" style="display: none;">
+      <div class="app-modal-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+        <header class="mini-win-head">
+          <div class="mini-win-title">
+            <span class="icon" data-icon="spark" data-variant="ui"></span>
+            <h3 id="about-modal-title">About VoidCode IDE</h3>
+            <span class="val-badge is-ok">v1.0.0</span>
+          </div>
+          <div class="mini-win-actions">
+            <button class="btn btn--primary btn--xs" id="btn-about-check-updates" type="button">Check for updates</button>
+            <button class="btn btn--quiet btn--xs" id="btn-about-copy-info" type="button">Copy system info</button>
+            <button class="btn btn--quiet btn--xs" id="btn-about-open-logs" type="button">Open logs</button>
+            <button class="icon-btn icon-btn--sm" id="btn-close-about-modal" type="button" aria-label="Close about modal">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="app-modal-body">
+          <div id="about-modal-body" class="modal-rows-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE TASKS RUNNER MODAL -->
+    <div id="tasks-modal" class="modal-overlay" style="display: none;">
+      <div class="app-modal-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="tasks-modal-title">
+        <header class="mini-win-head">
+          <div class="mini-win-title">
+            <span class="icon" data-icon="terminal" data-variant="muted"></span>
+            <h3 id="tasks-modal-title">Run workspace task</h3>
+          </div>
+          <div class="mini-win-actions">
+            <button class="icon-btn icon-btn--sm" id="btn-close-tasks-modal" type="button" aria-label="Close tasks modal">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="app-modal-body">
+          <div id="tasks-modal-list" class="modal-rows-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TERMINAL COMMAND BLOCKS MODAL -->
+    <div id="terminal-blocks-modal" class="modal-overlay" style="display: none;">
+      <div class="app-modal-card app-modal-card--wide glass glass--float" role="dialog" aria-modal="true" aria-labelledby="terminal-blocks-title">
+        <header class="mini-win-head">
+          <div class="mini-win-title">
+            <span class="icon" data-icon="terminal" data-variant="muted"></span>
+            <h3 id="terminal-blocks-title">Terminal command blocks</h3>
+          </div>
+          <div class="mini-win-actions">
+            <button class="icon-btn icon-btn--sm" id="btn-close-terminal-blocks" type="button" aria-label="Close command blocks">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="app-modal-body">
+          <div id="terminal-blocks-list" class="modal-rows-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK OPEN / COMMAND PALETTE MODAL (Ctrl+P / Ctrl+Shift+P) -->
+    <div id="quick-open-modal" class="modal-overlay" style="display: none;">
+      <div class="quick-open-card glass glass--float" role="dialog" aria-modal="true" aria-label="Quick open and command palette">
+        <input type="text" id="quick-open-input" aria-label="Search files or commands" placeholder="Type a file name, or &gt; for commands..." autocomplete="off" spellcheck="false" />
+        <div id="quick-open-list"></div>
+        <div class="quick-open-footer">
+          <span><kbd>&#8593;</kbd><kbd>&#8595;</kbd> navigate</span>
+          <span><kbd>Enter</kbd> open</span>
+          <span><kbd>Esc</kbd> close</span>
+          <span><kbd>&gt;</kbd> commands</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYMBOL QUICK PICK MODAL (Ctrl+Shift+O) -->
+    <div id="symbol-modal" class="modal-overlay" style="display: none;">
+      <div class="quick-open-card glass glass--float" role="dialog" aria-modal="true" aria-label="Go to symbol">
+        <input type="text" id="symbol-input" aria-label="Search symbols in document" placeholder="Type symbol name (classes, methods, functions)..." autocomplete="off" spellcheck="false" />
+        <div id="symbol-results-list" class="symbol-results-list"></div>
+      </div>
+    </div>
+
+    <!-- BRANCH PICKER MODAL -->
+    <div id="branch-modal" class="modal-overlay" style="display: none;">
+      <div class="quick-open-card glass glass--float" role="dialog" aria-modal="true" aria-label="Select or create branch">
+        <input type="text" id="branch-input" aria-label="Search or create branch" placeholder="Select a branch, or type to create new branch..." autocomplete="off" spellcheck="false" />
+        <div id="branch-results-list" class="symbol-results-list"></div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE TRUST PROMPT -->
+    <div id="trust-modal" class="modal-overlay" style="display: none;">
+      <div class="trust-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="trust-modal-title">
+        <div class="trust-card-head">
+          <div class="trust-shield" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9.8 4.6-1.4 8-4.8 8-9.8V6l-8-3Z"/><path d="M9.5 12.2 11.3 14l3.5-3.8"/></svg>
+          </div>
+          <div>
+            <h3 id="trust-modal-title">Trust this folder?</h3>
+            <p class="trust-subtitle">Workspace security check</p>
+          </div>
+        </div>
+        <p id="trust-modal-path" class="trust-path-box"></p>
+        <p class="trust-desc">Restricted mode keeps the agent in Review, blocks <code>run_command</code>, and disables automatic language servers. Only trust folders whose code you expect to run.</p>
+        <div class="trust-actions">
+          <button type="button" class="btn btn--quiet" id="btn-distrust-folder">Keep restricted</button>
+          <button type="button" class="btn btn--primary" id="btn-trust-folder">Trust folder</button>
+        </div>
+      </div>
+    </div>
+    <!-- CODEBASE SEARCH MODAL (Ctrl+T / local keyword & symbol index) -->
+    <div id="codebase-modal" class="modal-overlay" style="display: none;">
+      <div class="quick-open-card quick-open-card--wide glass glass--float" role="dialog" aria-modal="true" aria-label="Search Codebase Index">
+        <input type="text" id="codebase-search-input" aria-label="Search codebase symbols and indexed chunks" placeholder="Search indexed symbols, classes, methods, and code..." autocomplete="off" spellcheck="false" />
+        <div id="codebase-results-list" class="symbol-results-list"></div>
+      </div>
+    </div>
+
+    <!-- GIT COMMIT HISTORY MODAL -->
+    <div id="git-history-modal" class="modal-overlay" style="display: none;">
+      <div class="quick-open-card quick-open-card--wide glass glass--float" role="dialog" aria-modal="true" aria-label="Commit history">
+        <input type="text" id="git-history-filter" aria-label="Filter commit history" placeholder="Filter commit log..." autocomplete="off" spellcheck="false" />
+        <div id="git-history-results-list" class="git-history-list"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL. this used to be a draggable "mini-window" (data-drag-window on the
+         header, cursor: grab). A modal that can be dragged under the scrim is not a modal - and because
+         clampMiniWindow only ran for .mini-window, dragging it could leave the card partly off-screen. -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+      <div id="win-settings" class="settings-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-describedby="settings-subtitle">
+        <div class="modal-header">
+          <div>
+            <h3 id="settings-title">Settings</h3>
+            <p class="modal-subtitle" id="settings-subtitle">Configure AI model endpoints, system instructions, editor ergonomics, and liquid glass optics</p>
+          </div>
+          <button class="icon-btn icon-btn--sm" id="btn-close-settings" aria-label="Close settings"><span class="icon" data-icon="close" data-variant="muted"></span>
+          </button>
+        </div>
+
+        <!-- a searchable rail. The audit asked for ~10 sections; the content has five groups and
+             splitting it further would have produced near-empty panes, so each section carries the words people
+             actually search for in data-keywords and the filter matches label + keywords. -->
+        <div class="settings-rail">
+          <input type="text" id="settings-search" role="searchbox" autocomplete="off" spellcheck="false"
+                 aria-label="Filter settings sections" aria-controls="settings-tabs-nav"
+                 placeholder="Find a setting…" />
+          <p class="modal-subtitle" id="settings-search-status" role="status" aria-live="polite"></p>
+          <div class="settings-tabs-nav" id="settings-tabs-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
+            <button class="settings-tab-btn active" id="settings-tab-provider" data-tab="tab-provider" role="tab" aria-controls="tab-provider" aria-selected="true" tabindex="0" data-keywords="ai provider model endpoint api key token base url openrouter anthropic claude gemini google ollama lmstudio deepseek custom connection"><span class="icon" data-icon="sliders" data-variant="muted"></span>
+              <span>Model endpoint</span>
+            </button>
+            <button class="settings-tab-btn" id="settings-tab-prompt" data-tab="tab-prompt" role="tab" aria-controls="tab-prompt" aria-selected="false" tabindex="-1" data-keywords="agent instructions system prompt persona temperature tools permissions review auto-run authority context"><span class="icon" data-icon="book-open" data-variant="muted"></span>
+              <span>Agent instructions</span>
+            </button>
+            <button class="settings-tab-btn" id="settings-tab-editor" data-tab="tab-editor" role="tab" aria-controls="tab-editor" aria-selected="false" tabindex="-1" data-keywords="editor font size tab size autosave terminal shell tasks run limits max tokens turns minimap word wrap"><span class="icon" data-icon="terminal" data-variant="muted"></span>
+              <span>Editor and limits</span>
+            </button>
+            <button class="settings-tab-btn" id="settings-tab-appearance" data-tab="tab-appearance" role="tab" aria-controls="tab-appearance" aria-selected="false" tabindex="-1" data-keywords="appearance theme glass blur transparency contrast readability optics accent colour color"><span class="icon" data-icon="palette" data-variant="muted"></span>
+              <span>Themes and glass</span>
+            </button>
+            <button class="settings-tab-btn" id="settings-tab-keybindings" data-tab="tab-keybindings" role="tab" aria-controls="tab-keybindings" aria-selected="false" tabindex="-1" data-keywords="keyboard shortcuts keys bindings hotkeys command palette"><span class="icon" data-icon="cursor" data-variant="muted"></span>
+              <span>Keyboard shortcuts</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <!-- TAB 1: MODEL ENDPOINT -->
+          <div class="settings-tab-pane active" id="tab-provider" role="tabpanel" aria-labelledby="settings-tab-provider">
+            <div class="control-well">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="settings-provider">Provider</label>
+                  <select id="settings-provider">
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">OpenAI (GPT / o3 / o4)</option>
+                    <option value="xai">xAI (Grok)</option>
+                    <option value="groq">Groq (Fast Inference)</option>
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="lmstudio">LM Studio (Local)</option>
+                    <option value="deepseek">DeepSeek API</option>
+                    <option value="custom">Custom OpenAI-compatible</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="settings-base-url">Base URL</label>
+                  <input type="text" id="settings-base-url" placeholder="https://openrouter.ai/api/v1" />
+                </div>
+              </div>
+            </div>
+
+            <div class="control-well">
+              <div class="form-group">
+                <div class="label-row">
+                  <label for="settings-api-key">API key</label>
+                  <button class="btn btn--quiet btn--xs" id="btn-get-api-key" type="button" title="Open provider API key dashboard in browser">Get API key ↗</button>
+                </div>
+                <div class="input-with-btn">
+                  <input type="password" id="settings-api-key" placeholder="sk-or-v1-... (leave empty for local Ollama / LM Studio)" />
+                  <button class="btn btn--quiet" id="btn-toggle-key-vis" type="button">Show</button>
+                  <button class="btn btn--quiet" id="btn-test-connection" type="button">Test endpoint</button>
+                  <button class="btn btn--quiet" id="btn-clear-api-key" type="button" style="display: none;">Clear saved key</button>
+                </div>
+                <small id="settings-api-key-help">Keys are encrypted for your Windows account and stored separately from settings.json.</small>
+                <div id="test-connection-status" class="connection-feedback" role="status"></div>
+              </div>
+            </div>
+
+            <div class="control-well">
+              <div class="form-group">
+                <label for="settings-model">Model identifier</label>
+                <div class="input-with-presets">
+                  <input type="text" id="settings-model" placeholder="deepseek/deepseek-chat" />
+                  <select id="settings-model-presets" aria-label="Model presets">
+                    <option value="">Quick presets</option>
+                    <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+                    <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+                    <option value="qwen/qwen-2.5-coder-32b-instruct">Qwen 2.5 Coder 32B</option>
+                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (OpenRouter)</option>
+                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Anthropic)</option>
+                    <option value="claude-opus-4-20250514">Claude Opus 4 (Anthropic)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Google)</option>
+                    <option value="gpt-4.1">GPT-4.1 (OpenAI)</option>
+                    <option value="o4-mini">o4-mini (OpenAI)</option>
+                    <option value="grok-3">Grok 3 (xAI)</option>
+                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Groq)</option>
+                    <option value="qwen2.5-coder:14b">qwen2.5-coder:14b (Ollama)</option>
+                    <option value="qwen2.5-coder:32b">qwen2.5-coder:32b (Ollama)</option>
+                  </select>
+                </div>
+                <small>Specify any OpenAI-compatible model ID or pick a preset from the dropdown.</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: AGENT INSTRUCTIONS -->
+          <div class="settings-tab-pane" id="tab-prompt" role="tabpanel" aria-labelledby="settings-tab-prompt" style="display: none;">
+            <div class="control-well">
+              <div class="label-row">
+                <label>VoidAgent specialist profile</label>
+                <span class="val-badge" id="lbl-active-persona">VoidAgent Core</span>
+              </div>
+              <div class="persona-grid">
+                <button type="button" class="persona-card is-active" data-persona="voidcode">
+                  <div class="persona-card-head">
+                    <span class="persona-card-title">VoidAgent Core</span>
+                    <span class="val-badge is-ok">Default</span>
+                  </div>
+                  <span class="persona-card-sub">Autonomous IDE workflow: explore with search/read, patch surgically, and verify via LSP diagnostics &amp; tests.</span>
+                </button>
+                <button type="button" class="persona-card" data-persona="systems">
+                  <div class="persona-card-head">
+                    <span class="persona-card-title">Systems &amp; reverse engineer</span>
+                  </div>
+                  <span class="persona-card-sub">Low-level C/C++, Rust, C#, x86_64 ASM, PE binary auditing with inspect_binary, and zero-overhead code.</span>
+                </button>
+                <button type="button" class="persona-card" data-persona="architect">
+                  <div class="persona-card-head">
+                    <span class="persona-card-title">Principal architect</span>
+                  </div>
+                  <span class="persona-card-sub">Multi-file system design, clean module boundaries, dependency hygiene, and zero-regression refactors.</span>
+                </button>
+                <button type="button" class="persona-card" data-persona="security">
+                  <div class="persona-card-head">
+                    <span class="persona-card-title">Security auditor</span>
+                  </div>
+                  <span class="persona-card-sub">Attack-surface review, memory/injection/race vulnerability detection, exact file:line citations &amp; patches.</span>
+                </button>
+                <button type="button" class="persona-card" data-persona="raw">
+                  <div class="persona-card-head">
+                    <span class="persona-card-title">Code only (zero prose)</span>
+                  </div>
+                  <span class="persona-card-sub">Ultra-terse operator mode: tool execution and production code only, zero conversational filler.</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="control-well">
+              <div class="form-group">
+                <div class="label-row">
+                  <label for="settings-system-prompt">Custom system instructions</label>
+                  <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-system-prompt">Reset to VoidAgent Core</button>
+                </div>
+                <textarea id="settings-system-prompt" rows="8"></textarea>
+                <div class="agent-contract-chips" aria-label="Built-in VoidCode runtime capabilities">
+                  <span class="val-badge is-muted">+ Live Editor &amp; @-Context</span>
+                  <span class="val-badge is-muted">+ Auto-Checkpoints &amp; Hunk Review</span>
+                  <span class="val-badge is-muted">+ LSP Diagnostics Loop</span>
+                  <span class="val-badge is-muted">+ AGENTS.md &amp; .voidcode/rules</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: EDITOR AND LIMITS -->
+          <div class="settings-tab-pane" id="tab-editor" role="tabpanel" aria-labelledby="settings-tab-editor" style="display: none;">
+            <div class="control-well">
+              <div class="label-row">
+                <label for="settings-temperature">Sampling temperature</label>
+                <span class="val-badge" id="lbl-temp-val">0.2</span>
+              </div>
+              <input type="range" class="glass-slider" id="settings-temperature" min="0" max="1.5" step="0.05" value="0.2" />
+              <small>Lower values (0.0 to 0.3) produce deterministic, exact code; higher values increase creative exploration.</small>
+            </div>
+
+            <div class="toggles-grid-2">
+              <div class="control-well">
+                <div class="label-row">
+                  <label for="settings-max-tokens">Max output tokens</label>
+                </div>
+                <div class="token-input-row">
+                  <input type="number" id="settings-max-tokens" value="8192" min="512" max="65536" />
+                  <div class="token-presets" role="group" aria-label="Token presets">
+                    <button type="button" class="token-pill" data-token-val="4096">4K</button>
+                    <button type="button" class="token-pill is-active" data-token-val="8192">8K</button>
+                    <button type="button" class="token-pill" data-token-val="16384">16K</button>
+                    <button type="button" class="token-pill" data-token-val="32768">32K</button>
+                  </div>
+                </div>
+                <small>Maximum tokens generated per model response.</small>
+              </div>
+
+              <div class="control-well">
+                <div class="label-row">
+                  <label for="settings-max-turns">Max agent steps</label>
+                  <span class="val-badge" id="lbl-turns-val">25 steps</span>
+                </div>
+                <input type="range" class="glass-slider" id="settings-max-turns" min="0" max="100" step="1" value="25" />
+                <small>Consecutive tool calls before pausing (0 = unlimited).</small>
+              </div>
+            </div>
+
+            <div class="toggles-grid-2">
+              <div class="setting-switch-row">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Editor font size</span>
+                  <span class="toggle-sub">JetBrains Mono size in pixels</span>
+                </div>
+                <div class="stepper-control">
+                  <button type="button" class="icon-btn icon-btn--sm" id="btn-font-dec" aria-label="Decrease font size">-</button>
+                  <input type="number" id="settings-font-size" value="14" min="10" max="26" />
+                  <button type="button" class="icon-btn icon-btn--sm" id="btn-font-inc" aria-label="Increase font size">+</button>
+                </div>
+              </div>
+
+              <label class="setting-switch-row" for="settings-minimap">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Code minimap</span>
+                  <span class="toggle-sub">Render overview rail on the right edge of the editor</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-minimap" checked />
+              </label>
+
+              <label class="setting-switch-row" for="settings-word-wrap">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Wrap long lines</span>
+                  <span class="toggle-sub">Soft-wrap lines at the editor viewport boundary</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-word-wrap" />
+              </label>
+
+              <label class="setting-switch-row" for="settings-format-on-save">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Format on save</span>
+                  <span class="toggle-sub">Automatically format active document when saving</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-format-on-save" />
+              </label>
+
+              <label class="setting-switch-row" for="settings-workspace-auto">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Workspace auto-approve</span>
+                  <span class="toggle-sub">Auto-run file edits inside the workspace. Commands, web fetches, and outside paths still ask.</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-workspace-auto" />
+              </label>
+
+              <label class="setting-switch-row" for="settings-auto-approve">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Full system auto-run</span>
+                  <span class="toggle-sub">Run edits, commands, and network tools without asking. Leave off for Review mode.</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-auto-approve" />
+              </label>
+            </div>
+          </div>
+
+          <!-- TAB 4: THEMES AND GLASS -->
+          <div class="settings-tab-pane" id="tab-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" style="display: none;">
+            <div class="control-well">
+              <div class="form-group">
+                <label>Color &amp; liquid glass palette</label>
+                <div class="theme-grid theme-grid--wide">
+                  <button type="button" class="theme-tile is-active" data-theme-pick="harbor">
+                    <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-harbor"/></svg>
+                    <span>Harbor glass</span>
+                  </button>
+                  <button type="button" class="theme-tile" data-theme-pick="obsidian">
+                    <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-obsidian"/></svg>
+                    <span>Obsidian frost</span>
+                  </button>
+                  <button type="button" class="theme-tile" data-theme-pick="crimson">
+                    <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-crimson"/></svg>
+                    <span>Crimson dusk</span>
+                  </button>
+                  <button type="button" class="theme-tile" data-theme-pick="emerald">
+                    <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-emerald"/></svg>
+                    <span>Emerald matrix</span>
+                  </button>
+                  <button type="button" class="theme-tile" data-theme-pick="nebula">
+                    <svg class="theme-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#vc-mark-nebula"/></svg>
+                    <span>Violet nebula</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="control-well">
+                <div class="label-row">
+                  <label for="settings-slider-blur">Refraction blur radius</label>
+                  <span class="val-badge" id="settings-lbl-blur">22px</span>
+                </div>
+                <input type="range" class="glass-slider" id="settings-slider-blur" min="6" max="40" step="2" value="22" />
+                <small>Controls backdrop blur and lens refraction across all glass panes.</small>
+              </div>
+
+              <div class="control-well">
+                <div class="label-row">
+                  <label for="settings-slider-field">Tidal light field intensity</label>
+                  <span class="val-badge" id="settings-lbl-field">55%</span>
+                </div>
+                <input type="range" class="glass-slider" id="settings-slider-field" min="0" max="90" step="5" value="55" />
+                <small>Controls the brightness of the ambient background light orbs.</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: KEYBOARD SHORTCUTS -->
+          <div class="settings-tab-pane" id="tab-keybindings" role="tabpanel" aria-labelledby="settings-tab-keybindings" style="display: none;">
+            <div class="keybindings-toolbar">
+              <input type="text" id="keybindings-search" class="filter-input" placeholder="Search commands, categories, or keybindings..." autocomplete="off" spellcheck="false" />
+              <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-keybindings">Reset defaults</button>
+            </div>
+            <div class="keybindings-table-wrap" id="keybindings-table-wrap">
+              <div class="keybindings-table-head" aria-hidden="true">
+                <span>Command</span>
+                <span>Category</span>
+                <span>Keybinding</span>
+              </div>
+              <div class="keybindings-list" id="keybindings-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn--quiet" id="btn-cancel-settings">Cancel</button>
+          <button class="btn btn--primary" id="btn-save-settings">Save settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOM INPUT DIALOG MODAL (placed last so it always renders above Settings and Hub modals) -->
+    <div id="input-dialog-modal" class="modal-overlay" style="display: none;">
+      <div class="dialog-card glass glass--float" role="dialog" aria-modal="true" aria-labelledby="input-dialog-title">
+        <h3 id="input-dialog-title">Name</h3>
+        <p id="input-dialog-sub" class="dialog-subtitle" style="display: none;"></p>
+        <input type="text" id="input-dialog-field" autocomplete="off" spellcheck="false" />
+        <div class="dialog-actions">
+          <button class="btn btn--quiet" id="input-dialog-cancel" type="button">Cancel</button>
+          <button class="btn btn--primary" id="input-dialog-confirm" type="button">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" role="status" aria-live="polite"></div>
+  </div>
+
+</body>
+</html>
+

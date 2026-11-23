@@ -1,0 +1,298 @@
+{
+  "name": "VoidIcons Theme Pack",
+  "version": "1.0.0",
+  "viewBox": "0 0 24 24",
+  "defaultStrokeWidth": 1.7,
+  "iconCount": 45,
+  "categories": [
+    "actions",
+    "developer",
+    "navigation",
+    "workspace"
+  ],
+  "icons": [
+    {
+      "name": "folder",
+      "category": "workspace",
+      "tags": "directory files project"
+    },
+    {
+      "name": "folder-open",
+      "category": "workspace",
+      "tags": "directory files open"
+    },
+    {
+      "name": "file",
+      "category": "workspace",
+      "tags": "document page"
+    },
+    {
+      "name": "file-plus",
+      "category": "workspace",
+      "tags": "document create add"
+    },
+    {
+      "name": "search",
+      "category": "workspace",
+      "tags": "find magnifier"
+    },
+    {
+      "name": "save",
+      "category": "workspace",
+      "tags": "disk store write"
+    },
+    {
+      "name": "history",
+      "category": "workspace",
+      "tags": "recent clock time"
+    },
+    {
+      "name": "paperclip",
+      "category": "workspace",
+      "tags": "attach attachment"
+    },
+    {
+      "name": "eye",
+      "category": "workspace",
+      "tags": "view visibility preview"
+    },
+    {
+      "name": "sidebar-left",
+      "category": "workspace",
+      "tags": "panel left navigation layout"
+    },
+    {
+      "name": "panel-bottom",
+      "category": "workspace",
+      "tags": "layout terminal drawer bottom"
+    },
+    {
+      "name": "panel-right",
+      "category": "workspace",
+      "tags": "layout inspector drawer right"
+    },
+    {
+      "name": "columns",
+      "category": "workspace",
+      "tags": "layout split editor panes"
+    },
+    {
+      "name": "settings",
+      "category": "workspace",
+      "tags": "preferences gear options"
+    },
+    {
+      "name": "palette",
+      "category": "workspace",
+      "tags": "theme color appearance"
+    },
+    {
+      "name": "git-branch",
+      "category": "developer",
+      "tags": "source control version commit"
+    },
+    {
+      "name": "play",
+      "category": "developer",
+      "tags": "run execute start"
+    },
+    {
+      "name": "terminal",
+      "category": "developer",
+      "tags": "console command prompt shell"
+    },
+    {
+      "name": "workflow",
+      "category": "developer",
+      "tags": "automation nodes process flow"
+    },
+    {
+      "name": "layers",
+      "category": "developer",
+      "tags": "stack layers order"
+    },
+    {
+      "name": "timeline",
+      "category": "developer",
+      "tags": "sequence tracks events"
+    },
+    {
+      "name": "cursor",
+      "category": "developer",
+      "tags": "pointer select inspect"
+    },
+    {
+      "name": "book-open",
+      "category": "developer",
+      "tags": "docs guide manual reference"
+    },
+    {
+      "name": "alert-triangle",
+      "category": "developer",
+      "tags": "warning error issue"
+    },
+    {
+      "name": "flag",
+      "category": "developer",
+      "tags": "checkpoint milestone marker"
+    },
+    {
+      "name": "sliders",
+      "category": "developer",
+      "tags": "tune adjust controls"
+    },
+    {
+      "name": "send",
+      "category": "actions",
+      "tags": "submit message paper plane"
+    },
+    {
+      "name": "stop",
+      "category": "actions",
+      "tags": "halt square"
+    },
+    {
+      "name": "close",
+      "category": "actions",
+      "tags": "dismiss cancel remove"
+    },
+    {
+      "name": "plus",
+      "category": "actions",
+      "tags": "create add new"
+    },
+    {
+      "name": "check",
+      "category": "actions",
+      "tags": "done confirm success tick"
+    },
+    {
+      "name": "trash",
+      "category": "actions",
+      "tags": "delete remove bin"
+    },
+    {
+      "name": "refresh",
+      "category": "actions",
+      "tags": "reload sync repeat"
+    },
+    {
+      "name": "copy",
+      "category": "actions",
+      "tags": "duplicate clipboard"
+    },
+    {
+      "name": "edit",
+      "category": "actions",
+      "tags": "pencil modify rename"
+    },
+    {
+      "name": "filter",
+      "category": "actions",
+      "tags": "funnel narrow refine"
+    },
+    {
+      "name": "more-horizontal",
+      "category": "actions",
+      "tags": "ellipsis options menu"
+    },
+    {
+      "name": "chevron-down",
+      "category": "navigation",
+      "tags": "expand dropdown"
+    },
+    {
+      "name": "chevron-up",
+      "category": "navigation",
+      "tags": "collapse dropdown"
+    },
+    {
+      "name": "chevron-left",
+      "category": "navigation",
+      "tags": "back previous"
+    },
+    {
+      "name": "chevron-right",
+      "category": "navigation",
+      "tags": "next forward"
+    },
+    {
+      "name": "arrow-up-right",
+      "category": "navigation",
+      "tags": "external link open new"
+    },
+    {
+      "name": "maximize",
+      "category": "navigation",
+      "tags": "fullscreen expand window"
+    },
+    {
+      "name": "minimize",
+      "category": "navigation",
+      "tags": "window collapse"
+    },
+    {
+      "name": "more-vertical",
+      "category": "navigation",
+      "tags": "menu overflow kebab"
+    }
+  ],
+  "themes": {
+    "harbor-glass": {
+      "label": "Harbor Glass",
+      "accent": "#70D6C5",
+      "foreground": "#E8F5F2",
+      "muted": "#9CBAB4",
+      "background": "#10191B",
+      "surface": "#172326",
+      "line": "#2B3A3B",
+      "description": "Sea-glass teal with cool, quiet contrast."
+    },
+    "obsidian-frost": {
+      "label": "Obsidian Frost",
+      "accent": "#A7C4E8",
+      "foreground": "#EDF3FA",
+      "muted": "#A4B4C8",
+      "background": "#10151D",
+      "surface": "#18212C",
+      "line": "#2D3948",
+      "description": "Icy blue accents over deep graphite."
+    },
+    "crimson-dusk": {
+      "label": "Crimson Dusk",
+      "accent": "#E38B98",
+      "foreground": "#F6EAEC",
+      "muted": "#C2A2A9",
+      "background": "#191316",
+      "surface": "#241A1F",
+      "line": "#403039",
+      "description": "Muted rose-red against a warm dark base."
+    },
+    "emerald-matrix": {
+      "label": "Emerald Matrix",
+      "accent": "#65D69A",
+      "foreground": "#E7F6ED",
+      "muted": "#A0C4AE",
+      "background": "#0F1814",
+      "surface": "#17231D",
+      "line": "#2C3D33",
+      "description": "Clear matrix green, without neon overload."
+    },
+    "violet-nebula": {
+      "label": "Violet Nebula",
+      "accent": "#B7A0F3",
+      "foreground": "#F1EDFB",
+      "muted": "#B6A9CF",
+      "background": "#17131F",
+      "surface": "#211B2B",
+      "line": "#3A3149",
+      "description": "Soft nebula violet over charcoal-plum."
+    }
+  },
+  "paths": {
+    "currentColor": "svg/currentColor/{name}.svg",
+    "ui": "svg/{theme}/ui/{name}.svg",
+    "accent": "svg/{theme}/accent/{name}.svg",
+    "muted": "svg/{theme}/muted/{name}.svg"
+  }
+}

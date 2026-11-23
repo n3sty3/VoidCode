@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Package win-x64 release
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Runtime win-x64
+
+      - name: Package win-arm64 release
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Runtime win-arm64 -SkipUiChecks
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: voidcode-windows-releases
+          path: |
+            dist/VoidCode-Setup-*.exe
+            dist/VoidCode-Setup-*.exe.sha256
+            dist/VoidCode-win-x64.zip
+            dist/VoidCode-win-x64.zip.sha256
+            dist/VoidCode-win-arm64.zip
+            dist/VoidCode-win-arm64.zip.sha256
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/VoidCode-Setup-*.exe
+            dist/VoidCode-Setup-*.exe.sha256
+            dist/VoidCode-win-x64.zip
+            dist/VoidCode-win-x64.zip.sha256
+            dist/VoidCode-win-arm64.zip
+            dist/VoidCode-win-arm64.zip.sha256
+          generate_release_notes: true

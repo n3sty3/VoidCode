@@ -1,0 +1,228 @@
+/* styles/features/editor-tools.css — the smart-run launcher and the in-editor inline AI assist. */
+/* ---------- smart run launcher (f5) ---------- */
+.smart-run-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--glass-hover);
+  border: 1px solid var(--seam);
+  border-radius: var(--r-control);
+  padding: 1px 3px;
+  gap: 2px;
+}
+
+.smart-run-control .btn--primary.smart-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-code);
+  background: var(--glacier-wash);
+  color: var(--glacier);
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.smart-run-control .btn--primary.smart-run-btn:hover { background: var(--glacier); color: var(--glacier-ink); }
+
+.smart-run-control.is-running .smart-run-btn {
+  background: var(--coral-wash);
+  color: var(--coral);
+  border-color: var(--coral);
+}
+.smart-run-control.is-running .icon-run { display: none; }
+.smart-run-control.is-running .icon-stop { display: inline-grid !important; }
+.smart-run-btn .icon { --icon-size: 13px; }
+
+.smart-run-menu-btn {
+  /* 24px minimum target. Later import beats .icon-btn--xs, so the size lives here. */
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-control);
+}
+
+.smart-run-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  z-index: 120;
+  padding: 8px;
+  border-radius: var(--r-control);
+  background: var(--glass-fill-float);
+  border: 1px solid var(--glass-edge);
+}
+
+.run-dropdown-head {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  padding: 4px 8px;
+  font-weight: 600;
+}
+
+.run-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.run-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: var(--r-code);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  color: var(--text-soft);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+.run-option-item:hover {
+  background: var(--glass-hover);
+  color: var(--text);
+}
+.run-option-item.active {
+  color: var(--glacier);
+  background: var(--glacier-wash);
+}
+
+#editor-container { flex: 1; position: relative; min-height: 0; }
+#monaco-mount { width: 100%; height: 100%; display: none; }
+
+/* ---------- in-editor inline ai assist (ctrl+k) ---------- */
+.inline-ai-widget { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: min(560px, 92%); z-index: 100; display: flex; flex-direction: column; gap: 9px; padding: 13px 16px; border-radius: var(--r-card); border: 1px solid var(--glass-rim); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78), inset 0 1px 0 var(--glass-rim-low); background: var(--glass-fill-float); animation: rise var(--dur-short) var(--ease); }
+.inline-ai-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--seam); }
+.inline-ai-badge { display: inline-flex; align-items: center; gap: 7px; color: var(--glacier); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.01em; }
+.inline-ai-context-pill { font-family: var(--font-code); font-size: 11px; color: var(--text-soft); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--seam); padding: 1px 8px; border-radius: var(--r-pill); margin-right: auto; }
+.inline-ai-chips { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.inline-chip-btn { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: var(--r-code); border: 1px solid var(--seam); background: rgba(255, 255, 255, 0.03); color: var(--text-soft); font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 500; cursor: pointer; transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease), border-color var(--dur-micro) var(--ease); }
+.inline-chip-btn:hover { background: var(--glacier-wash); color: var(--glacier); border-color: var(--glacier-line); }
+.inline-ai-input-row { display: flex; align-items: center; gap: 8px; background: rgba(6, 9, 14, 0.65); border: 1px solid var(--seam); border-radius: var(--r-code); padding: 4px 6px 4px 10px; transition: border-color var(--dur-micro) var(--ease), box-shadow var(--dur-micro) var(--ease); }
+.inline-ai-input-row:focus-within { border-color: var(--glacier-line); box-shadow: 0 0 0 3px var(--glacier-wash); }
+
+.inline-ai-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  padding: 4px 0;
+}
+
+.inline-ai-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+}
+
+.inline-ai-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--glacier);
+  animation: spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+
+.inline-ai-diff-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--r-control);
+  background: var(--glacier-wash);
+  border: 1px solid var(--glacier-line);
+}
+
+.diff-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.diff-stats {
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--glacier);
+}
+.diff-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+}
+
+.diff-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-ai-diff-highlight {
+  background-color: var(--glacier-wash) !important;
+  outline: 1px solid var(--glacier-line) !important;
+}
+
+/* Anchored below the tab bar, not a full-panel overlay: it can neither cover the
+   chrome nor be squeezed by the editor split's flex sizing. 44px = tab bar only
+   (the breadcrumb is hidden whenever no file is open). */
+#no-file-state {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  flex: none;
+}
+
+.center-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 8px;
+}
+
+.drop {
+  width: 80px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--glacier);
+  background: var(--glass-fill);
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 -10px 24px var(--glacier-wash), 0 20px 40px -18px var(--glass-shade);
+  margin-bottom: 8px;
+}
+.drop svg { width: 44px; height: 44px; }
+.drop--sm { width: 44px; height: 44px; margin-bottom: 0; }
+.drop--sm svg { width: 26px; height: 26px; }
+
+.center-empty-state h1 { font-size: var(--fs-xl); font-weight: 600; letter-spacing: -0.01em; }
+.center-empty-state p { color: var(--text-soft); max-width: 48ch; }
+
+.empty-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.keys { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; font-size: var(--fs-sm); }
+.keys div { display: flex; justify-content: space-between; gap: 16px; color: var(--text-faint); }
+

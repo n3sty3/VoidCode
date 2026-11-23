@@ -1,0 +1,217 @@
+/* styles/tokens.css — the token block: :root plus one block per theme. */
+/* Hallmark · built: 2026-11-03 · shape: app screen · genre: atmospheric · theme: custom (harbor glass)
+ * critique: an IDE where the panes and draggable utility windows are liquid glass over a slow tidal light field; the signature is the agent run trace, a rail of glass beads that carry state.
+ * waive: 29 — liquid glass material is explicitly requested by the user brief (glass.samasante.com refraction over tidal light field).
+ * waive: 64 — the flags hold literal shell commands (git status, dotnet build) and the tabs hold shell identities — inside a terminal pane mono is the material, not a label voice.
+ * answered: F24 — liquid glass panes combine a specular rim inset highlight with ambient depth shadow to model refractive glass thickness.
+ */
+
+/* Hallmark · dismissed F7 · every pill in this shell is a control, a counter badge or a scrollbar thumb — none of them is a box or a media frame */
+/* Hallmark · dismissed 29 · the user explicitly asked for the glass.samasante.com liquid glass effect with live backdrop-filter blur and SVG refraction */
+/* Hallmark · dismissed F24 · floating liquid glass modals combine a 1px specular rim border with an elevation shadow over the light field */
+
+:root {
+  /* palette — flagship obsidian slate + refined glacier accent */
+  --ink: #0c1017;
+  --ink-deep: #06080d;
+  --tide: #0d4b5a;
+  --ember: #1a2f52;
+  --deep: #1b2442;
+  --text: #eef3fb;
+  --text-soft: #a4b1c5;
+  --text-faint: #748299;
+  --text-disabled: #525e73;
+  --glacier: #5eead4;
+  --glacier-ink: #041d1a;
+  --amber: #f5b963;
+  --coral: #fb7185;
+
+  /* theme swatches & dynamic logo gradient stops (harbor default) */
+  --swatch-harbor: #5eead4;
+  --swatch-obsidian: #97a6ba;
+  --swatch-crimson: #fb7185;
+  --swatch-emerald: #5ee6a8;
+  --swatch-nebula: #b79eff;
+  --mark-stop-1: #99f6e4;
+  --mark-stop-2: #2dd4bf;
+  --mark-stop-3: #0284c7;
+
+  /* surfaces — 5-tier elevation hierarchy */
+  --glass-fill: rgba(12, 16, 23, 0.80);
+  --glass-fill-strong: rgba(10, 13, 20, 0.96);
+  --glass-fill-well: rgba(7, 10, 15, 0.92);
+  --glass-fill-float: #121722;
+  --glass-fill-disabled: rgba(255, 255, 255, 0.03);
+  --glass-edge: rgba(255, 255, 255, 0.09);
+  --glass-rim: rgba(255, 255, 255, 0.14);
+  --glass-rim-low: rgba(255, 255, 255, 0.05);
+  --glass-shade: rgba(0, 0, 0, 0.62);
+  --glass-hover: rgba(255, 255, 255, 0.055);
+  --glass-press: rgba(255, 255, 255, 0.095);
+  --glacier-wash: rgba(94, 234, 212, 0.13);
+  --glacier-line: rgba(94, 234, 212, 0.36);
+  --amber-wash: rgba(245, 185, 99, 0.14);
+  --emerald-wash: rgba(94, 230, 168, 0.14);
+  --coral-wash: rgba(251, 113, 133, 0.15);
+  --scrim: rgba(3, 5, 9, 0.72);
+  --vignette: rgba(0, 0, 0, 0.52);
+  --console-bg: #090d14;
+  --console-wash: rgba(94, 234, 212, 0.035);
+  --sheen: rgba(255, 255, 255, 0.04);
+  --sheen-low: rgba(255, 255, 255, 0.018);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --edge: rgba(255, 255, 255, 0.085);
+  --seam: rgba(255, 255, 255, 0.075);
+  --thumb: rgba(255, 255, 255, 0.14);
+  --mask-solid: linear-gradient(rgba(0, 0, 0, 1) 0 0);
+
+  /* type */
+  --font-ui: 'Onest', 'Segoe UI Variable', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 20px;
+
+  /* density tiers */
+  --h-dense: 24px;
+  --h-standard: 32px;
+  --h-comfortable: 38px;
+
+  /* type roles */
+  --type-title: var(--fs-lg);
+  --type-body: var(--fs-sm);
+  --type-meta: var(--fs-2xs);
+  --type-code: var(--fs-xs);
+
+  /* shape & motion */
+  --r-shell: 10px;
+  --r-card: 10px;
+  --r-control: 8px;
+  --r-code: 6px;
+  --r-sm: 5px;
+  --r-xs: 4px;
+  --r-pill: 999px;
+  --gap: 6px;
+  --blur: 20px;
+  --field-opacity: 0.42;
+  --field-strength: 0.55;
+  --dur-micro: 120ms;
+  --dur-instant: 80ms;
+  --dur-short: 220ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* semantic compatibility tokens used by newer feature panels */
+  --text-muted: var(--text-faint);
+  --text-dim: var(--text-faint);
+  --hairline-strong: var(--glass-edge);
+  --glass-fill-pane: var(--glass-fill-strong);
+  --glass-fill-panel: var(--glass-fill-well);
+  --font-mono: var(--font-code);
+  --emerald-dim: rgba(107, 226, 179, 0.42);
+  --crimson-dim: rgba(242, 145, 138, 0.42);
+
+  /* terminal ANSI ramp — mixed from the live theme palette so the PTY never
+   * breaks the glass language. JS resolves these at runtime (buildXtermTheme)
+   * and re-resolves them on every theme switch. */
+  --term-fg: var(--text);
+  --term-cursor: var(--glacier);
+  --term-cursor-accent: var(--glacier-ink);
+  --term-selection: color-mix(in srgb, var(--glacier) 26%, transparent);
+  --term-black: color-mix(in srgb, var(--text-disabled) 62%, var(--ink-deep));
+  /* ANSI ramp — a standard, neutral terminal palette on purpose. Deriving these
+   from the theme accent made a crimson theme output entirely red text; a
+   terminal needs green to still be green. Only fg / cursor / selection follow
+   the theme. */
+  --term-red: #ff7b72;
+  --term-green: #3fb950;
+  --term-yellow: #d29922;
+  --term-blue: #58a6ff;
+  --term-magenta: #bc8cff;
+  --term-cyan: #39c5cf;
+  --term-white: #b1bac4;
+  --term-black: #484f58;
+  --term-bright-red: #ffa198;
+  --term-bright-green: #56d364;
+  --term-bright-yellow: #e3b341;
+  --term-bright-blue: #79c0ff;
+  --term-bright-magenta: #d2a8ff;
+  --term-bright-cyan: #56d4dd;
+  --term-bright-white: #f0f6fc;
+
+  /* file-type marks in the explorer */
+  --fi-code: color-mix(in srgb, var(--glacier) 78%, var(--text));
+  --fi-data: color-mix(in srgb, var(--amber) 66%, var(--text));
+  --fi-style: color-mix(in srgb, var(--coral) 58%, var(--text));
+  --fi-doc: var(--text-soft);
+  --fi-shell: color-mix(in srgb, var(--glacier) 46%, var(--amber));
+  --fi-image: color-mix(in srgb, var(--glacier) 40%, var(--text-faint));
+  --fi-plain: var(--text-faint);
+  --well-shade: rgba(0, 0, 0, 0.85);
+}
+
+[data-theme="obsidian"] {
+  --ink: #161a20;
+  --ink-deep: #11141a;
+  --field-strength: 0.3;
+  --tide: #354458;
+  --ember: #4a586d;
+  --deep: #1d283a;
+  --glacier: #cdd7e4;
+  --glacier-ink: #0e1628;
+  --glacier-wash: rgba(205, 215, 228, 0.14);
+  --glacier-line: rgba(205, 215, 228, 0.42);
+  --mark-stop-1: #eef1fa;
+  --mark-stop-2: #a3adc6;
+  --mark-stop-3: #5e688a;
+}
+
+[data-theme="crimson"] {
+  --ink: #1a1418;
+  --ink-deep: #130f12;
+  --field-strength: 0.5;
+  --tide: #882942;
+  --ember: #c9644b;
+  --deep: #4c1d3d;
+  --glacier: #f2918a;
+  --glacier-ink: #240b0e;
+  --glacier-wash: rgba(242, 145, 138, 0.15);
+  --glacier-line: rgba(242, 145, 138, 0.45);
+  --mark-stop-1: #ff9a7a;
+  --mark-stop-2: #f0486f;
+  --mark-stop-3: #c3174f;
+}
+
+[data-theme="emerald"] {
+  --ink: #101613;
+  --ink-deep: #0b110e;
+  --field-strength: 0.45;
+  --tide: #1b6b52;
+  --ember: #52796f;
+  --deep: #114232;
+  --glacier: #6be2b3;
+  --glacier-ink: #062419;
+  --glacier-wash: rgba(107, 226, 179, 0.14);
+  --glacier-line: rgba(107, 226, 179, 0.45);
+  --mark-stop-1: #9cf7c0;
+  --mark-stop-2: #2fd283;
+  --mark-stop-3: #0e8f55;
+}
+
+[data-theme="nebula"] {
+  --ink: #14121c;
+  --ink-deep: #0e0c14;
+  --field-strength: 0.55;
+  --tide: #4c3575;
+  --ember: #7858a6;
+  --deep: #2a2456;
+  --glacier: #c2b2fa;
+  --glacier-ink: #1a1033;
+  --glacier-wash: rgba(194, 178, 250, 0.15);
+  --glacier-line: rgba(194, 178, 250, 0.45);
+  --mark-stop-1: #e0d2ff;
+  --mark-stop-2: #9b7bf0;
+  --mark-stop-3: #5f3fc4;
+}

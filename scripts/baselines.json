@@ -1,0 +1,17 @@
+{
+  "_comment": "Ratchet baseline for scripts/metrics.js. Lower is better for every metric except the test counts, which may only rise. Update only when a metric genuinely improves.",
+  "appJsLines": 989,
+  "stylesCssLines": 5371,
+  "mainWindowLines": 434,
+  "agentEngineLines": 200,
+  "bridgeCaseBranches": 0,
+  "emptyCatchCSharp": 0,
+  "emptyCatchJs": 0,
+  "innerHtmlTotal": 0,
+  "scriptTags": 6,
+  "consoleScriptTags": 0,
+  "undefinedCssVars": 0,
+  "dotnetTests": 248,
+  "jsTypeErrors": 0,
+  "uiTests": 88
+}

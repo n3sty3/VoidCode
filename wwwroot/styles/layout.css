@@ -1,0 +1,522 @@
+/* styles/layout.css — stage overlays, the shell, the icon system, the workspace grid and the rail. */
+/* ---------- stage overlays & workspace switcher modal ---------- */
+.stage-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--scrim);
+  animation: fade var(--dur-short) var(--ease);
+}
+
+.stage-caption-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+}
+
+.win-caption-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--seam);
+  flex-shrink: 0;
+  z-index: 30;
+}
+.win-cap-btn { width: 32px; height: 28px; border-radius: var(--r-sm); color: var(--text-soft); }
+.win-cap-btn:hover { background: var(--glass-press); color: var(--text); }
+.win-cap-btn.icon-btn--danger:hover { background: #e11d48; color: #ffffff; }
+.stage-caption-bar .win-caption-group {
+  border-left: none;
+}
+
+.auth-card {
+  width: min(380px, 92vw);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: rise var(--dur-short) var(--ease);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.auth-brand h2 { font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
+.auth-sub { font-size: var(--fs-xs); color: var(--text-faint); }
+
+.auth-tabs { padding: 0; }
+.auth-body { display: flex; flex-direction: column; gap: 12px; }
+.auth-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+
+.hub-card {
+  width: min(680px, 94vw);
+  max-height: 82vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-shell);
+  border: 1px solid var(--glass-rim);
+  box-shadow: 0 28px 72px -12px rgba(0, 0, 0, 0.78);
+  animation: rise var(--dur-short) var(--ease);
+}
+
+.hub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px 0 18px;
+  border-bottom: 1px solid var(--seam);
+  background: rgba(6, 9, 14, 0.55);
+}
+.hub-head h2 { font-size: var(--fs-md); font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.hub-head-right { display: flex; align-items: center; gap: 12px; }
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  min-height: 220px;
+  align-items: stretch;
+}
+
+.hub-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-right: 1px solid var(--seam);
+  background: rgba(6, 9, 14, 0.42);
+  min-width: 0;
+}
+
+.hub-recents-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.hub-actions-col h3, .hub-recents-col h3 {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--text-faint);
+  padding: 0 8px 4px;
+}
+
+.hub-action-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--r-control);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit; /* real <button>s now, so they need the inherited font and alignment */
+  text-align: left;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.hub-action-tile svg {
+  width: 14px;
+  height: 14px;
+  color: var(--glacier);
+  flex-shrink: 0;
+}
+.hub-action-tile .win-item-title {
+  flex: 1;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: inherit;
+}
+.hub-action-tile:hover {
+  background: var(--glass-hover);
+  color: var(--text);
+}
+
+.hub-recents-list,
+.empty-recents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.recent-project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--r-control);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.recent-project-row:hover {
+  background: var(--glass-hover);
+  color: var(--text);
+}
+.recent-project-row.is-active {
+  background: var(--glacier-wash);
+  color: var(--text);
+  border-color: var(--glacier-line);
+}
+.recent-project-name {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.recent-project-path {
+  font-family: var(--font-code);
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: auto;
+  min-width: 0;
+}
+.recent-empty {
+  padding: 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* ---------- shell ---------- */
+/* 100dvh follows the real client area (WebView2 inside a frameless window);
+   plain 100vh can exceed it and clip the status bar. */
+#app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  padding: var(--gap);
+  gap: var(--gap);
+}
+
+#topbar {
+  position: relative;
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  z-index: 20;
+}
+
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  justify-content: flex-end;
+}
+
+/* The pill sits on the bar's real centre line. Inside the flex flow it centred
+   on the leftover space instead, which is asymmetric once the left cluster is
+   wider than the right, so it read as "not centred". Its own width is fixed so
+   icon / label / shortcut lay out exactly as they did before. */
+#topbar > .search-field {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(380px, 34vw);
+  max-width: 380px;
+  flex: none;
+  justify-content: flex-start;
+  background: var(--glass-fill-well);
+}
+#topbar > .search-field:active { transform: translate(-50%, -50%) scale(0.98); }
+
+#topbar > .win-caption-group { flex: 0 0 auto; }
+
+/* top-bar controls collapse, they never disappear. */
+#btn-open-settings::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex: 0 0 auto; }
+#btn-open-settings.is-ready::before { background: var(--glacier); box-shadow: 0 0 8px var(--glacier-line); }
+.operator-icon { color: var(--text-soft); flex-shrink: 0; }
+#btn-operator-pill:hover .operator-icon { color: var(--text); }
+@media (max-width: 1320px) { #topbar-operator-name { display: none; } .chip-btn--model { max-width: 164px; } }
+@media (max-width: 1180px) { #active-model-label { display: none; } #btn-open-settings { max-width: none; } }
+@media (max-width: 1080px) { .brand-name { display: none; } }
+
+.brand { display: flex; align-items: center; gap: 8px; margin-right: 4px; flex-shrink: 0; }
+.brand-mark { width: 22px; height: 22px; flex-shrink: 0; }
+.brand-name { font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
+
+/* topbar window dock */
+.window-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--glass-hover);
+  flex-shrink: 0;
+}
+
+.dock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.dock-btn:hover { background: var(--glass-hover); color: var(--text); }
+.dock-btn.is-open { background: var(--glacier-wash); color: var(--glacier); }
+
+.chip-btn, .search-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-control);
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  background: var(--glass-hover);
+  border: 1px solid var(--seam);
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease), border-color var(--dur-micro) var(--ease);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip-btn svg, .search-field svg, .search-field kbd { flex-shrink: 0; }
+.chip-btn span { overflow: hidden; text-overflow: ellipsis; }
+.chip-btn:hover, .search-field:hover { background: var(--glass-press); color: var(--text); }
+.chip-btn:active, .search-field:active { transform: scale(0.98); }
+
+.search-field {
+  flex: 0 1 320px;
+  min-width: 140px;
+}
+/* the label spans grow; the icon is a span too, so it must be excluded or it
+   stretches to 115px and squeezes the label into an ellipsis */
+.search-field span:not(.icon) {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-field .icon { flex: 0 0 auto; }
+.search-label-short {
+  display: none;
+}
+
+.chip-btn--model {
+  font-family: var(--font-code);
+  font-size: var(--fs-2xs);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  max-width: 196px;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-control);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.icon-btn:hover { background: var(--glass-hover); color: var(--text); }
+.icon-btn:active { background: var(--glass-press); }
+.icon-btn--sm { width: 28px; height: 28px; border-radius: var(--r-code); }
+.icon-btn--xs { width: 24px; height: 24px; border-radius: var(--r-sm); font-size: var(--fs-xs); } /* WCAG 2.2 target size (was 20px) */
+.icon-btn--danger:hover { color: var(--coral); background: var(--coral-wash); }
+
+/* ---------- icon system ---------- */
+svg[stroke="currentColor"] {
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.icon-btn svg,
+.dock-btn svg,
+.chip-btn svg,
+.term-chip svg,
+.bottom-nav-btn svg,
+.sidebar-tab-btn svg,
+.term-session-tab svg,
+.ctx-item svg,
+.branch-chevron {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.icon-btn:not(.icon-btn--sm) svg { width: 15px; height: 15px; }
+
+svg[stroke="none"] { display: block; flex-shrink: 0; }
+
+.icon-btn:focus-visible,
+.dock-btn:focus-visible,
+.term-chip:focus-visible,
+.bottom-nav-btn:focus-visible,
+.sidebar-tab-btn:focus-visible,
+.term-session-tab:focus-visible {
+  outline: 2px solid var(--glacier);
+  outline-offset: -1px;
+}
+
+/* ---------- workspace ---------- */
+#workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#sidebar-explorer { min-width: 168px; max-width: 460px; }
+#sidebar-agent { min-width: 290px; max-width: 760px; }
+.pane--editor { flex: 1; min-width: 280px; background: var(--glass-fill-strong); }
+
+/* <=1099px a side pane is a drawer over the editor, not a column that eats it. `#app` is for specificity (features/agent.css is imported later and sets #sidebar-agent { position: relative }). */
+@media (max-width: 1099px) {
+  #app #sidebar-explorer, #app #sidebar-agent { position: fixed; top: 52px; bottom: 30px; z-index: 40; width: min(300px, 78vw) !important; max-width: min(300px, 78vw); min-width: 0; border-radius: var(--r-shell); animation: drawer-in var(--dur-short) var(--ease); }
+  #app #sidebar-explorer { left: 44px; box-shadow: 14px 0 38px rgba(0, 0, 0, 0.42); } /* after the rail, so its toggle stays clickable */
+  #app #sidebar-agent { right: 0; box-shadow: -14px 0 38px rgba(0, 0, 0, 0.42); }
+  #resizer-left, #resizer-right { display: none !important; } /* nothing to drag in drawer mode */
+  @keyframes drawer-in { from { opacity: 0; } to { opacity: 1; } }
+}
+
+@media (max-width: 1280px) {
+  #sidebar-explorer { max-width: 210px; }
+  #sidebar-agent { max-width: 340px; }
+}
+
+.resizer-v, .resizer-h { flex-shrink: 0; position: relative; z-index: 5; }
+.resizer-v { width: var(--gap); cursor: col-resize; }
+.resizer-h { height: 8px; cursor: row-resize; }
+/* dividers stay 8-10px on purpose. A ::before hit-area widening was tried and reverted - it
+   covered the right edge of every file-tree row and the pane-head button corners, so clicks there began a
+   drag. They are exempt from the 24px rule under the "equivalent" clause instead: each is a focusable
+   separator that resizes with the arrow keys, and a11y-targets.spec.js pins both halves. */
+.resizer-v::after, .resizer-h::after {
+  content: '';
+  position: absolute;
+  border-radius: var(--r-pill);
+  background: var(--glacier);
+  opacity: 0;
+  transition: opacity var(--dur-micro) var(--ease);
+}
+.resizer-v::after { top: 30%; bottom: 30%; left: 3px; width: 2px; }
+.resizer-h::after { left: 40%; right: 40%; top: 3px; height: 2px; }
+.resizer-v:hover::after, .resizer-v.dragging::after,
+.resizer-h:hover::after, .resizer-h.dragging::after { opacity: 0.8; }
+
+.pane-head, .shell-head {
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.pane-head { border-bottom: 1px solid var(--seam); }
+
+.pane-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pane-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
+/* The rail made the old narrow-pane restack obsolete: heads no longer carry a
+   title, so there is nothing to wrap. Container-type is gone with it, which also
+   unblocks backdrop-filter on the chrome. */
+
+/* ---------- sidebar navigation strip ---------- */
+
+.sidebar-tab-btn.is-active {
+  background: var(--glass-press);
+  color: var(--glacier);
+  border-color: var(--glacier-line);
+  font-weight: 500;
+}
+
+.sidebar-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

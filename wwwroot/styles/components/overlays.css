@@ -1,0 +1,327 @@
+/* styles/components/overlays.css — palette sections, the auth card, the search scope and the panel head. */
+/* ---------- command palette: sections, match highlight, key footer ---------- */
+.quick-open-section {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  padding: 8px 12px 4px;
+  letter-spacing: 0;
+}
+.quick-open-item mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--r-xs);
+  padding: 0 1px;
+}
+.quick-open-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--seam);
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+.quick-open-footer span { display: inline-flex; align-items: center; gap: 4px; }
+.quick-open-footer kbd { height: 18px; line-height: 18px; }
+
+/* ---------- auth card: one truthful identity model ---------- */
+.field-help {
+  display: block;
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+#auth-gate .form-group { gap: 4px; }
+#auth-gate .field-help { margin-top: 0; }
+
+/* a missing language server is a problem, not metadata: glyph + accent, never
+   colour alone */
+#status-lsp.is-attention {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--coral);
+}
+
+/* ---------- search scope + one debug idle state ---------- */
+.search-scope {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  padding: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-scope strong { color: var(--text-soft); font-weight: 500; }
+
+.debug-idle {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 4px;
+  border-radius: var(--r-control);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--seam);
+}
+.debug-idle p { font-size: var(--fs-xs); color: var(--text-soft); line-height: 1.5; }
+.debug-idle.is-hidden { display: none; }
+
+/* Settings modal cards: clean subtle elevation */
+#win-settings .control-well { padding: 14px 16px; border-radius: var(--r-control); background: rgba(255, 255, 255, 0.025); border: 1px solid var(--seam); }
+#win-settings .setting-switch-row { padding: 12px 14px; border-radius: var(--r-control); background: rgba(255, 255, 255, 0.025); border: 1px solid var(--seam); }
+#win-settings .setting-switch-row:hover { background: var(--glass-hover); border-color: var(--glass-edge); }
+
+/* Trust folder modal */
+.trust-card { width: min(490px, 92vw); padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; border-radius: var(--r-card); animation: rise var(--dur-short) var(--ease); }
+.trust-card-head { display: flex; align-items: center; gap: 12px; }
+.trust-card-head h3 { font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.trust-subtitle { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; }
+.trust-shield { width: 38px; height: 38px; border-radius: var(--r-control); display: grid; place-items: center; background: var(--glacier-wash); border: 1px solid var(--glacier-line); color: var(--glacier); flex-shrink: 0; }
+.trust-path-box { padding: 9px 12px; border-radius: var(--r-code); background: var(--glass-fill-well); border: 1px solid var(--seam); font-family: var(--font-code); font-size: var(--fs-xs); color: var(--text); word-break: break-all; user-select: text; }
+.trust-desc { font-size: var(--fs-xs); color: var(--text-soft); line-height: 1.55; }
+.trust-desc code { font-family: var(--font-code); padding: 1px 5px; border-radius: var(--r-xs); background: var(--glass-hover); color: var(--text); }
+.trust-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--seam); }
+
+/* App modal cards (Context Inspector, Health, Tasks, Terminal Blocks) */
+.app-modal-card { width: min(640px, 92vw); max-height: 82vh; display: flex; flex-direction: column; border-radius: var(--r-card); overflow: hidden; animation: rise var(--dur-short) var(--ease); }
+.app-modal-card--wide { width: min(700px, 92vw); }
+.app-modal-body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.modal-rows-list { display: flex; flex-direction: column; gap: 8px; }
+.context-budget-panel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--r-control); background: var(--glass-fill-well); border: 1px solid var(--seam); }
+.context-budget-summary { font-size: var(--fs-xs); color: var(--text-soft); font-variant-numeric: tabular-nums; margin: 0; }
+.budget-meter { height: 6px; border-radius: var(--r-pill); background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.budget-meter-fill { height: 100%; width: 0%; border-radius: var(--r-pill); background: var(--glacier); transition: width var(--dur-short) var(--ease); }
+.budget-meter-fill.is-warn { background: var(--amber); }
+.budget-meter-fill.is-danger { background: var(--coral); }
+.inspector-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; border-radius: var(--r-control); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--seam); text-align: left; }
+.inspector-row--col { flex-direction: column; align-items: stretch; gap: 8px; }
+.inspector-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.inspector-row-main { min-width: 0; flex: 1; }
+.inspector-row-title { font-weight: 600; font-size: var(--fs-sm); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-row-detail { font-family: var(--font-code); font-size: var(--fs-2xs); color: var(--text-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.health-section { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--r-control); background: rgba(255, 255, 255, 0.025); border: 1px solid var(--seam); }
+.health-section-title { font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); padding-bottom: 6px; border-bottom: 1px solid var(--seam); }
+.health-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.diff-toolbar-strip { padding: 8px 12px; gap: 8px; align-items: center; border-bottom: 1px solid var(--seam); flex-wrap: wrap; background: rgba(6, 9, 14, 0.45); }
+.diff-file-strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex: 1; }
+.diff-toolbar-actions { display: flex; gap: 6px; align-items: center; }
+.diff-hunk-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; }
+
+/* ---------- git dependency state ----------
+   When Git is missing the panel must not pretend to work: no branch selector, no
+   commit composer, no action icons. It shows one error card with a way out. */
+#view-git.is-unavailable .git-panel-body > *:not(#git-notice-banner) { display: none; }
+#view-git.is-unavailable .pane-actions { display: none; }
+
+.git-notice { padding: 12px; }
+
+.git-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--r-code);
+  background: var(--coral-wash);
+  border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+}
+.git-blocked h4 { font-size: var(--fs-sm); font-weight: 600; color: var(--coral); }
+.git-blocked p { font-size: var(--fs-xs); color: var(--text-soft); line-height: 1.5; }
+.git-blocked code {
+  font-family: var(--font-code);
+  font-size: var(--fs-2xs);
+  padding: 0 4px;
+  border-radius: var(--r-xs);
+  background: var(--glass-press);
+  color: var(--text);
+}
+.git-blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+   /* One active pattern for every TAB-level navigation control (sidebar tabs,
+   bottom panel tabs, terminal sessions, utility tabs). The audit's first finding
+   was that these used three different grammars: a fill, an underline and a pill.
+   Rail items keep the vertical bar because that is a different level. */
+.sidebar-tab-btn.is-active,
+.bottom-nav-btn.is-active,
+#terminal-panel .bottom-nav-btn.is-active,
+.term-session-tab.is-active,
+#terminal-panel .term-session-tab.is-active,
+.utility-tab.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+  box-shadow: none;
+  font-weight: 500;
+}
+.utility-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-control);
+  background: rgba(4, 6, 10, 0.62);
+  border: 1px solid var(--seam);
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.utility-tab {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-code);
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-micro) var(--ease), background-color var(--dur-micro) var(--ease), border-color var(--dur-micro) var(--ease);
+}
+.utility-tab:hover { color: var(--text); background: var(--glass-hover); }
+.utility-tab.is-active {
+  color: var(--glacier);
+  background: var(--glacier-wash);
+  border-color: var(--glacier-line);
+}
+
+/* ---- panel head: text tabs with an accent underline, quiet toolbar ---- */
+#terminal-panel {
+  border: 0;
+  border-radius: var(--r-shell);
+  background: var(--glass-fill-strong);
+}
+#terminal-panel .shell-head {
+  height: 35px;
+  padding: 0 4px 0 0;
+  gap: 0;
+  border-bottom: 1px solid var(--seam);
+}
+#terminal-panel .bottom-panel-nav {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  height: 100%;
+}
+#terminal-panel .bottom-nav-btn {
+  width: auto;
+  height: 100%;
+  padding: 0 12px;
+  border-radius: 0;
+  gap: 8px;
+  background: transparent;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  box-shadow: inset 0 -2px 0 transparent;
+}
+#terminal-panel .bottom-nav-btn:hover { color: var(--text-soft); background: transparent; }
+#terminal-panel .bottom-nav-btn.is-active {
+  color: var(--text);
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--glacier);
+}
+#terminal-panel .bottom-nav-btn .badge {
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  margin-left: 2px;
+  font-size: 9px;
+  line-height: 14px;
+}
+
+/* the session tab is a tab, not a pill */
+#terminal-panel .terminal-tab-strip { height: 100%; margin-left: 12px; }
+#terminal-panel .term-session-tab {
+  height: 100%;
+  padding: 0 12px;
+  border-radius: 0;
+  border: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  box-shadow: inset 0 -2px 0 transparent;
+}
+#terminal-panel .term-session-tab::before { content: none; }
+#terminal-panel .term-session-tab.is-active {
+  color: var(--text);
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--glacier-line);
+}
+#terminal-panel .head-divider { display: none; }
+#terminal-panel .pane-actions { gap: 0; margin-left: auto; }
+#terminal-panel .pane-actions .icon-btn { width: 26px; height: 26px; }
+
+/* a lone session needs no tab, and the toolbar stays quiet until you need it */
+.terminal-tab-strip.is-single .terminal-tabs-list { display: none; }
+#terminal-panel .shell-head .pane-actions,
+#terminal-panel .terminal-tab-strip { opacity: 0.8; transition: opacity var(--dur-short) var(--ease); }
+#terminal-panel:hover .shell-head .pane-actions,
+#terminal-panel:hover .terminal-tab-strip,
+#terminal-panel:focus-within .shell-head .pane-actions,
+#terminal-panel:focus-within .terminal-tab-strip { opacity: 1; }
+
+/* flush: no inner box, no radius inside the panel, no seam, no rail */
+#terminal-body { padding: 0 8px 8px; gap: 0; }
+.terminal-host {
+  border-radius: var(--r-code);
+  /* the console's own surface: theme-tinted, lit from the top-left corner */
+  background:
+    radial-gradient(120% 90% at 0% 0%, var(--console-wash), transparent 58%),
+    var(--console-bg);
+  box-shadow: inset 0 1px 0 var(--glass-rim-low);
+  position: relative;
+}
+.terminal-host::before,
+.terminal-host::after { content: none; }
+.term-instance { padding: 8px 12px; }
+.terminal-controls-stage { position: static; }
+
+/* the head speaks the app's language: tabs, then live state, then tools */
+#terminal-panel .console-status {
+  margin-left: auto;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+#terminal-panel .console-chip { overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
+#terminal-panel #console-chip-shell { color: var(--text-soft); }
+#terminal-panel .console-sep { opacity: 0.5; }
+#terminal-panel .console-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--amber);
+  font-family: var(--font-code);
+}
+#terminal-panel .console-branch::before { content: '\2387'; opacity: 0.7; }
+#terminal-panel .pane-actions { margin-left: 0; }
+
+/* Agent "Continue" affordance after a run stops early (step ceiling / Stop) */
+.agent-continue-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--seam);
+  border-radius: 8px;
+  background: var(--glass-hover);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.agent-continue-label { flex: 1 1 auto; }
+.agent-continue-btn { flex: 0 0 auto; }

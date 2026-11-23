@@ -1,0 +1,26 @@
+<Window x:Class="VoidCode.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        mc:Ignorable="d"
+        Title="VoidCode"
+        Icon="app.ico"
+        Height="740" Width="1280"
+        MinHeight="560" MinWidth="920"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="#07090d">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="0"
+                      CornerRadius="12"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+    <Grid x:Name="RootGrid" Background="#07090d">
+        <wv2:WebView2 x:Name="webView" DefaultBackgroundColor="#07090d" />
+    </Grid>
+</Window>

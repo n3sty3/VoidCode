@@ -1,0 +1,41 @@
+# .NET build output
+bin/
+obj/
+dist/
+publish/
+TestResults/
+
+# IDE and local state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# VoidCode generated state
+.voidcode/
+debug.log
+*.log
+
+# Packaging and temporary files
+*.zip
+*.tmp
+*.bak
+*.exe
+*.rar
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# VS upgrade logs & tool artifacts
+UpgradeLog*.htm
+Backup/
+tools/ui-audit/last-run.json
+tools/css-coverage.json
+tools/css-prune.json

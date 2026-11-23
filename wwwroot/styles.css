@@ -1,0 +1,22 @@
+/* VoidCode stylesheet — the entry point ().
+ *
+ * It is now a manifest: each @import is one
+ * contiguous slice of the old file, imported in the original order, so the cascade is unchanged.
+ * Order matters — @import order is source order. Add a file at the end unless you also move its
+ * sections, and keep tools/css-split.mjs in step with the list.
+ */
+@import url('styles/tokens.css');
+@import url('styles/base.css');
+@import url('styles/layout.css');
+@import url('styles/features/search.css');
+@import url('styles/features/git.css');
+@import url('styles/components/editor-chrome.css');
+@import url('styles/features/editor-tools.css');
+@import url('styles/features/terminal.css');
+@import url('styles/features/agent.css');
+@import url('styles/components/controls.css');
+@import url('styles/components/settings.css');
+@import url('styles/components/panels.css');
+@import url('styles/features/command-palette.css');
+@import url('styles/components/icon-pack.css');
+@import url('styles/components/overlays.css');

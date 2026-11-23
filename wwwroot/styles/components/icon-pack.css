@@ -1,0 +1,136 @@
+/* styles/components/icon-pack.css — the themed icon pack. */
+/* ---------- themed icon pack ---------- */
+.icon {
+  display: inline-grid;
+  place-items: center;
+  width: var(--icon-size, 16px);
+  height: var(--icon-size, 16px);
+  /* never let a hosting flex row (e.g. `.search-field span { flex: 1 }`) stretch
+     an icon: it is a glyph, not a column */
+  flex: 0 0 auto;
+}
+.icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* the pack is square-cap/miter by design; filters would corrupt its tone */
+  image-rendering: auto;
+}
+/* active/emphasis states swap the variant (muted -> ui), never the colour */
+.rail-btn .icon { --icon-size: 18px; }
+.rail-btn.is-active .icon,
+.rail-btn:hover .icon { --icon-size: 18px; }
+.bottom-nav-btn .icon { --icon-size: 15px; }
+.pane-actions .icon,
+.shell-head .icon { --icon-size: 14px; }
+
+/* the session is VoidShell; there is no shell picker and no "+ new PTY" button,
+   because a system shell must never be the default (a `sys` command would be) */
+#btn-add-terminal-tab,
+#btn-terminal-shell-menu { display: none !important; }
+
+/* Phase 2: one entry point for workspace tools. The six dock labels are hidden
+   and the ... button is always available — it opens the menu that already lists
+   all six windows, so no feature is lost, only the label wall. */
+#top-tools-dock { display: none !important; }
+.top-tools-overflow { display: inline-grid; }
+
+/* ============================================================================
+   THEME ARCHITECTURE - three layers per theme
+   1. semantic palette  (what a component asks for: surface, line, fg, accent)
+   2. material          (line weight, atmosphere tint, grain, surface lift)
+   3. icon set          (console/icons.js maps theme -> pack folder)
+   Components reference layer 1/2 only, so a theme can differ in tone, contrast
+   and atmosphere instead of just hue.
+   ============================================================================ */
+:root {
+  --bg: var(--ink-deep);
+  --surface: var(--glass-fill-strong);
+  --chrome: var(--glass-fill);
+  --well: var(--glass-fill-well);
+  --float: var(--glass-fill-float);
+  --line: var(--seam);
+
+  --fg: var(--text);
+  --fg-soft: var(--text-soft);
+  --fg-faint: var(--text-faint);
+  --fg-disabled: var(--text-disabled);
+
+  --accent: var(--glacier);
+  --accent-ink: var(--glacier-ink);
+  --accent-soft: var(--glacier-wash);
+  --accent-line: var(--glacier-line);
+
+  --warn: var(--amber);
+  --danger: var(--coral);
+  --success: #6be2b3;
+  --overlay: var(--scrim);
+
+  /* material defaults (harbor) */
+  --atm-tint: rgba(143, 211, 193, 0.05);
+  --atm-grain: 0.022;
+  --line-alpha: 0.06;
+  --surface-lift: 0.03;
+}
+
+/* each theme gets its own material, not only its own accent */
+[data-theme="harbor"] {
+  --atm-tint: rgba(143, 211, 193, 0.05);
+  --atm-grain: 0.022;
+  --line-alpha: 0.06;
+  --surface-lift: 0.03;
+  --success: #6be2b3;
+}
+
+[data-theme="obsidian"] {
+  --atm-tint: rgba(205, 215, 228, 0.035);
+  --atm-grain: 0.03;
+  --line-alpha: 0.05;
+  --surface-lift: 0.02;
+  --success: #9fd8c0;
+}
+
+[data-theme="crimson"] {
+  --atm-tint: rgba(242, 145, 138, 0.055);
+  --atm-grain: 0.025;
+  --line-alpha: 0.07;
+  --surface-lift: 0.035;
+  --success: #86d6a8;
+}
+
+[data-theme="emerald"] {
+  --atm-tint: rgba(107, 226, 179, 0.05);
+  --atm-grain: 0.02;
+  --line-alpha: 0.06;
+  --surface-lift: 0.03;
+  --success: #8ef0bb;
+}
+
+[data-theme="nebula"] {
+  --atm-tint: rgba(194, 178, 250, 0.06);
+  --atm-grain: 0.028;
+  --line-alpha: 0.065;
+  --surface-lift: 0.032;
+  --success: #b6a8f5;
+}
+
+/* the material is consumed here, once, instead of per component */
+.glass {
+  background-image: linear-gradient(var(--atm-tint), var(--atm-tint));
+}
+#center-panel,
+#terminal-panel {
+  background-image: linear-gradient(var(--atm-tint), transparent 70%);
+}
+.field::before { opacity: var(--atm-grain); }
+.ctx-sep,
+.utility-tab,
+.tab-close-btn { border-color: rgba(255, 255, 255, var(--line-alpha)); }
+/* glass fully off (blur slider at 0): no backdrop pass at all */
+html[data-glass="off"] .glass,
+html[data-glass="off"] .glass--float,
+html[data-glass="off"] .modal-overlay > * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+

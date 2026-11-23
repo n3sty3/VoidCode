@@ -1,0 +1,23 @@
+{
+  "name": "voidcode",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UI test harness for VoidCode (Playwright + mocked host).",
+  "scripts": {
+    "serve": "http-server wwwroot -p 8765 -c-1",
+    "test:ui": "playwright test",
+    "test:unit": "node tests/bridge-timeout.test.js && node tests/log-swallowed.test.js && node tests/html-template.test.js && node tests/state.test.js && node tests/host-events.test.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "audit:payloads": "node tools/payload-audit.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-no-unsanitized": "^4.1.5",
+    "globals": "^17.14.0",
+    "http-server": "^14.1.1",
+    "typescript": "^7.0.2"
+  }
+}
