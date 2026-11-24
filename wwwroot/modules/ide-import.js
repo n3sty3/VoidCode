@@ -121,13 +121,15 @@ function mountSettingsShortcut() {
   const banner = document.createElement('div');
   banner.id = 'voidcode-ide-import-banner';
   banner.className = 'control-well';
-  banner.style.cssText = 'margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+  banner.style.marginTop = '12px';
   setHtml(banner, html`
-    <div>
-      <div style="font-size:13px;font-weight:600;">Switching from VS Code or Cursor?</div>
-      <div style="font-size:11px;opacity:0.72;">Import your editor font, tabs, minimap, wrap, and recent folders in one click.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Switching from VS Code or Cursor?</div>
+        <div style="font-size:11px;opacity:0.72;line-height:1.4;">Import your editor font, tabs, minimap, wrap, line numbers, and recent folders in one click.</div>
+      </div>
+      <button type="button" class="btn btn--quiet btn--sm" id="btn-open-ide-importer" style="white-space:nowrap;flex-shrink:0;">Import Settings…</button>
     </div>
-    <button type="button" class="btn btn--quiet btn--sm" id="btn-open-ide-importer" style="white-space:nowrap;flex-shrink:0;">Import Settings…</button>
   `);
   editorTab.appendChild(banner);
   document.getElementById('btn-open-ide-importer')?.addEventListener('click', openIdeImportModal);

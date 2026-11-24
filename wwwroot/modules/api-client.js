@@ -58,7 +58,7 @@ function ensureModal() {
     </div>
 
     <div style="display:flex;gap:8px;align-items:center;">
-      <select id="api-method" class="text-input" aria-label="HTTP Method" style="width:110px;height:34px;font-weight:600;">
+      <select id="api-method" class="text-input" aria-label="HTTP Method" style="width:110px;height:34px;font-weight:600;color-scheme:dark;background:var(--glass-hover);color:var(--text);border:1px solid var(--seam);border-radius:8px;padding:0 8px;">
         <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>

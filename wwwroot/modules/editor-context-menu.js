@@ -42,7 +42,7 @@ function ensureMenuElement() {
   const el = document.createElement('div');
   el.id = 'editor-context-menu';
   el.className = 'context-menu glass glass--float';
-  el.style.cssText = 'display:none;position:fixed;z-index:9500;min-width:255px;max-width:310px;padding:6px;';
+  el.style.cssText = 'display:none;position:fixed;z-index:9500;min-width:255px;max-width:310px;max-height:calc(100vh - 20px);overflow-y:auto;padding:6px;';
   el.setAttribute('role', 'menu');
   el.setAttribute('aria-label', 'Editor context menu');
   document.body.appendChild(el);
@@ -254,10 +254,11 @@ function renderMenuItems(hasSelection) {
       btn.setAttribute('role', 'menuitem');
       btn.dataset.editorCtxAction = item.id;
       btn.style.cssText = 'width:100%;text-align:left;background:transparent;border:none;';
+      const hintHtml = item.hint ? html`<span class="ctx-hint">${item.hint}</span>` : '';
       setHtml(btn, html`
         ${raw(item.icon)}
         <span class="ctx-label">${item.label}</span>
-        ${item.hint ? html`<span class="ctx-hint">${item.hint}</span>` : ''}
+        ${raw(hintHtml)}
       `);
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -302,27 +303,35 @@ export function attachVoidCodeContextMenu(editor) {
     globalThis.logSwallowed?.(err, 'editor-context-menu.disableDefault');
   }
 
-  const domNode = editor.getDomNode?.();
-  if (!domNode) return;
-
-  domNode.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Move cursor to right-click position if there is no active selection covering it.
-    try {
-      const target = editor.getTargetAtClientPoint?.(e.clientX, e.clientY);
-      const pos = target?.position;
-      const sel = editor.getSelection?.();
-      if (pos && (!sel || sel.isEmpty() || !sel.containsPosition(pos))) {
-        editor.setPosition(pos);
+  // Use Monaco's native onContextMenu hook: Monaco's own capture listener on domNode
+  // stops immediate propagation for right-clicks, whereas onContextMenu always fires
+  // with exact viewport coordinates and target line/column position.
+  if (typeof editor.onContextMenu === 'function') {
+    editor.onContextMenu((e) => {
+      try {
+        e.event?.preventDefault?.();
+        e.event?.stopPropagation?.();
+        e.event?.browserEvent?.preventDefault?.();
+        e.event?.browserEvent?.stopPropagation?.();
+      } catch (err) {
+        globalThis.logSwallowed?.(err, 'editor-context-menu.preventDefault');
       }
-    } catch (err) {
-      globalThis.logSwallowed?.(err, 'editor-context-menu.targetPosition');
-    }
 
-    showMenuAt(editor, e.clientX, e.clientY);
-  }, true);
+      try {
+        const pos = e.target?.position;
+        const sel = editor.getSelection?.();
+        if (pos && (!sel || sel.isEmpty() || !sel.containsPosition(pos))) {
+          editor.setPosition(pos);
+        }
+      } catch (err) {
+        globalThis.logSwallowed?.(err, 'editor-context-menu.targetPosition');
+      }
+
+      const x = e.event?.posx ?? e.event?.browserEvent?.clientX ?? 200;
+      const y = e.event?.posy ?? e.event?.browserEvent?.clientY ?? 200;
+      showMenuAt(editor, x, y);
+    });
+  }
 }
 
 function installGlobalDismissHandlers() {

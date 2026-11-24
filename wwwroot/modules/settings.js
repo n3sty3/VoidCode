@@ -770,15 +770,15 @@ function mountExtendedEditorAndAgentSettings() {
     well.className = 'control-well';
     well.style.marginTop = '12px';
     setHtml(well, html`
-      <div class="label-row" style="margin-bottom:8px;">
+      <div class="label-row">
         <label style="font-weight:600;">Editor ergonomics &amp; rendering</label>
         <span class="val-badge is-muted">Live Monaco</span>
       </div>
-      <div class="form-row-2" style="margin-bottom:10px;">
-        <div class="form-group">
-          <label for="settings-font-family">Font family</label>
-          <input type="text" id="settings-font-family" value="'JetBrains Mono', 'Cascadia Code', Consolas, monospace" placeholder="'JetBrains Mono', monospace" />
-        </div>
+      <div class="form-group">
+        <label for="settings-font-family">Font family</label>
+        <input type="text" id="settings-font-family" value="'JetBrains Mono', 'Cascadia Code', Consolas, monospace" placeholder="'JetBrains Mono', 'Cascadia Code', monospace" />
+      </div>
+      <div class="form-row-2">
         <div class="form-group">
           <label for="settings-tab-size">Tab size</label>
           <select id="settings-tab-size">
@@ -787,8 +787,16 @@ function mountExtendedEditorAndAgentSettings() {
             <option value="8">8 spaces</option>
           </select>
         </div>
+        <div class="form-group">
+          <label for="settings-cursor-style">Cursor style</label>
+          <select id="settings-cursor-style">
+            <option value="line" selected>Line</option>
+            <option value="block">Block</option>
+            <option value="underline">Underline</option>
+          </select>
+        </div>
       </div>
-      <div class="form-row-2" style="margin-bottom:10px;">
+      <div class="form-row-2">
         <div class="form-group">
           <label for="settings-line-numbers">Line numbers</label>
           <select id="settings-line-numbers">
@@ -807,26 +815,14 @@ function mountExtendedEditorAndAgentSettings() {
           </select>
         </div>
       </div>
-      <div class="form-row-2" style="margin-bottom:10px;">
-        <div class="form-group">
-          <label for="settings-cursor-style">Cursor style</label>
-          <select id="settings-cursor-style">
-            <option value="line" selected>Line</option>
-            <option value="block">Block</option>
-            <option value="underline">Underline</option>
-          </select>
-        </div>
-        <div class="form-group" style="justify-content:flex-end;">
-          <label class="setting-switch-row" for="settings-insert-spaces" style="margin:0;">
-            <div class="toggle-copy">
-              <span class="toggle-title">Insert spaces</span>
-              <span class="toggle-sub">Use spaces instead of hard tab characters</span>
-            </div>
-            <input type="checkbox" class="glass-switch" id="settings-insert-spaces" checked />
-          </label>
-        </div>
-      </div>
       <div class="toggles-grid-2">
+        <label class="setting-switch-row" for="settings-insert-spaces">
+          <div class="toggle-copy">
+            <span class="toggle-title">Insert spaces</span>
+            <span class="toggle-sub">Use spaces instead of hard tab characters</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-insert-spaces" checked />
+        </label>
         <label class="setting-switch-row" for="settings-font-ligatures">
           <div class="toggle-copy">
             <span class="toggle-title">Font ligatures</span>
@@ -848,10 +844,10 @@ function mountExtendedEditorAndAgentSettings() {
           </div>
           <input type="checkbox" class="glass-switch" id="settings-bracket-colorization" checked />
         </label>
-        <label class="setting-switch-row" for="settings-sticky-scroll">
+        <label class="setting-switch-row" for="settings-sticky-scroll" style="grid-column:1 / -1;">
           <div class="toggle-copy">
             <span class="toggle-title">Sticky scroll scopes</span>
-            <span class="toggle-sub">Pin enclosing function/class headers while scrolling</span>
+            <span class="toggle-sub">Pin enclosing function and class headers at the top while scrolling</span>
           </div>
           <input type="checkbox" class="glass-switch" id="settings-sticky-scroll" checked />
         </label>
@@ -872,33 +868,35 @@ function mountExtendedEditorAndAgentSettings() {
     agentWell.className = 'control-well';
     agentWell.style.marginTop = '10px';
     setHtml(agentWell, html`
-      <div class="label-row" style="margin-bottom:8px;">
+      <div class="label-row">
         <label style="font-weight:600;">VoidAgent reasoning &amp; memory</label>
         <button type="button" class="btn btn--quiet btn--xs" id="btn-open-memory-from-settings" style="white-space:nowrap;flex-shrink:0;">Open Memory Bank</button>
       </div>
-      <div class="form-row-2" style="align-items:center;">
-        <div class="form-group">
-          <label for="settings-reasoning-effort">Reasoning effort (o3 / o4 / Claude / DeepSeek)</label>
-          <select id="settings-reasoning-effort">
-            <option value="low">Low (Fastest, minimal thinking tokens)</option>
-            <option value="medium" selected>Medium (Balanced quality &amp; latency)</option>
-            <option value="high">High (Deep reasoning / extended thinking)</option>
-          </select>
-        </div>
-        <label class="setting-switch-row" for="settings-agent-auto-verify" style="margin:0;">
-          <div class="toggle-copy">
-            <span class="toggle-title">Auto-verify after edits</span>
-            <span class="toggle-sub">Instruct VoidAgent to inspect LSP diagnostics after patching code</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-agent-auto-verify" checked />
-        </label>
+      <div class="form-group">
+        <label for="settings-reasoning-effort">Reasoning effort (o3 / o4 / Claude / DeepSeek)</label>
+        <select id="settings-reasoning-effort">
+          <option value="low">Low (Fastest, minimal thinking tokens)</option>
+          <option value="medium" selected>Medium (Balanced quality &amp; latency)</option>
+          <option value="high">High (Deep reasoning / extended thinking)</option>
+        </select>
       </div>
+      <label class="setting-switch-row" for="settings-agent-auto-verify">
+        <div class="toggle-copy">
+          <span class="toggle-title">Auto-verify after edits</span>
+          <span class="toggle-sub">Instruct VoidAgent to inspect LSP diagnostics after patching code</span>
+        </div>
+        <input type="checkbox" class="glass-switch" id="settings-agent-auto-verify" checked />
+      </label>
     `);
     promptTab.appendChild(agentWell);
     document.getElementById('btn-open-memory-from-settings')?.addEventListener('click', () => {
       globalThis.openMemoryBankModal?.();
     });
   }
+
+  // Upgrade the newly injected <select> controls to VoidCode's themed frosted-glass selects.
+  globalThis.setupCustomSelects?.();
+  globalThis.syncAllCustomSelects?.();
 }
 
 // (boot, bridge switch, palette), and the Workspace Trust subscription installs here instead of in

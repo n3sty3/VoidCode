@@ -244,20 +244,30 @@ function mountSettingsPanel() {
 
   const well = document.createElement('div');
   well.id = 'voidcode-autocomplete-well';
-  well.style.cssText = 'margin-top:12px;padding:12px;border-radius:10px;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));background:var(--surface-1,rgba(255,255,255,0.02));';
+  well.className = 'control-well';
+  well.style.marginTop = '12px';
 
   setHtml(well, html`
-    <div style="margin-bottom:8px;">
-      <div style="font-size:13px;font-weight:600;">AI Tab Autocomplete (FIM Ghost Text)</div>
-      <div style="font-size:11px;opacity:0.7;">Use a dedicated fast/local model (Ollama qwen2.5-coder:3b, Groq, Gemini Flash) or leave blank to reuse your main model.</div>
+    <div class="label-row">
+      <label style="font-weight:600;">AI Tab Autocomplete (FIM Ghost Text)</label>
+      <span class="val-badge is-muted">Tab to accept</span>
     </div>
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px;min-height:28px;cursor:pointer;">
-      <input type="checkbox" id="settings-autocomplete-enabled" checked style="width:24px;height:24px;margin:0;cursor:pointer;" />
-      <span style="font-size:12px;">Enable real-time Tab ghost-text autocomplete in editor</span>
+    <label class="setting-switch-row" for="settings-autocomplete-enabled">
+      <div class="toggle-copy">
+        <span class="toggle-title">Enable real-time Tab ghost-text autocomplete</span>
+        <span class="toggle-sub">Use a dedicated fast/local model (Ollama qwen2.5-coder:3b, Groq, Gemini Flash) or leave blank to reuse your main model</span>
+      </div>
+      <input type="checkbox" class="glass-switch" id="settings-autocomplete-enabled" checked />
     </label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <input type="text" class="text-input" id="settings-autocomplete-url" placeholder="Optional fast endpoint (e.g. http://localhost:11434/v1)" />
-      <input type="text" class="text-input" id="settings-autocomplete-model" placeholder="Optional fast model (e.g. qwen2.5-coder:3b)" />
+    <div class="form-row-2">
+      <div class="form-group">
+        <label for="settings-autocomplete-url">Optional fast endpoint URL</label>
+        <input type="text" id="settings-autocomplete-url" placeholder="http://localhost:11434/v1" />
+      </div>
+      <div class="form-group">
+        <label for="settings-autocomplete-model">Optional fast model ID</label>
+        <input type="text" id="settings-autocomplete-model" placeholder="qwen2.5-coder:3b" />
+      </div>
     </div>
   `);
 

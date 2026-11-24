@@ -35,11 +35,11 @@ function ensureModal() {
     </div>
 
     <div style="display:grid;grid-template-columns:120px 130px 1fr auto;gap:8px;align-items:center;">
-      <select id="mem-new-scope" class="text-input" aria-label="Memory scope" style="height:34px;">
+      <select id="mem-new-scope" class="text-input" aria-label="Memory scope" style="height:34px;color-scheme:dark;background:var(--glass-hover);color:var(--text);border:1px solid var(--seam);border-radius:8px;padding:0 8px;">
         <option value="project">Project</option>
         <option value="global">Global</option>
       </select>
-      <select id="mem-new-category" class="text-input" aria-label="Memory category" style="height:34px;">
+      <select id="mem-new-category" class="text-input" aria-label="Memory category" style="height:34px;color-scheme:dark;background:var(--glass-hover);color:var(--text);border:1px solid var(--seam);border-radius:8px;padding:0 8px;">
         <option value="convention">Convention</option>
         <option value="command">Command</option>
         <option value="architecture">Architecture</option>
