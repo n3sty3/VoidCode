@@ -45,9 +45,23 @@ public class AppSettings
     // When true, referenced images are sent as multimodal content parts instead of text.
     public bool ModelSupportsVision { get; set; } = true;
     public int EditorFontSize { get; set; } = 14;
+    public int EditorTabSize { get; set; } = 4;
+    public bool EditorInsertSpaces { get; set; } = true;
+    public string EditorFontFamily { get; set; } = "'JetBrains Mono', 'Cascadia Code', Consolas, monospace";
+    public bool EditorFontLigatures { get; set; } = true;
+    public string EditorLineNumbers { get; set; } = "on";
+    public string EditorRenderWhitespace { get; set; } = "selection";
+    public string EditorCursorStyle { get; set; } = "line";
+    public bool EditorSmoothScrolling { get; set; } = true;
+    public bool EditorBracketColorization { get; set; } = true;
+    public bool EditorStickyScroll { get; set; } = true;
     public bool EditorWordWrap { get; set; } = false;
     public bool EditorMinimap { get; set; } = true;
     public bool FormatOnSave { get; set; } = false;
+    // "low", "medium" (default), or "high" — passed to reasoning-capable providers (o3/o4/Claude/DeepSeek).
+    public string AgentReasoningEffort { get; set; } = "medium";
+    // When true, instructs VoidAgent to automatically inspect LSP diagnostics after file edits.
+    public bool AgentAutoVerify { get; set; } = true;
     public bool AutocompleteEnabled { get; set; } = true;
     public string AutocompleteModel { get; set; } = "";
     public string AutocompleteBaseUrl { get; set; } = "";

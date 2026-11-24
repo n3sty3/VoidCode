@@ -291,6 +291,44 @@ internal static class ToolCatalog
                         ["required"] = new JsonArray { "url" }
                     }
                 }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "save_memory",
+                    ["description"] = "Persist a durable project convention, build/test command, architecture note, or operator preference into VoidCode's cross-session Memory Bank.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["content"] = new JsonObject { ["type"] = "string", ["description"] = "Concise fact or convention to remember (<= 600 chars)." },
+                            ["scope"] = new JsonObject { ["type"] = "string", ["description"] = "'project' (workspace-specific, default) or 'global' (operator-wide)." },
+                            ["category"] = new JsonObject { ["type"] = "string", ["description"] = "One of: fact, preference, convention, architecture, command, pitfall." }
+                        },
+                        ["required"] = new JsonArray { "content" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "delete_memory",
+                    ["description"] = "Remove an outdated or incorrect memory entry from the persistent Memory Bank by its ID (e.g. mem_abc123).",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["id"] = new JsonObject { ["type"] = "string", ["description"] = "The memory ID shown in the Persistent Agent Memory Bank." }
+                        },
+                        ["required"] = new JsonArray { "id" }
+                    }
+                }
             }
         };
 

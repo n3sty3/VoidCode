@@ -233,7 +233,8 @@ internal static class AgentLoop
                 Tools = toolDefs,
                 Temperature = settings.Temperature,
                 MaxTokens = settings.MaxTokens,
-                Stream = true
+                Stream = true,
+                ReasoningEffort = settings.AgentReasoningEffort ?? "medium"
             };
 
             var contentBuilder = new StringBuilder();

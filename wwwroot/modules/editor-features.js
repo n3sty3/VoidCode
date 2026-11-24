@@ -375,6 +375,10 @@ export function getIsSplitEditorActive() {
   return isSplitEditorActive;
 }
 
+export function getSecondaryMonacoEditor() {
+  return monacoEditorSecondary;
+}
+
 function applySplitRatio() {
   const primary = document.getElementById('editor-pane-primary');
   const secondary = document.getElementById('editor-pane-secondary');
@@ -499,6 +503,8 @@ export function openSplitEditor(tabToOpen) {
           globalThis.toggleEditorBreakpoint?.(line);
         }
       });
+      globalThis.attachVoidCodeContextMenu?.(monacoEditorSecondary);
+      globalThis.applyMonacoEditorSettings?.(globalThis.VoidState?.get?.('settings'));
     }
   }
 
@@ -853,6 +859,7 @@ export function init(ctx = {}) {
     navigateToFileLocation,
     applyPendingLocation,
     getIsSplitEditorActive,
+    getSecondaryMonacoEditor,
     setupSplitEditor,
     toggleSplitEditor,
     openSplitEditor,

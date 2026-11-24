@@ -39,6 +39,7 @@ public sealed class HostController
     private readonly TestsDebugHandlers _testsDebugHandlers;
     private readonly SettingsAgentHandlers _settingsAgentHandlers;
     private readonly SessionWindowHandlers _sessionWindowHandlers;
+    private readonly V110Handlers _v110Handlers;
     private readonly string _bridgeNonce = BridgeProtocol.CreateNonce();
     private volatile bool _handshakeConfirmed;
 
@@ -74,6 +75,11 @@ public sealed class HostController
             () => _settings,
             updated => _settings = updated,
             _hooks.WindowChrome,
+            SendToJs);
+        _v110Handlers = new V110Handlers(
+            () => _currentWorkspace,
+            () => _settings,
+            updated => _settings = updated,
             SendToJs);
 
         RegisterBridgeActions();
@@ -222,5 +228,6 @@ public sealed class HostController
         _testsDebugHandlers.Register(_bridgeRouter);
         _settingsAgentHandlers.Register(_bridgeRouter);
         _sessionWindowHandlers.Register(_bridgeRouter);
+        _v110Handlers.Register(_bridgeRouter);
     }
 }

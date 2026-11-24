@@ -290,6 +290,22 @@ internal static class ToolExecutor
                 }
             }
 
+            case "save_memory":
+            {
+                var content = argsNode?["content"]?.GetValue<string>() ?? "";
+                var scope = argsNode?["scope"]?.GetValue<string>() ?? "project";
+                var category = argsNode?["category"]?.GetValue<string>() ?? "fact";
+                var res = AgentMemoryService.Save(workspacePath, scope, category, content);
+                return (res.Message, null, null);
+            }
+
+            case "delete_memory":
+            {
+                var id = argsNode?["id"]?.GetValue<string>() ?? "";
+                var res = AgentMemoryService.Delete(workspacePath, id);
+                return (res.Message, null, null);
+            }
+
             default:
                 return ($"Error: Unknown tool '{name}'.", null, null);
         }

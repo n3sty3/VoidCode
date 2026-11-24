@@ -8,7 +8,7 @@
 // Collaborators that are still classic scripts: the editor handle comes from getMonacoEditor(), the
 // Slider/custom-select painters and the tab savers are reached as globals, and the operator name
 // Comes from getCurrentOperator() instead of a script-scoped `let`.
-import { setHtml } from '../core/markdown.js';
+import { html, setHtml } from '../core/markdown.js';
 import { applyThemeAndOptics } from './theme.js';
 
 let hostSend = (action, data) => globalThis.VoidBridge.send(action, data);
@@ -92,6 +92,30 @@ export function applySettingsToUI(s, settingScopes = null) {
   control('settings-word-wrap').checked = !!s.EditorWordWrap;
   const fmtOnSave = control('settings-format-on-save');
   if (fmtOnSave) fmtOnSave.checked = !!s.FormatOnSave;
+  const tabSizeEl = control('settings-tab-size');
+  if (tabSizeEl) tabSizeEl.value = String(s.EditorTabSize || 4);
+  const insertSpacesEl = control('settings-insert-spaces');
+  if (insertSpacesEl) insertSpacesEl.checked = s.EditorInsertSpaces !== false;
+  const fontFamEl = control('settings-font-family');
+  if (fontFamEl) fontFamEl.value = s.EditorFontFamily || "'JetBrains Mono', 'Cascadia Code', Consolas, monospace";
+  const ligaturesEl = control('settings-font-ligatures');
+  if (ligaturesEl) ligaturesEl.checked = s.EditorFontLigatures !== false;
+  const lineNumsEl = control('settings-line-numbers');
+  if (lineNumsEl) lineNumsEl.value = s.EditorLineNumbers || 'on';
+  const whitespaceEl = control('settings-render-whitespace');
+  if (whitespaceEl) whitespaceEl.value = s.EditorRenderWhitespace || 'selection';
+  const cursorStyleEl = control('settings-cursor-style');
+  if (cursorStyleEl) cursorStyleEl.value = s.EditorCursorStyle || 'line';
+  const smoothScrollEl = control('settings-smooth-scrolling');
+  if (smoothScrollEl) smoothScrollEl.checked = s.EditorSmoothScrolling !== false;
+  const bracketColorEl = control('settings-bracket-colorization');
+  if (bracketColorEl) bracketColorEl.checked = s.EditorBracketColorization !== false;
+  const stickyScrollEl = control('settings-sticky-scroll');
+  if (stickyScrollEl) stickyScrollEl.checked = s.EditorStickyScroll !== false;
+  const reasoningEl = control('settings-reasoning-effort');
+  if (reasoningEl) reasoningEl.value = s.AgentReasoningEffort || 'medium';
+  const autoVerifyEl = control('settings-agent-auto-verify');
+  if (autoVerifyEl) autoVerifyEl.checked = s.AgentAutoVerify !== false;
   const autoApp = control('settings-auto-approve');
   const isFullSystem = !!s.AutoApproveTools || s.AuthorityMode === 'full_system';
   const isWorkspaceAuto = !isFullSystem && s.AuthorityMode === 'workspace_auto';
@@ -113,13 +137,35 @@ export function applySettingsToUI(s, settingScopes = null) {
   globalThis.syncAllSliders?.();
   globalThis.syncAllCustomSelects?.();
 
+  applyMonacoEditorSettings(s);
+}
+
+export function applyMonacoEditorSettings(s) {
+  if (!s) return;
+  const opts = {
+    fontSize: s.EditorFontSize || 14,
+    tabSize: Number(s.EditorTabSize) || 4,
+    insertSpaces: s.EditorInsertSpaces !== false,
+    fontFamily: s.EditorFontFamily || "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
+    fontLigatures: s.EditorFontLigatures !== false,
+    lineNumbers: s.EditorLineNumbers || 'on',
+    renderWhitespace: s.EditorRenderWhitespace || 'selection',
+    cursorStyle: s.EditorCursorStyle || 'line',
+    smoothScrolling: s.EditorSmoothScrolling !== false,
+    bracketPairColorization: { enabled: s.EditorBracketColorization !== false },
+    stickyScroll: { enabled: s.EditorStickyScroll !== false },
+    minimap: { enabled: s.EditorMinimap !== false },
+    wordWrap: s.EditorWordWrap ? 'on' : 'off'
+  };
   const editor = globalThis.getMonacoEditor?.();
   if (editor) {
-    editor.updateOptions({
-      fontSize: s.EditorFontSize || 14,
-      minimap: { enabled: s.EditorMinimap !== false },
-      wordWrap: s.EditorWordWrap ? 'on' : 'off'
-    });
+    editor.updateOptions(opts);
+    const model = editor.getModel?.();
+    model?.updateOptions?.({ tabSize: opts.tabSize, insertSpaces: opts.insertSpaces });
+  }
+  const sec = globalThis.getSecondaryMonacoEditor?.();
+  if (sec) {
+    sec.updateOptions({ ...opts, minimap: { enabled: false } });
   }
 }
 
@@ -134,9 +180,21 @@ export function gatherSettingsFromModal() {
     MaxTokens: parseInt(control('settings-max-tokens').value, 10) || 8192,
     MaxAgentTurns: (() => { const v = parseInt(control('settings-max-turns').value, 10); return Number.isFinite(v) ? v : 25; })(),
     EditorFontSize: parseInt(control('settings-font-size').value, 10) || 14,
+    EditorTabSize: parseInt(control('settings-tab-size')?.value || '', 10) || settings.EditorTabSize || 4,
+    EditorInsertSpaces: control('settings-insert-spaces') ? control('settings-insert-spaces').checked : (settings.EditorInsertSpaces !== false),
+    EditorFontFamily: control('settings-font-family')?.value?.trim() || settings.EditorFontFamily || "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
+    EditorFontLigatures: control('settings-font-ligatures') ? control('settings-font-ligatures').checked : (settings.EditorFontLigatures !== false),
+    EditorLineNumbers: control('settings-line-numbers')?.value || settings.EditorLineNumbers || 'on',
+    EditorRenderWhitespace: control('settings-render-whitespace')?.value || settings.EditorRenderWhitespace || 'selection',
+    EditorCursorStyle: control('settings-cursor-style')?.value || settings.EditorCursorStyle || 'line',
+    EditorSmoothScrolling: control('settings-smooth-scrolling') ? control('settings-smooth-scrolling').checked : (settings.EditorSmoothScrolling !== false),
+    EditorBracketColorization: control('settings-bracket-colorization') ? control('settings-bracket-colorization').checked : (settings.EditorBracketColorization !== false),
+    EditorStickyScroll: control('settings-sticky-scroll') ? control('settings-sticky-scroll').checked : (settings.EditorStickyScroll !== false),
     EditorMinimap: control('settings-minimap').checked,
     EditorWordWrap: control('settings-word-wrap').checked,
     FormatOnSave: control('settings-format-on-save') ? control('settings-format-on-save').checked : false,
+    AgentReasoningEffort: control('settings-reasoning-effort')?.value || settings.AgentReasoningEffort || 'medium',
+    AgentAutoVerify: control('settings-agent-auto-verify') ? control('settings-agent-auto-verify').checked : (settings.AgentAutoVerify !== false),
     AutocompleteEnabled: control('settings-autocomplete-enabled') ? control('settings-autocomplete-enabled').checked : (settings.AutocompleteEnabled !== false),
     AutocompleteBaseUrl: control('settings-autocomplete-url') ? control('settings-autocomplete-url').value.trim() : (settings.AutocompleteBaseUrl || ''),
     AutocompleteModel: control('settings-autocomplete-model') ? control('settings-autocomplete-model').value.trim() : (settings.AutocompleteModel || ''),
@@ -692,14 +750,155 @@ export function setupSettingsUI() {
   syncAllSliders();
 
   // Save Settings
+  mountExtendedEditorAndAgentSettings();
   control('btn-save-settings').addEventListener('click', () => {
     const updated = gatherSettingsFromModal();
+    applyMonacoEditorSettings(updated);
     sendHost('save_settings', {
       settings: updated,
       apiKey: control('settings-api-key').value.trim(),
       clearApiKey: apiKeyClearRequested
     });
   });
+}
+
+function mountExtendedEditorAndAgentSettings() {
+  const editorTab = document.getElementById('tab-editor');
+  if (editorTab && !document.getElementById('voidcode-editor-ergonomics-well')) {
+    const well = document.createElement('div');
+    well.id = 'voidcode-editor-ergonomics-well';
+    well.className = 'control-well';
+    well.style.marginTop = '12px';
+    setHtml(well, html`
+      <div class="label-row" style="margin-bottom:8px;">
+        <label style="font-weight:600;">Editor ergonomics &amp; rendering</label>
+        <span class="val-badge is-muted">Live Monaco</span>
+      </div>
+      <div class="form-row-2" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label for="settings-font-family">Font family</label>
+          <input type="text" id="settings-font-family" value="'JetBrains Mono', 'Cascadia Code', Consolas, monospace" placeholder="'JetBrains Mono', monospace" />
+        </div>
+        <div class="form-group">
+          <label for="settings-tab-size">Tab size</label>
+          <select id="settings-tab-size">
+            <option value="2">2 spaces</option>
+            <option value="4" selected>4 spaces</option>
+            <option value="8">8 spaces</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label for="settings-line-numbers">Line numbers</label>
+          <select id="settings-line-numbers">
+            <option value="on" selected>Standard</option>
+            <option value="relative">Relative (Vim style)</option>
+            <option value="off">Hidden</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="settings-render-whitespace">Render whitespace</label>
+          <select id="settings-render-whitespace">
+            <option value="selection" selected>Selection</option>
+            <option value="boundary">Boundary</option>
+            <option value="all">All</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label for="settings-cursor-style">Cursor style</label>
+          <select id="settings-cursor-style">
+            <option value="line" selected>Line</option>
+            <option value="block">Block</option>
+            <option value="underline">Underline</option>
+          </select>
+        </div>
+        <div class="form-group" style="justify-content:flex-end;">
+          <label class="setting-switch-row" for="settings-insert-spaces" style="margin:0;">
+            <div class="toggle-copy">
+              <span class="toggle-title">Insert spaces</span>
+              <span class="toggle-sub">Use spaces instead of hard tab characters</span>
+            </div>
+            <input type="checkbox" class="glass-switch" id="settings-insert-spaces" checked />
+          </label>
+        </div>
+      </div>
+      <div class="toggles-grid-2">
+        <label class="setting-switch-row" for="settings-font-ligatures">
+          <div class="toggle-copy">
+            <span class="toggle-title">Font ligatures</span>
+            <span class="toggle-sub">Render programming ligatures (=&gt;, !=, ===)</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-font-ligatures" checked />
+        </label>
+        <label class="setting-switch-row" for="settings-smooth-scrolling">
+          <div class="toggle-copy">
+            <span class="toggle-title">Smooth scrolling</span>
+            <span class="toggle-sub">Animate scroll position transitions in Monaco</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-smooth-scrolling" checked />
+        </label>
+        <label class="setting-switch-row" for="settings-bracket-colorization">
+          <div class="toggle-copy">
+            <span class="toggle-title">Bracket pair colors</span>
+            <span class="toggle-sub">Colorize nested parentheses and braces</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-bracket-colorization" checked />
+        </label>
+        <label class="setting-switch-row" for="settings-sticky-scroll">
+          <div class="toggle-copy">
+            <span class="toggle-title">Sticky scroll scopes</span>
+            <span class="toggle-sub">Pin enclosing function/class headers while scrolling</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-sticky-scroll" checked />
+        </label>
+      </div>
+    `);
+    const acWell = document.getElementById('voidcode-autocomplete-well');
+    if (acWell && acWell.parentNode === editorTab) {
+      editorTab.insertBefore(well, acWell);
+    } else {
+      editorTab.appendChild(well);
+    }
+  }
+
+  const promptTab = document.getElementById('tab-prompt');
+  if (promptTab && !document.getElementById('voidcode-agent-reasoning-well')) {
+    const agentWell = document.createElement('div');
+    agentWell.id = 'voidcode-agent-reasoning-well';
+    agentWell.className = 'control-well';
+    agentWell.style.marginTop = '10px';
+    setHtml(agentWell, html`
+      <div class="label-row" style="margin-bottom:8px;">
+        <label style="font-weight:600;">VoidAgent reasoning &amp; memory</label>
+        <button type="button" class="btn btn--quiet btn--xs" id="btn-open-memory-from-settings" style="white-space:nowrap;flex-shrink:0;">Open Memory Bank</button>
+      </div>
+      <div class="form-row-2" style="align-items:center;">
+        <div class="form-group">
+          <label for="settings-reasoning-effort">Reasoning effort (o3 / o4 / Claude / DeepSeek)</label>
+          <select id="settings-reasoning-effort">
+            <option value="low">Low (Fastest, minimal thinking tokens)</option>
+            <option value="medium" selected>Medium (Balanced quality &amp; latency)</option>
+            <option value="high">High (Deep reasoning / extended thinking)</option>
+          </select>
+        </div>
+        <label class="setting-switch-row" for="settings-agent-auto-verify" style="margin:0;">
+          <div class="toggle-copy">
+            <span class="toggle-title">Auto-verify after edits</span>
+            <span class="toggle-sub">Instruct VoidAgent to inspect LSP diagnostics after patching code</span>
+          </div>
+          <input type="checkbox" class="glass-switch" id="settings-agent-auto-verify" checked />
+        </label>
+      </div>
+    `);
+    promptTab.appendChild(agentWell);
+    document.getElementById('btn-open-memory-from-settings')?.addEventListener('click', () => {
+      globalThis.openMemoryBankModal?.();
+    });
+  }
 }
 
 // (boot, bridge switch, palette), and the Workspace Trust subscription installs here instead of in
@@ -709,6 +908,7 @@ export function init(ctx = {}) {
 
   Object.assign(globalThis, {
     applySettingsToUI,
+    applyMonacoEditorSettings,
     gatherSettingsFromModal,
     applyReadabilityMode,
     setupReadabilityModes,

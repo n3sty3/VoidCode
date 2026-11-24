@@ -7,7 +7,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RootNamespace>VoidCode</RootNamespace>
     <AssemblyName>VoidCode.Core</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>VoidCode Core</Product>
     <Company>VoidCode</Company>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <PackageReference Include="Iced" Version="1.22.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 

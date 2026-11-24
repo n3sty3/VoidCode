@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.1.0 — Cross-Platform & Flagship AI Workbench Release
+
+### Native Cross-Platform (Windows, macOS Apple Silicon/Intel & Linux)
+- **Native macOS (`VoidCode.app` + `.dmg`) & Linux (`.tar.gz` / `.deb`) Hosts:** Extracted `VoidCode.Core` (`net10.0`) and `HostController` shared between Windows WPF/WebView2 and `VoidCode.Mac` (`Photino.NET` WKWebView / WebKitGTK), complete with POSIX `openpty`/`posix_spawn` interactive PTY (`UnixPty`), macOS Keychain secret storage, Mach-O binary inspection, macOS `⌘` shortcuts, Homebrew Cask, Winget, and Scoop manifests.
+- **Multi-Window Support (`Ctrl+Shift+N` / `⌘⇧N`):** Launch independent VoidCode windows with isolated per-PID WebView2 profiles.
+
+### VoidAgent Core Upgrades & Flagship AI Workflows
+- **Persistent Cross-Session Agent Memory Bank (`save_memory`, `delete_memory`, Command Palette -> Memory Bank):** VoidAgent now remembers project build commands, repo invariants, and global operator preferences across sessions (`.voidcode/memory.json` + global profile), with a full glass Memory Bank modal to inspect, add, filter, and delete memories.
+- **Provider Reasoning Effort & Extended Thinking:** Configurable **Reasoning Effort** (`low` / `medium` / `high`) wired to OpenAI reasoning models (`o1`/`o3`/`o4`/`gpt-5`) and native Anthropic Claude 3.7/4 extended thinking budgets, plus **Auto-Verify after Edits** toggle.
+- **Mission Control — Parallel Git-Worktree Agents (`Ctrl+Shift+B`):** Spawn multiple isolated background VoidAgent missions in parallel Git worktrees, inspect diffs, merge cleanly, or discard.
+- **AI Tab Autocomplete (FIM Ghost Text) + Local AI Auto-Discovery:** Real-time inline Monaco ghost text backed by a dedicated fast/local model slot (Ollama / LM Studio / Groq / Gemini Flash) with 1-click **Scan Local AI**.
+- **AI Branch & Pre-PR Code Reviewer:** Audits your feature branch vs `main`/`master` (or uncommitted changes) into severity-tagged findings (`CRITICAL`, `WARNING`, `SUGGESTION`) with clickable `file:line` jumps into Monaco and 1-click **Fix with VoidAgent**.
+- **Live Cost (`$`) & Prompt-Cache Savings:** Real-time Anthropic ephemeral `cache_control`, cached token tracking, and per-turn USD cost estimation.
+- **Hybrid AST-Boundary + Semantic Vector Codebase Index** and **Streamable HTTP/SSE MCP Transport + 1-Click MCP Gallery**.
+
+### Built-In Developer Tools & Obsidian Glass Polish
+- **Custom Obsidian Glass Monaco Right-Click Context Menu:** Replaced Monaco's default gray context menu with VoidCode's native frosted-glass `.context-menu` featuring grouped VoidAgent actions, LSP navigation/refactoring, clipboard controls, and keyboard navigation.
+- **Built-In API / HTTP Client (`Ctrl+Shift+R`):** Native Postman/Thunder-Client-style REST workbench with headers, JSON body, request history, latency/status metrics, pretty JSON output, `.http` parser, and 1-click **Generate Types / Tests with VoidAgent**.
+- **Built-In SQLite Database Explorer:** Powered by `Microsoft.Data.Sqlite` — auto-discovers `.db`/`.sqlite` files in the workspace, inspects tables/columns/row-counts, runs SQL queries in a scrollable grid, and attaches schemas directly to VoidAgent.
+- **1-Click "Import from VS Code / Cursor":** Detects VS Code, VS Code Insiders, and Cursor profiles across Windows/macOS/Linux and imports editor settings and recent folders in a single click.
+- **Native x86/x86-64 Disassembler & Hex Workbench (`Ctrl+Shift+X`):** Pure-C# `Iced` disassembler and interactive hex/ASCII workbench.
+- **Expanded Live Monaco Editor Settings:** Added live controls for Font Family, Tab Size, Spaces vs Tabs, Font Ligatures, Line Numbers (`on`/`relative`/`off`), Render Whitespace, Cursor Style, Smooth Scrolling, Bracket Pair Colorization, and Sticky Scroll — plus fixed `Scan Local AI` button overflow in Settings.
+
 ## v1.0.0 — Production Release
 
 ### Standalone Windows Setup Installer & Desktop Distribution

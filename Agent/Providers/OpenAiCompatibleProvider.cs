@@ -50,6 +50,16 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
         return raw;
     }
 
+    internal static bool IsOpenAiReasoningModel(string? modelId)
+    {
+        var m = (modelId ?? "").Trim().ToLowerInvariant();
+        if (m.Contains('/')) m = m[(m.LastIndexOf('/') + 1)..];
+        return m.StartsWith("o1", StringComparison.Ordinal)
+            || m.StartsWith("o3", StringComparison.Ordinal)
+            || m.StartsWith("o4", StringComparison.Ordinal)
+            || m.StartsWith("gpt-5", StringComparison.Ordinal);
+    }
+
     internal OpenAiCompatibleProvider(
         HttpClient? http = null,
         RetryPolicy? retry = null,
@@ -94,6 +104,11 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
                 ["max_tokens"] = request.MaxTokens,
                 ["stream"] = request.Stream
             };
+            var effort = (request.ReasoningEffort ?? "medium").Trim().ToLowerInvariant();
+            if (effort is "low" or "high" && IsOpenAiReasoningModel(modelId))
+            {
+                body["reasoning_effort"] = effort;
+            }
             if (withTools && request.Tools != null)
             {
                 body["tools"] = JsonNode.Parse(request.Tools.ToJsonString());

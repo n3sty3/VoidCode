@@ -149,14 +149,37 @@ internal sealed class AnthropicProvider : IChatProvider
             });
         }
 
+        var maxTokens = Math.Max(1, request.MaxTokens);
         var body = new JsonObject
         {
             ["model"] = request.Model,
-            ["max_tokens"] = Math.Max(1, request.MaxTokens),
+            ["max_tokens"] = maxTokens,
             ["temperature"] = request.Temperature,
             ["stream"] = request.Stream,
             ["messages"] = messagesArray
         };
+
+        var effort = (request.ReasoningEffort ?? "medium").Trim().ToLowerInvariant();
+        var modelLower = (request.Model ?? "").Trim().ToLowerInvariant();
+        bool supportsExtendedThinking = modelLower.Contains("claude-3-7", StringComparison.Ordinal)
+            || modelLower.Contains("claude-sonnet-4", StringComparison.Ordinal)
+            || modelLower.Contains("claude-opus-4", StringComparison.Ordinal)
+            || modelLower.Contains("claude-4", StringComparison.Ordinal);
+        if (effort == "high" && supportsExtendedThinking && maxTokens >= 2048)
+        {
+            var budget = Math.Clamp(maxTokens / 2, 1024, 16000);
+            if (budget >= maxTokens) budget = maxTokens - 512;
+            if (budget >= 1024)
+            {
+                body["thinking"] = new JsonObject
+                {
+                    ["type"] = "enabled",
+                    ["budget_tokens"] = budget
+                };
+                // Anthropic requires temperature = 1 when extended thinking is enabled.
+                body["temperature"] = 1;
+            }
+        }
 
         if (systemParts.Count > 0)
         {

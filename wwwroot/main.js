@@ -27,6 +27,12 @@ import { init as initInlineDiff } from './modules/inline-diff.js';
 import { init as initMissionControl } from './modules/mission-control.js';
 import { init as initMcpGallery } from './modules/mcp-gallery.js';
 import { init as initBinaryWorkbench } from './modules/binary-workbench.js';
+import { init as initEditorContextMenu } from './modules/editor-context-menu.js';
+import { init as initMemoryBank } from './modules/memory-bank.js';
+import { init as initBranchReview } from './modules/branch-review.js';
+import { init as initApiClient } from './modules/api-client.js';
+import { init as initIdeImport } from './modules/ide-import.js';
+import { init as initDbExplorer } from './modules/db-explorer.js';
 import { init as initGit } from './modules/git.js';
 import { init as initTerminal } from './modules/terminal.js';
 import { init as initShell } from './modules/shell.js';
@@ -103,6 +109,12 @@ initInlineDiff(); // floating inline AI Accept / Diff / Revert bar inside Monaco
 initMissionControl(); // Mission Control parallel Git-worktree agents
 initMcpGallery(); // 1-click MCP Server Gallery (Stdio & HTTP/SSE)
 initBinaryWorkbench(); // Native Iced x86-64 Disassembler & Hex Workbench
+initEditorContextMenu(); // Obsidian Glass custom Monaco editor right-click context menu
+initMemoryBank(); // Persistent Cross-Session Agent Memory Bank
+initBranchReview(); // AI Pre-PR Branch Code Reviewer
+initApiClient(); // Built-In API / HTTP Client Studio
+initIdeImport(); // 1-Click Import from VS Code / Cursor
+initDbExplorer(); // Built-In SQLite Database Explorer
 initGit(); // publishes the git source-control + diff entry points
 initIcons(); // the themed icon pack, so the shell can be lazy
 initTerminal(); // publishes the PTY terminal entry points

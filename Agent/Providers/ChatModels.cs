@@ -24,6 +24,7 @@ internal sealed class ChatRequest
     internal double Temperature { get; init; } = 0.2;
     internal int MaxTokens { get; init; } = 8192;
     internal bool Stream { get; init; } = true;
+    internal string ReasoningEffort { get; init; } = "medium";
 }
 
 internal abstract record ChatEvent;

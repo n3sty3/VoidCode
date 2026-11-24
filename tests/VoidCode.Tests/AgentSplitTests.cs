@@ -26,7 +26,7 @@ public class AgentSplitTests
         {
             "read_file", "view_image", "write_file", "patch_file", "delete_file", "move_file", "list_dir",
             "search_code", "search_codebase", "run_command", "git_status_diff", "get_diagnostics",
-            "inspect_binary", "web_fetch"
+            "inspect_binary", "web_fetch", "save_memory", "delete_memory"
         };
         var names = ToolNames();
 

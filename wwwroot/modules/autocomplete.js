@@ -178,6 +178,7 @@ async function runLocalDiscovery(resultsHost) {
         const useAgentBtn = document.createElement('button');
         useAgentBtn.type = 'button';
         useAgentBtn.className = 'btn btn--quiet btn--xs';
+        useAgentBtn.style.cssText = 'white-space:nowrap;flex-shrink:0;';
         useAgentBtn.textContent = 'Agent';
         useAgentBtn.addEventListener('click', () => {
           const provEl = /** @type {HTMLInputElement | null} */ (document.getElementById('settings-provider'));
@@ -194,6 +195,7 @@ async function runLocalDiscovery(resultsHost) {
         const useTabBtn = document.createElement('button');
         useTabBtn.type = 'button';
         useTabBtn.className = 'btn btn--quiet btn--xs';
+        useTabBtn.style.cssText = 'white-space:nowrap;flex-shrink:0;';
         useTabBtn.textContent = 'Tab AI';
         useTabBtn.addEventListener('click', () => {
           const acUrlEl = /** @type {HTMLInputElement | null} */ (document.getElementById('settings-autocomplete-url'));
@@ -224,10 +226,10 @@ function mountSettingsPanel() {
   const providerTab = document.getElementById('tab-provider');
   if (providerTab && !document.getElementById('btn-discover-local-models')) {
     const scanRow = document.createElement('div');
-    scanRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;';
+    scanRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));background:var(--surface-1,rgba(255,255,255,0.02));';
     setHtml(scanRow, html`
-      <span style="font-size:11px;opacity:0.75;">Local AI: auto-detect running Ollama (11434) or LM Studio (1234) models</span>
-      <button type="button" class="btn btn--quiet btn--sm" id="btn-discover-local-models">Scan Local AI</button>
+      <span style="font-size:12px;opacity:0.8;line-height:1.35;">Local AI: auto-detect running Ollama (11434) or LM Studio (1234) models</span>
+      <button type="button" class="btn btn--quiet btn--sm" id="btn-discover-local-models" style="white-space:nowrap;flex-shrink:0;min-width:max-content;">Scan Local AI</button>
     `);
     const resultsHost = document.createElement('div');
     resultsHost.id = 'local-discovery-results';
