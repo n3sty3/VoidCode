@@ -8,7 +8,7 @@
 // Collaborators that are still classic scripts: the editor handle comes from getMonacoEditor(), the
 // Slider/custom-select painters and the tab savers are reached as globals, and the operator name
 // Comes from getCurrentOperator() instead of a script-scoped `let`.
-import { html, setHtml } from '../core/markdown.js';
+import { setHtml } from '../core/markdown.js';
 import { applyThemeAndOptics } from './theme.js';
 
 let hostSend = (action, data) => globalThis.VoidBridge.send(action, data);
@@ -112,10 +112,9 @@ export function applySettingsToUI(s, settingScopes = null) {
   if (bracketColorEl) bracketColorEl.checked = s.EditorBracketColorization !== false;
   const stickyScrollEl = control('settings-sticky-scroll');
   if (stickyScrollEl) stickyScrollEl.checked = s.EditorStickyScroll !== false;
-  const reasoningEl = control('settings-reasoning-effort');
-  if (reasoningEl) reasoningEl.value = s.AgentReasoningEffort || 'medium';
   const autoVerifyEl = control('settings-agent-auto-verify');
   if (autoVerifyEl) autoVerifyEl.checked = s.AgentAutoVerify !== false;
+  syncReasoningEffortPill(s.AgentReasoningEffort || 'medium');
   const autoApp = control('settings-auto-approve');
   const isFullSystem = !!s.AutoApproveTools || s.AuthorityMode === 'full_system';
   const isWorkspaceAuto = !isFullSystem && s.AuthorityMode === 'workspace_auto';
@@ -193,7 +192,7 @@ export function gatherSettingsFromModal() {
     EditorMinimap: control('settings-minimap').checked,
     EditorWordWrap: control('settings-word-wrap').checked,
     FormatOnSave: control('settings-format-on-save') ? control('settings-format-on-save').checked : false,
-    AgentReasoningEffort: control('settings-reasoning-effort')?.value || settings.AgentReasoningEffort || 'medium',
+    AgentReasoningEffort: settings.AgentReasoningEffort || 'medium',
     AgentAutoVerify: control('settings-agent-auto-verify') ? control('settings-agent-auto-verify').checked : (settings.AgentAutoVerify !== false),
     AutocompleteEnabled: control('settings-autocomplete-enabled') ? control('settings-autocomplete-enabled').checked : (settings.AutocompleteEnabled !== false),
     AutocompleteBaseUrl: control('settings-autocomplete-url') ? control('settings-autocomplete-url').value.trim() : (settings.AutocompleteBaseUrl || ''),
@@ -750,7 +749,7 @@ export function setupSettingsUI() {
   syncAllSliders();
 
   // Save Settings
-  mountExtendedEditorAndAgentSettings();
+  setupAgentChatReasoningAndMemoryControls();
   control('btn-save-settings').addEventListener('click', () => {
     const updated = gatherSettingsFromModal();
     applyMonacoEditorSettings(updated);
@@ -762,141 +761,51 @@ export function setupSettingsUI() {
   });
 }
 
-function mountExtendedEditorAndAgentSettings() {
-  const editorTab = document.getElementById('tab-editor');
-  if (editorTab && !document.getElementById('voidcode-editor-ergonomics-well')) {
-    const well = document.createElement('div');
-    well.id = 'voidcode-editor-ergonomics-well';
-    well.className = 'control-well';
-    well.style.marginTop = '12px';
-    setHtml(well, html`
-      <div class="label-row">
-        <label style="font-weight:600;">Editor ergonomics &amp; rendering</label>
-        <span class="val-badge is-muted">Live Monaco</span>
-      </div>
-      <div class="form-group">
-        <label for="settings-font-family">Font family</label>
-        <input type="text" id="settings-font-family" value="'JetBrains Mono', 'Cascadia Code', Consolas, monospace" placeholder="'JetBrains Mono', 'Cascadia Code', monospace" />
-      </div>
-      <div class="form-row-2">
-        <div class="form-group">
-          <label for="settings-tab-size">Tab size</label>
-          <select id="settings-tab-size">
-            <option value="2">2 spaces</option>
-            <option value="4" selected>4 spaces</option>
-            <option value="8">8 spaces</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="settings-cursor-style">Cursor style</label>
-          <select id="settings-cursor-style">
-            <option value="line" selected>Line</option>
-            <option value="block">Block</option>
-            <option value="underline">Underline</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-group">
-          <label for="settings-line-numbers">Line numbers</label>
-          <select id="settings-line-numbers">
-            <option value="on" selected>Standard</option>
-            <option value="relative">Relative (Vim style)</option>
-            <option value="off">Hidden</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="settings-render-whitespace">Render whitespace</label>
-          <select id="settings-render-whitespace">
-            <option value="selection" selected>Selection</option>
-            <option value="boundary">Boundary</option>
-            <option value="all">All</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-      </div>
-      <div class="toggles-grid-2">
-        <label class="setting-switch-row" for="settings-insert-spaces">
-          <div class="toggle-copy">
-            <span class="toggle-title">Insert spaces</span>
-            <span class="toggle-sub">Use spaces instead of hard tab characters</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-insert-spaces" checked />
-        </label>
-        <label class="setting-switch-row" for="settings-font-ligatures">
-          <div class="toggle-copy">
-            <span class="toggle-title">Font ligatures</span>
-            <span class="toggle-sub">Render programming ligatures (=&gt;, !=, ===)</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-font-ligatures" checked />
-        </label>
-        <label class="setting-switch-row" for="settings-smooth-scrolling">
-          <div class="toggle-copy">
-            <span class="toggle-title">Smooth scrolling</span>
-            <span class="toggle-sub">Animate scroll position transitions in Monaco</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-smooth-scrolling" checked />
-        </label>
-        <label class="setting-switch-row" for="settings-bracket-colorization">
-          <div class="toggle-copy">
-            <span class="toggle-title">Bracket pair colors</span>
-            <span class="toggle-sub">Colorize nested parentheses and braces</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-bracket-colorization" checked />
-        </label>
-        <label class="setting-switch-row" for="settings-sticky-scroll" style="grid-column:1 / -1;">
-          <div class="toggle-copy">
-            <span class="toggle-title">Sticky scroll scopes</span>
-            <span class="toggle-sub">Pin enclosing function and class headers at the top while scrolling</span>
-          </div>
-          <input type="checkbox" class="glass-switch" id="settings-sticky-scroll" checked />
-        </label>
-      </div>
-    `);
-    const acWell = document.getElementById('voidcode-autocomplete-well');
-    if (acWell && acWell.parentNode === editorTab) {
-      editorTab.insertBefore(well, acWell);
-    } else {
-      editorTab.appendChild(well);
-    }
-  }
+const REASONING_LEVELS = ['low', 'medium', 'high'];
+const REASONING_LABELS = { low: 'Think: Low', medium: 'Think: Med', high: 'Think: High' };
+const REASONING_HINTS = {
+  low: 'Reasoning effort: Low (fastest, minimal thinking tokens) — click to cycle',
+  medium: 'Reasoning effort: Medium (balanced quality & speed) — click to cycle',
+  high: 'Reasoning effort: High (deep reasoning / extended thinking) — click to cycle'
+};
 
-  const promptTab = document.getElementById('tab-prompt');
-  if (promptTab && !document.getElementById('voidcode-agent-reasoning-well')) {
-    const agentWell = document.createElement('div');
-    agentWell.id = 'voidcode-agent-reasoning-well';
-    agentWell.className = 'control-well';
-    agentWell.style.marginTop = '10px';
-    setHtml(agentWell, html`
-      <div class="label-row">
-        <label style="font-weight:600;">VoidAgent reasoning &amp; memory</label>
-        <button type="button" class="btn btn--quiet btn--xs" id="btn-open-memory-from-settings" style="white-space:nowrap;flex-shrink:0;">Open Memory Bank</button>
-      </div>
-      <div class="form-group">
-        <label for="settings-reasoning-effort">Reasoning effort (o3 / o4 / Claude / DeepSeek)</label>
-        <select id="settings-reasoning-effort">
-          <option value="low">Low (Fastest, minimal thinking tokens)</option>
-          <option value="medium" selected>Medium (Balanced quality &amp; latency)</option>
-          <option value="high">High (Deep reasoning / extended thinking)</option>
-        </select>
-      </div>
-      <label class="setting-switch-row" for="settings-agent-auto-verify">
-        <div class="toggle-copy">
-          <span class="toggle-title">Auto-verify after edits</span>
-          <span class="toggle-sub">Instruct VoidAgent to inspect LSP diagnostics after patching code</span>
-        </div>
-        <input type="checkbox" class="glass-switch" id="settings-agent-auto-verify" checked />
-      </label>
-    `);
-    promptTab.appendChild(agentWell);
-    document.getElementById('btn-open-memory-from-settings')?.addEventListener('click', () => {
+export function syncReasoningEffortPill(effort) {
+  const btn = document.getElementById('btn-agent-reasoning-effort');
+  if (!btn) return;
+  const level = REASONING_LEVELS.includes(effort) ? effort : 'medium';
+  btn.textContent = REASONING_LABELS[level];
+  btn.title = REASONING_HINTS[level];
+  btn.dataset.effort = level;
+  btn.style.color = level === 'high' ? 'var(--glacier)' : '';
+  btn.style.borderColor = level === 'high' ? 'var(--glacier-line)' : '';
+  btn.style.background = level === 'high' ? 'var(--glacier-wash)' : '';
+}
+
+function setupAgentChatReasoningAndMemoryControls() {
+  const memBtn = document.getElementById('btn-agent-memory-bank');
+  if (memBtn && !memBtn.dataset.wired) {
+    memBtn.dataset.wired = 'true';
+    memBtn.addEventListener('click', () => {
       globalThis.openMemoryBankModal?.();
     });
   }
 
-  // Upgrade the newly injected <select> controls to VoidCode's themed frosted-glass selects.
-  globalThis.setupCustomSelects?.();
-  globalThis.syncAllCustomSelects?.();
+  const reasonBtn = document.getElementById('btn-agent-reasoning-effort');
+  if (reasonBtn && !reasonBtn.dataset.wired) {
+    reasonBtn.dataset.wired = 'true';
+    const current = window.VoidState?.get?.('settings')?.AgentReasoningEffort || 'medium';
+    syncReasoningEffortPill(current);
+    reasonBtn.addEventListener('click', () => {
+      const s = { ...(window.VoidState?.get?.('settings') || {}) };
+      const cur = REASONING_LEVELS.includes(s.AgentReasoningEffort) ? s.AgentReasoningEffort : 'medium';
+      const next = REASONING_LEVELS[(REASONING_LEVELS.indexOf(cur) + 1) % REASONING_LEVELS.length];
+      s.AgentReasoningEffort = next;
+      window.VoidState?.set?.('settings', s);
+      syncReasoningEffortPill(next);
+      sendHost('save_settings', { settings: s });
+      globalThis.showToast?.(`VoidAgent reasoning effort: ${next}`, 'info');
+    });
+  }
 }
 
 // (boot, bridge switch, palette), and the Workspace Trust subscription installs here instead of in

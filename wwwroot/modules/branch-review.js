@@ -13,7 +13,7 @@ function ensureModal() {
   const overlay = document.createElement('div');
   overlay.id = 'branch-review-modal';
   overlay.className = 'modal-overlay';
-  overlay.style.display = 'none';
+  overlay.style.cssText = 'display:none;z-index:2600;';
 
   const card = document.createElement('div');
   card.className = 'glass glass--float';

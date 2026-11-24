@@ -13,7 +13,7 @@ function ensureModal() {
   const overlay = document.createElement('div');
   overlay.id = 'ide-import-modal';
   overlay.className = 'modal-overlay';
-  overlay.style.display = 'none';
+  overlay.style.cssText = 'display:none;z-index:2600;';
 
   const card = document.createElement('div');
   card.className = 'glass glass--float';
@@ -118,20 +118,22 @@ function mountSettingsShortcut() {
   const editorTab = document.getElementById('tab-editor');
   if (!editorTab || document.getElementById('voidcode-ide-import-banner')) return;
 
-  const banner = document.createElement('div');
-  banner.id = 'voidcode-ide-import-banner';
-  banner.className = 'control-well';
-  banner.style.marginTop = '12px';
-  setHtml(banner, html`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;">
-      <div style="min-width:0;flex:1;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Switching from VS Code or Cursor?</div>
-        <div style="font-size:11px;opacity:0.72;line-height:1.4;">Import your editor font, tabs, minimap, wrap, line numbers, and recent folders in one click.</div>
+  const wrap = document.createElement('div');
+  wrap.id = 'voidcode-ide-import-banner';
+  wrap.style.marginTop = '6px';
+  setHtml(wrap, html`
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-disabled);padding:10px 2px 6px;border-top:1px solid var(--seam);">Migrate</div>
+    <div class="control-well">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Switching from VS Code or Cursor?</div>
+          <div style="font-size:11px;opacity:0.72;line-height:1.4;">Import your editor font, tabs, minimap, wrap, line numbers, and recent folders in one click.</div>
+        </div>
+        <button type="button" class="btn btn--quiet btn--sm" id="btn-open-ide-importer" style="white-space:nowrap;flex-shrink:0;">Import Settings…</button>
       </div>
-      <button type="button" class="btn btn--quiet btn--sm" id="btn-open-ide-importer" style="white-space:nowrap;flex-shrink:0;">Import Settings…</button>
     </div>
   `);
-  editorTab.appendChild(banner);
+  editorTab.appendChild(wrap);
   document.getElementById('btn-open-ide-importer')?.addEventListener('click', openIdeImportModal);
 }
 

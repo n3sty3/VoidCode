@@ -271,7 +271,9 @@ function mountSettingsPanel() {
     </div>
   `);
 
-  editorTab.appendChild(well);
+  const slot = document.getElementById('tab-editor-autocomplete-slot');
+  const host = slot || editorTab;
+  host.appendChild(well);
   syncSettingsFields(getSettings());
 }
 

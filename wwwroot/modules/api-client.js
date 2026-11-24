@@ -36,7 +36,7 @@ function ensureModal() {
   const overlay = document.createElement('div');
   overlay.id = 'api-client-modal';
   overlay.className = 'modal-overlay';
-  overlay.style.display = 'none';
+  overlay.style.cssText = 'display:none;z-index:2600;';
 
   const card = document.createElement('div');
   card.className = 'glass glass--float';
@@ -97,6 +97,7 @@ function ensureModal() {
   overlay.appendChild(card);
   document.body.appendChild(overlay);
   modalEl = overlay;
+  globalThis.setupCustomSelects?.();
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeApiClientModal();
