@@ -118,6 +118,10 @@ function buildFileTreeNode(node, depth = 0) {
     row.addEventListener('click', () => {
       selectedTreeNode = node;
       row.focus();
+      if (/\.(db|sqlite|sqlite3)$/i.test(node.name || node.path || '') && typeof globalThis.openDbExplorerModal === 'function') {
+        globalThis.openDbExplorerModal(node.path);
+        return;
+      }
       sendHost('read_file', { path: node.path });
     });
     row.addEventListener('contextmenu', (event) => {

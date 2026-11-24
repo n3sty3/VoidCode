@@ -259,9 +259,16 @@ function attachSchemaToAgent() {
   globalThis.showToast?.('Database schema attached to VoidAgent', 'success');
 }
 
-export function openDbExplorerModal() {
+export function openDbExplorerModal(initialPath = '') {
   const el = ensureModal();
   el.style.display = 'flex';
+  const clean = typeof initialPath === 'string' ? initialPath.trim() : '';
+  if (clean) {
+    activeDbPath = clean;
+    const inp = /** @type {HTMLInputElement | null} */ (document.getElementById('db-path-input'));
+    if (inp) inp.value = clean;
+    loadSchema(clean);
+  }
   discoverDatabases();
 }
 

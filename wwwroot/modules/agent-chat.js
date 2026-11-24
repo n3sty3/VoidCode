@@ -29,20 +29,76 @@ function control(id) {
 //   * everything else (network, rate limit, host error) -> retry, which is what the user was about to do.
 // The card reuses the existing .empty-state vocabulary, so it needs no new CSS.
 const CONFIG_FAILURE = /(api key|unauthor|forbidden|401|403|model name|base url|not configured|invalid model)/i;
+const RATE_LIMIT_FAILURE = /(429|too\s*many\s*requests|rate\s*limit|quota|credits)/i;
+
+function parseAgentErrorMessage(rawMessage) {
+  const raw = String(rawMessage || 'The agent run failed.').trim();
+  const statusMatch = /\((\d{3})[^)]*\)/.exec(raw);
+  const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : null;
+
+  let summary = raw;
+  let hasDetails = false;
+
+  const jsonStart = raw.indexOf('{');
+  if (jsonStart >= 0) {
+    try {
+      const parsed = JSON.parse(raw.slice(jsonStart));
+      const extracted = parsed?.error?.message || parsed?.message || parsed?.detail;
+      if (typeof extracted === 'string' && extracted.trim()) {
+        summary = extracted.trim();
+        hasDetails = true;
+      }
+    } catch {
+      // Malformed/truncated JSON: fall back to regex extraction of "message":"..."
+      const msgMatch = /"message"\s*:\s*"((?:\\.|[^"\\])+)"/.exec(raw);
+      if (msgMatch) {
+        summary = msgMatch[1].replace(/\\"/g, '"').replace(/\\n/g, ' ').trim();
+        hasDetails = true;
+      }
+    }
+  }
+
+  let badge = '';
+  if (statusCode === 429 || RATE_LIMIT_FAILURE.test(raw)) badge = '429 Rate limit';
+  else if (statusCode === 401 || statusCode === 403) badge = `${statusCode} Auth error`;
+  else if (statusCode === 404) badge = '404 Not found';
+  else if (statusCode && statusCode >= 500) badge = `${statusCode} Server error`;
+
+  return { badge, summary, raw, hasDetails, isRateLimit: statusCode === 429 || RATE_LIMIT_FAILURE.test(raw) };
+}
 
 export function renderAgentError(payload) {
   const message = String(payload && payload.message ? payload.message : 'The agent run failed.');
   const container = control('agent-chat-container');
   if (!container) return false;
 
+  const parsed = parseAgentErrorMessage(message);
+
   const card = document.createElement('div');
   card.className = 'empty-state agent-error-state';
   card.setAttribute('role', 'alert');
+  card.style.cssText = 'text-align:left;align-items:stretch;gap:8px;padding:12px 14px;overflow:hidden;border-color:rgba(248,113,113,0.32);background:rgba(248,113,113,0.06);';
+
+  const headRow = document.createElement('div');
+  headRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;';
+
   const title = document.createElement('p');
+  title.style.cssText = 'margin:0;font-weight:600;font-size:13px;color:var(--coral,#f87171);';
   title.textContent = 'Agent run failed';
+  headRow.appendChild(title);
+
+  if (parsed.badge) {
+    const pill = document.createElement('span');
+    pill.style.cssText = 'font-family:var(--font-code);font-size:10.5px;padding:2px 7px;border-radius:999px;background:rgba(248,113,113,0.16);border:1px solid rgba(248,113,113,0.35);color:var(--coral,#f87171);';
+    pill.textContent = parsed.badge;
+    headRow.appendChild(pill);
+  }
+
   const detail = document.createElement('p');
   detail.className = 'empty-hint';
-  detail.textContent = message;
+  detail.style.cssText = 'margin:0;font-size:12px;line-height:1.45;color:var(--text);overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;max-width:100%;';
+  detail.textContent = parsed.summary;
+
   const action = document.createElement('button');
   action.type = 'button';
   action.className = 'btn btn--primary btn--xs';
@@ -53,12 +109,12 @@ export function renderAgentError(payload) {
     if (wantsSettings) globalThis.openSettingsToTab?.('tab-provider');
     else regenerateLastAnswer();
   });
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px;';
+  row.appendChild(action);
+
   if (wantsSettings) {
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.gap = '8px';
-    row.style.justifyContent = 'center';
-    row.style.flexWrap = 'wrap';
     const localBtn = document.createElement('button');
     localBtn.type = 'button';
     localBtn.className = 'btn btn--quiet btn--xs';
@@ -73,11 +129,32 @@ export function renderAgentError(payload) {
         globalThis.syncAllCustomSelects?.();
       }
     });
-    row.append(action, localBtn);
-    card.append(title, detail, row);
-  } else {
-    card.append(title, detail, action);
+    row.appendChild(localBtn);
+  } else if (parsed.isRateLimit && typeof globalThis.openQuickModelSwitcher === 'function') {
+    const switchBtn = document.createElement('button');
+    switchBtn.type = 'button';
+    switchBtn.className = 'btn btn--quiet btn--xs';
+    switchBtn.textContent = 'Switch model';
+    switchBtn.addEventListener('click', () => globalThis.openQuickModelSwitcher?.());
+    row.appendChild(switchBtn);
   }
+
+  card.append(headRow, detail);
+
+  if (parsed.hasDetails) {
+    const detailsEl = document.createElement('details');
+    detailsEl.style.cssText = 'margin-top:2px;font-size:11px;color:var(--text-muted);';
+    const summaryEl = document.createElement('summary');
+    summaryEl.textContent = 'Technical details';
+    summaryEl.style.cssText = 'cursor:pointer;user-select:none;opacity:0.8;';
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:6px 0 0;padding:8px;border-radius:7px;background:rgba(0,0,0,0.32);border:1px solid var(--seam);font-family:var(--font-code);font-size:10.5px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:140px;overflow-y:auto;color:var(--text-muted);';
+    pre.textContent = parsed.raw;
+    detailsEl.append(summaryEl, pre);
+    card.appendChild(detailsEl);
+  }
+
+  card.appendChild(row);
   container.appendChild(card);
   scrollAgentToBottom();
   return true;
