@@ -465,7 +465,90 @@ export function renderLivePreviewFromActiveTab() {
     if (emptyBox) emptyBox.style.display = 'none';
     if (badgeEl) badgeEl.textContent = 'Markdown';
     setHtml(mdBox, raw(renderSafeMarkdown(content)));
+    renderMermaidBlocksInPreview(mdBox);
   }
+}
+
+function renderMermaidBlocksInPreview(root) {
+  if (!root) return;
+  root.querySelectorAll('pre > code.language-mermaid').forEach((codeEl) => {
+    const src = (codeEl.textContent || '').trim();
+    const pre = codeEl.parentElement;
+    if (!pre || !src) return;
+    const edges = [];
+    const nodes = new Map();
+    const edgeRe = /([A-Za-z0-9_]+)(?:\["?([^"\]]+)"?\])?\s*(?:-->|---|\.-+>)\s*(?:\|([^|]+)\|\s*)?([A-Za-z0-9_]+)(?:\["?([^"\]]+)"?\])?/g;
+    let m;
+    while ((m = edgeRe.exec(src)) !== null) {
+      const a = m[1];
+      const b = m[4];
+      if (!nodes.has(a)) nodes.set(a, m[2] || a);
+      else if (m[2]) nodes.set(a, m[2]);
+      if (!nodes.has(b)) nodes.set(b, m[5] || b);
+      else if (m[5]) nodes.set(b, m[5]);
+      edges.push({ from: a, to: b, label: (m[3] || '').trim() });
+    }
+    if (nodes.size === 0 || edges.length === 0) return;
+
+    const keys = Array.from(nodes.keys());
+    const colW = 190;
+    const rowH = 74;
+    const cols = Math.min(3, Math.max(1, keys.length));
+    const coords = new Map();
+    keys.forEach((k, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      coords.set(k, { x: 24 + col * colW, y: 24 + row * rowH });
+    });
+    const width = Math.max(360, cols * colW + 40);
+    const height = Math.max(120, (Math.ceil(keys.length / cols)) * rowH + 36);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.style.cssText = 'width:100%;height:auto;border-radius:10px;border:1px solid var(--seam);background:rgba(10,16,24,0.75);margin:8px 0;display:block;';
+
+    for (const e of edges) {
+      const p1 = coords.get(e.from);
+      const p2 = coords.get(e.to);
+      if (!p1 || !p2) continue;
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', String(p1.x + 76));
+      line.setAttribute('y1', String(p1.y + 18));
+      line.setAttribute('x2', String(p2.x + 76));
+      line.setAttribute('y2', String(p2.y + 18));
+      line.setAttribute('stroke', '#8fd3c1');
+      line.setAttribute('stroke-width', '1.6');
+      line.setAttribute('stroke-opacity', '0.7');
+      svg.appendChild(line);
+    }
+
+    for (const k of keys) {
+      const pos = coords.get(k);
+      const rect = document.createElementNS(svgNS, 'rect');
+      rect.setAttribute('x', String(pos.x));
+      rect.setAttribute('y', String(pos.y));
+      rect.setAttribute('width', '152');
+      rect.setAttribute('height', '36');
+      rect.setAttribute('rx', '8');
+      rect.setAttribute('fill', '#162230');
+      rect.setAttribute('stroke', '#8fd3c1');
+      rect.setAttribute('stroke-opacity', '0.45');
+      svg.appendChild(rect);
+
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', String(pos.x + 76));
+      text.setAttribute('y', String(pos.y + 22));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#e6edf3');
+      text.setAttribute('font-size', '11');
+      const lbl = String(nodes.get(k) || k);
+      text.textContent = lbl.length > 20 ? `${lbl.slice(0, 20)}…` : lbl;
+      svg.appendChild(text);
+    }
+
+    pre.replaceWith(svg);
+  });
 }
 
 export function renderChatImage(path, dataUri, sizeBytes) {
@@ -531,6 +614,8 @@ export function openImagePreview(path, dataUri, sizeBytes) {
 export function setupWorkspaceTools() {
   document.getElementById('btn-new-session')?.addEventListener('click', () => {
     startNewSession();
+    globalThis.clearSessionChangedFiles?.();
+    globalThis.VoidBridge?.request?.('agent_clear_trace', {});
     globalThis.showToast?.('Started new conversation', 'info');
   });
 

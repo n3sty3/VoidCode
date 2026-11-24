@@ -24,9 +24,10 @@ public class AgentSplitTests
     {
         var expected = new[]
         {
-            "read_file", "view_image", "write_file", "patch_file", "delete_file", "move_file", "list_dir",
-            "search_code", "search_codebase", "run_command", "git_status_diff", "get_diagnostics",
-            "inspect_binary", "web_fetch", "save_memory", "delete_memory"
+            "read_file", "view_image", "write_file", "patch_file", "multi_patch_file", "delete_file", "move_file",
+            "list_dir", "glob_files", "search_code", "search_codebase", "run_command", "git_status_diff",
+            "get_diagnostics", "get_lsp_diagnostics", "inspect_binary", "web_fetch", "save_memory", "delete_memory",
+            "delegate_research"
         };
         var names = ToolNames();
 

@@ -25,6 +25,7 @@ internal static class AgentPolicy
     {
         "write_file",
         "patch_file",
+        "multi_patch_file",
         "delete_file",
         "move_file"
     };

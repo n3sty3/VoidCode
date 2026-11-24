@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -12,23 +13,35 @@ using VoidCode.Services;
 
 namespace VoidCode.Agent;
 
+internal sealed record ApprovalDecision(bool Approved, bool ApproveTurn = false, string? Reason = null);
+
 /// <summary>
-/// The autonomous agent turn loop.
-/// Streams through <see cref="IChatProvider"/> (OpenAI-compatible or Anthropic), budgets & compacts
-/// Conversation context before every turn, injects project rules, enforces authority modes and
-/// Untrusted-web escalation, and records every tool decision to the append-only audit log.
+/// VoidAgent v2 autonomous turn loop.
+/// Streams through <see cref="IChatProvider"/>, executes read-only tool batches concurrently,
+/// computes real LCS unified diffs before approval and after edits, enforces authority modes and
+/// untrusted-web escalation, guards against stuck retry loops, supports mid-run operator steering,
+/// and preserves compact cross-turn tool continuity.
 /// </summary>
 internal static class AgentLoop
 {
     /// <summary>Tool approvals waited on by the loop, keyed by the id the operator is answering.</summary>
-    internal static readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> PendingApprovals = new();
+    internal static readonly ConcurrentDictionary<string, TaskCompletionSource<ApprovalDecision>> PendingApprovals = new();
 
-    internal static void ResolveToolApproval(string toolId, bool approved)
+    internal static void ResolveToolApproval(string toolId, bool approved, bool approveTurn = false, string? reason = null)
     {
         if (PendingApprovals.TryRemove(toolId, out var tcs))
         {
-            tcs.TrySetResult(approved);
+            tcs.TrySetResult(new ApprovalDecision(approved, approveTurn, reason));
         }
+    }
+
+    internal static bool IsParallelizableReadOnlyTool(string toolName, string argsJson, string workspacePath, bool isPlanMode)
+    {
+        if (McpManager.IsMcpTool(toolName)) return false;
+        if (!ToolCatalog.PlanModeTools.Contains(toolName)) return false;
+        if (string.Equals(toolName, "delegate_research", StringComparison.OrdinalIgnoreCase)) return false;
+        if (ToolExecutor.AccessesOutsideWorkspace(toolName, argsJson, workspacePath)) return false;
+        return true;
     }
 
     internal static async Task RunAsync(
@@ -50,19 +63,28 @@ internal static class AgentLoop
             return;
         }
 
+        AgentSessionMemory.ClearSteers();
+
         var provider = ProviderFactory.Create(settings);
         var caps = ProviderCapabilityCache.Shared.Get(settings);
         var turn = TurnTransactionLedger.BeginTurn(workspacePath);
         var isPlanMode = string.Equals(modeOverride ?? settings.AgentMode, "plan", StringComparison.OrdinalIgnoreCase);
 
-        // Discover workspace MCP tools only in trusted workspaces and outside read-only plan mode.
         var mcpTools = !isPlanMode
             ? await McpManager.EnsureWorkspaceToolsAsync(workspacePath, cancellationToken)
             : new List<McpToolInfo>();
 
         var messages = new List<JsonObject>();
-
         var systemPrompt = Prompts.SystemPrompt(settings, workspacePath, isPlanMode);
+
+        // Inject compact prior-turn tool trace when continuing a conversation so follow-up turns
+        // remember which files were already read, patched, or verified.
+        if (conversationHistory.Count > 0)
+        {
+            var traceBlock = AgentSessionMemory.FormatRecentWorkForPrompt(workspacePath);
+            if (!string.IsNullOrEmpty(traceBlock))
+                systemPrompt.Append(traceBlock);
+        }
 
         // Load root AGENTS.md + .voidcode/rules/*.md (capped at 16 KB).
         var projectRules = ContextBuilder.LoadProjectRules(workspacePath);
@@ -85,14 +107,12 @@ internal static class AgentLoop
             ["content"] = systemPrompt.ToString()
         });
 
-        // Clone history nodes safely
         foreach (var msg in conversationHistory)
         {
             var cloned = JsonNode.Parse(msg.ToJsonString())?.AsObject();
             if (cloned != null) messages.Add(cloned);
         }
 
-        // Automatically inline any [Referenced File: ...] attachments so Turn 1 has immediate context.
         var imageDataUris = new List<string>();
         var enrichedPrompt = ContextBuilder.EnrichPromptWithReferencedFiles(userPrompt, workspacePath, imageDataUris);
 
@@ -118,7 +138,6 @@ internal static class AgentLoop
             userContentNode = JsonValue.Create(enrichedPrompt)!;
         }
 
-        // If the last message in history is already the identical user prompt, replace its content.
         if (messages.Count > 1 &&
             messages[^1]["role"]?.GetValue<string>() == "user" &&
             messages[^1]["content"] is JsonValue lastContent &&
@@ -136,7 +155,6 @@ internal static class AgentLoop
             });
         }
 
-        // Strip any inline base64 screenshot markers from prior turns so history stays compact.
         for (int i = 0; i < messages.Count - 1; i++)
         {
             if (messages[i]["content"] is JsonValue histVal &&
@@ -147,12 +165,13 @@ internal static class AgentLoop
             }
         }
 
-        // MaxAgentTurns <= 0 means "unlimited" (still bounded by a high safety ceiling).
         bool unlimitedTurns = settings.MaxAgentTurns <= 0;
         int maxTurns = unlimitedTurns ? 1000 : Math.Clamp(settings.MaxAgentTurns, 1, 1000);
         int currentTurn = 0;
-        var runImages = new List<(string path, string dataUri, string mime)>();
+        var runImages = new ConcurrentBag<(string path, string dataUri, string mime)>();
         bool taintedByUntrustedWeb = false;
+        bool turnWideWorkspaceApprove = false;
+        var failedCallCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var runStopwatch = System.Diagnostics.Stopwatch.StartNew();
         int promptTokens = 0, completionTokens = 0, cachedInputTokens = 0, cacheCreationTokens = 0, assistantChars = 0, toolCallsExecuted = 0;
         bool usageReported = false;
@@ -189,7 +208,19 @@ internal static class AgentLoop
         {
             currentTurn++;
 
-            // Enforce context-window budgeting & compaction before every turn.
+            // Inject any mid-run operator steering messages before the next model step.
+            var steers = AgentSessionMemory.DrainSteers();
+            if (steers.Count > 0)
+            {
+                var combinedSteer = string.Join("\n", steers.Select(s => $"- {s}"));
+                messages.Add(new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = $"[Operator Mid-Run Steering Guidance]\n{combinedSteer}"
+                });
+                emitEvent("agent_status", new { status = "Applying operator guidance..." });
+            }
+
             var compaction = await ContextBudget.CompactAsync(
                 messages,
                 caps.ContextWindow,
@@ -356,68 +387,164 @@ internal static class AgentLoop
                     emitEvent("agent_error", new { message = "The model returned an empty response. Check that the model name is valid, that the provider supports streaming/tools, and that the API key and base URL are correct." });
                     break;
                 }
-                var completion = usageReported ? completionTokens : Math.Max(completionTokens, assistantChars / 4);
-                var cost = CostEstimator.Estimate(settings.Provider, settings.BaseUrl, settings.Model, promptTokens, completion, cachedInputTokens, cacheCreationTokens);
-                emitEvent("agent_done", new
-                {
-                    finalMessage = finalText,
-                    steps = currentTurn,
-                    toolCalls = toolCallsExecuted,
-                    promptTokens,
-                    completionTokens = completion,
-                    cachedTokens = cachedInputTokens,
-                    totalTokens = promptTokens + completion,
-                    estimated = !usageReported,
-                    estimatedCostUsd = cost.EstimatedCostUsd,
-                    cacheSavingsUsd = cost.CacheSavingsUsd,
-                    costLabel = cost.FormattedCost,
-                    savingsLabel = cost.FormattedSavings,
-                    isLocalModel = cost.IsLocal,
-                    elapsedMs = runStopwatch.ElapsedMilliseconds,
-                    turnId = turn.TurnId,
-                    turnSummary = turn.ToSummaryPayload()
-                });
+                EmitDone(finalText);
                 break;
             }
 
             var authorityMode = AgentPolicy.ResolveAuthorityMode(settings);
+            var orderedCalls = toolCallsMap.Values.ToList();
+            int cursor = 0;
 
-            foreach (var kvp in toolCallsMap)
+            while (cursor < orderedCalls.Count && !cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                // Collect a contiguous batch of parallelizable read-only tool calls.
+                var parallelBatch = new List<(StreamedToolCall Call, string ArgsRaw)>();
+                while (cursor < orderedCalls.Count)
+                {
+                    var candidate = orderedCalls[cursor];
+                    var candidateArgs = string.IsNullOrWhiteSpace(candidate.Arguments.ToString()) ? "{}" : candidate.Arguments.ToString();
+                    if (IsParallelizableReadOnlyTool(candidate.Name, candidateArgs, workspacePath, isPlanMode))
+                    {
+                        parallelBatch.Add((candidate, candidateArgs));
+                        cursor++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
 
-                var tc = kvp.Value;
+                if (parallelBatch.Count > 1)
+                {
+                    emitEvent("agent_status", new { status = $"Exploring {parallelBatch.Count} targets in parallel..." });
+                    foreach (var (call, argsRaw) in parallelBatch)
+                    {
+                        toolCallsExecuted++;
+                        emitEvent("agent_tool_start", new { id = call.Id, tool = call.Name, args = argsRaw });
+                    }
+
+                    var batchTasks = parallelBatch.Select(item => Task.Run(async () =>
+                    {
+                        AgentAuditLog.Record(item.Call.Name, item.ArgsRaw, "auto_approved", "policy", authorityMode, taintedByUntrustedWeb, workspacePath);
+                        string output;
+                        try
+                        {
+                            var exec = await ToolExecutor.ExecuteAsync(
+                                item.Call.Name,
+                                item.ArgsRaw,
+                                workspacePath,
+                                emitEvent,
+                                img => runImages.Add(img),
+                                turn,
+                                settings,
+                                settings.AgentAutoVerify,
+                                cancellationToken);
+                            output = exec.output;
+                        }
+                        catch (Exception ex)
+                        {
+                            output = $"Tool execution error: {ex.Message}";
+                        }
+
+                        RecordToolTrace(workspacePath, item.Call.Name, item.ArgsRaw, output);
+                        emitEvent("agent_tool_finish", new
+                        {
+                            id = item.Call.Id,
+                            tool = item.Call.Name,
+                            output,
+                            checkpointId = (string?)null,
+                            modifiedFilePath = (string?)null,
+                            turnId = turn.TurnId
+                        });
+                        return (item.Call.Id, Output: output);
+                    }, cancellationToken)).ToArray();
+
+                    var batchResults = await Task.WhenAll(batchTasks);
+                    foreach (var br in batchResults)
+                    {
+                        messages.Add(new JsonObject
+                        {
+                            ["role"] = "tool",
+                            ["tool_call_id"] = br.Id,
+                            ["content"] = br.Output
+                        });
+                    }
+                    continue;
+                }
+
+                // Single read-only call or mutating/approval-gated call: execute cleanly in order.
+                StreamedToolCall tc;
+                string argumentsRaw;
+                if (parallelBatch.Count == 1)
+                {
+                    tc = parallelBatch[0].Call;
+                    argumentsRaw = parallelBatch[0].ArgsRaw;
+                }
+                else
+                {
+                    tc = orderedCalls[cursor++];
+                    argumentsRaw = string.IsNullOrWhiteSpace(tc.Arguments.ToString()) ? "{}" : tc.Arguments.ToString();
+                }
+
                 var toolId = tc.Id;
                 var functionName = tc.Name;
-                var argumentsRaw = string.IsNullOrWhiteSpace(tc.Arguments.ToString()) ? "{}" : tc.Arguments.ToString();
                 toolCallsExecuted++;
 
+                var diffPreview = UnifiedDiffService.BuildPreviewForTool(functionName, argumentsRaw, workspacePath);
+
                 emitEvent("agent_status", new { status = $"Running {functionName}..." });
-                emitEvent("agent_tool_start", new { id = toolId, tool = functionName, args = argumentsRaw });
+                emitEvent("agent_tool_start", new
+                {
+                    id = toolId,
+                    tool = functionName,
+                    args = argumentsRaw,
+                    diffPreview = diffPreview?.DiffText,
+                    addedLines = diffPreview?.Added ?? 0,
+                    removedLines = diffPreview?.Removed ?? 0,
+                    targetPath = diffPreview?.TargetPath
+                });
 
                 string toolResultOutput;
                 string? checkpointId = null;
                 string? modifiedFilePath = null;
 
                 bool blockedByPlan = isPlanMode && !ToolCatalog.PlanModeTools.Contains(functionName);
-                bool approved = true;
+                var decision = new ApprovalDecision(true);
                 bool askedOperator = false;
                 bool requiresApproval = !blockedByPlan &&
                     AgentPolicy.RequiresApproval(functionName, argumentsRaw, workspacePath, settings, taintedByUntrustedWeb);
 
+                if (requiresApproval && turnWideWorkspaceApprove && !taintedByUntrustedWeb && !WorkspaceTrustService.ForcesReview &&
+                    functionName is "write_file" or "patch_file" or "multi_patch_file" &&
+                    AgentPolicy.AreAllMutationPathsInsideWorkspace(functionName, argumentsRaw, workspacePath))
+                {
+                    requiresApproval = false;
+                }
+
                 if (requiresApproval)
                 {
                     askedOperator = true;
-                    var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    var tcs = new TaskCompletionSource<ApprovalDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
                     PendingApprovals[toolId] = tcs;
 
                     emitEvent("agent_status", new { status = $"Awaiting approval for {functionName}..." });
-                    emitEvent("agent_tool_approval_needed", new { id = toolId, tool = functionName, args = argumentsRaw });
+                    emitEvent("agent_tool_approval_needed", new
+                    {
+                        id = toolId,
+                        tool = functionName,
+                        args = argumentsRaw,
+                        diffPreview = diffPreview?.DiffText,
+                        addedLines = diffPreview?.Added ?? 0,
+                        removedLines = diffPreview?.Removed ?? 0,
+                        targetPath = diffPreview?.TargetPath
+                    });
 
                     using var reg = cancellationToken.Register(() => tcs.TrySetCanceled());
                     try
                     {
-                        approved = await tcs.Task;
+                        decision = await tcs.Task;
+                        if (decision.Approved && decision.ApproveTurn)
+                            turnWideWorkspaceApprove = true;
                     }
                     catch (OperationCanceledException)
                     {
@@ -431,10 +558,12 @@ internal static class AgentLoop
                     AgentAuditLog.Record(functionName, argumentsRaw, "blocked_plan", "policy", authorityMode, taintedByUntrustedWeb, workspacePath);
                     toolResultOutput = $"Blocked: plan mode is read-only. '{functionName}' is not permitted. Investigate with read-only tools, then present the plan and stop.";
                 }
-                else if (!approved)
+                else if (!decision.Approved)
                 {
                     AgentAuditLog.Record(functionName, argumentsRaw, "denied", "operator", authorityMode, taintedByUntrustedWeb, workspacePath);
-                    toolResultOutput = "Tool execution denied by operator.";
+                    toolResultOutput = string.IsNullOrWhiteSpace(decision.Reason)
+                        ? "Tool execution denied by operator."
+                        : $"Tool execution denied by operator. Operator feedback: {decision.Reason.Trim()}";
                 }
                 else
                 {
@@ -457,7 +586,16 @@ internal static class AgentLoop
                         }
                         else
                         {
-                            var execResult = await ToolExecutor.ExecuteAsync(functionName, argumentsRaw, workspacePath, emitEvent, img => runImages.Add(img), turn);
+                            var execResult = await ToolExecutor.ExecuteAsync(
+                                functionName,
+                                argumentsRaw,
+                                workspacePath,
+                                emitEvent,
+                                img => runImages.Add(img),
+                                turn,
+                                settings,
+                                settings.AgentAutoVerify,
+                                cancellationToken);
                             toolResultOutput = execResult.output;
                             checkpointId = execResult.checkpointId;
                             modifiedFilePath = execResult.modifiedFilePath;
@@ -474,6 +612,23 @@ internal static class AgentLoop
                     }
                 }
 
+                // Stuck-loop guard: if the exact same failing call repeats 2+ times, inject a clear recovery hint.
+                var isErrorOut = toolResultOutput.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)
+                    || toolResultOutput.StartsWith("Tool execution error:", StringComparison.OrdinalIgnoreCase);
+                if (isErrorOut)
+                {
+                    var callSig = $"{functionName}:{argumentsRaw.Length}:{argumentsRaw.GetHashCode(StringComparison.Ordinal)}";
+                    failedCallCounts.TryGetValue(callSig, out var fails);
+                    fails++;
+                    failedCallCounts[callSig] = fails;
+                    if (fails >= 2)
+                    {
+                        toolResultOutput += "\n\n[Loop Guard]: You have attempted this exact failing call multiple times. Stop retrying the same arguments — call read_file or search_code to re-check the real file contents and adjust your strategy.";
+                    }
+                }
+
+                RecordToolTrace(workspacePath, functionName, argumentsRaw, toolResultOutput);
+
                 emitEvent("agent_tool_finish", new
                 {
                     id = toolId,
@@ -481,7 +636,10 @@ internal static class AgentLoop
                     output = toolResultOutput,
                     checkpointId,
                     modifiedFilePath,
-                    turnId = turn.TurnId
+                    turnId = turn.TurnId,
+                    diffPreview = diffPreview?.DiffText,
+                    addedLines = diffPreview?.Added ?? 0,
+                    removedLines = diffPreview?.Removed ?? 0
                 });
 
                 messages.Add(new JsonObject
@@ -492,15 +650,13 @@ internal static class AgentLoop
                 });
             }
 
-            // View_image cannot return pixels through a tool result for most providers, so
-            // Attach the collected images as a multimodal user turn for the next step.
-            if (runImages.Count > 0)
+            if (!runImages.IsEmpty)
             {
                 var imageParts = new JsonArray
                 {
                     new JsonObject { ["type"] = "text", ["text"] = "Images loaded via view_image (now visible to you):" }
                 };
-                foreach (var img in runImages)
+                while (runImages.TryTake(out var img))
                 {
                     imageParts.Add(new JsonObject
                     {
@@ -509,19 +665,21 @@ internal static class AgentLoop
                     });
                 }
                 messages.Add(new JsonObject { ["role"] = "user", ["content"] = imageParts });
-                runImages.Clear();
             }
         }
 
         if (currentTurn >= maxTurns)
         {
+            EmitDone($"Reached the {maxTurns}-step safety limit. Review the completed work above or raise Max Agent Steps in Settings (set to 0 for unlimited) to continue.");
+        }
+
+        void EmitDone(string finalMessage)
+        {
             var completion = usageReported ? completionTokens : Math.Max(completionTokens, assistantChars / 4);
             var cost = CostEstimator.Estimate(settings.Provider, settings.BaseUrl, settings.Model, promptTokens, completion, cachedInputTokens, cacheCreationTokens);
             emitEvent("agent_done", new
             {
-                finalMessage = unlimitedTurns
-                    ? $"Reached the safety limit ({maxTurns} steps)."
-                    : $"Reached maximum autonomous turns ({maxTurns}).",
+                finalMessage,
                 steps = currentTurn,
                 toolCalls = toolCallsExecuted,
                 promptTokens,
@@ -538,6 +696,28 @@ internal static class AgentLoop
                 turnId = turn.TurnId,
                 turnSummary = turn.ToSummaryPayload()
             });
+        }
+    }
+
+    private static void RecordToolTrace(string workspacePath, string toolName, string argsRaw, string output)
+    {
+        try
+        {
+            var args = JsonNode.Parse(argsRaw);
+            var target = args?["path"]?.GetValue<string>()
+                ?? args?["pattern"]?.GetValue<string>()
+                ?? args?["command"]?.GetValue<string>()
+                ?? args?["question"]?.GetValue<string>()
+                ?? args?["url"]?.GetValue<string>()
+                ?? "";
+            if (target.Length > 80) target = target[..80] + "…";
+            var ok = !output.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)
+                && !output.StartsWith("Tool execution error:", StringComparison.OrdinalIgnoreCase);
+            AgentSessionMemory.RecordAction(workspacePath, $"{toolName}({target}) -> {(ok ? "ok" : "error")}");
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "AgentLoop.RecordToolTrace");
         }
     }
 }

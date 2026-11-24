@@ -400,6 +400,169 @@ public static class FileSystemService
         return (false, $"Error: Target search block was not found in '{Path.GetFileName(fullPath)}'. Read the file first with read_file to verify exact lines.", null);
     }
 
+    public static (bool Success, string UpdatedContent, string Message) SimulateMultiPatch(
+        string originalText,
+        IReadOnlyList<(string Search, string Replace)> edits)
+    {
+        if (edits == null || edits.Count == 0)
+            return (false, originalText, "Error: 'edits' array must contain at least one { search, replace } entry.");
+
+        bool usesCrLf = originalText.Contains("\r\n", StringComparison.Ordinal);
+        string working = originalText.Replace("\r\n", "\n");
+        var appliedLines = new List<int>();
+
+        for (int idx = 0; idx < edits.Count; idx++)
+        {
+            var (rawSearch, rawReplace) = edits[idx];
+            if (string.IsNullOrEmpty(rawSearch))
+                return (false, originalText, $"Error: Edit #{idx + 1} has an empty 'search' block.");
+
+            var normSearch = rawSearch.Replace("\r\n", "\n");
+            var normReplace = (rawReplace ?? "").Replace("\r\n", "\n");
+
+            int pos = working.IndexOf(normSearch, StringComparison.Ordinal);
+            if (pos >= 0)
+            {
+                appliedLines.Add(working.Substring(0, pos).Split('\n').Length);
+                working = working.Substring(0, pos) + normReplace + working.Substring(pos + normSearch.Length);
+                continue;
+            }
+
+            // Fuzzy trimmed-line fallback
+            var fileLines = working.Split('\n');
+            var searchLines = normSearch.Split('\n');
+            int matchLine = -1;
+            if (searchLines.Length > 0 && fileLines.Length >= searchLines.Length)
+            {
+                for (int i = 0; i <= fileLines.Length - searchLines.Length; i++)
+                {
+                    bool ok = true;
+                    for (int j = 0; j < searchLines.Length; j++)
+                    {
+                        if (!string.Equals(fileLines[i + j].Trim(), searchLines[j].Trim(), StringComparison.Ordinal))
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (ok) { matchLine = i; break; }
+                }
+            }
+
+            if (matchLine >= 0)
+            {
+                appliedLines.Add(matchLine + 1);
+                var merged = fileLines.Take(matchLine).Concat(normReplace.Split('\n')).Concat(fileLines.Skip(matchLine + searchLines.Length));
+                working = string.Join("\n", merged);
+            }
+            else
+            {
+                return (false, originalText, $"Error: Edit #{idx + 1} search block was not found. File left unchanged. Call read_file to verify exact lines.");
+            }
+        }
+
+        var finalContent = usesCrLf ? working.Replace("\n", "\r\n") : working;
+        return (true, finalContent, $"Applied {edits.Count} hunk{(edits.Count == 1 ? "" : "s")} (around lines {string.Join(", ", appliedLines)}).");
+    }
+
+    public static (bool success, string message, FileCheckpoint? checkpoint, string before, string after) MultiPatchFileSmart(
+        string fullPath,
+        IReadOnlyList<(string Search, string Replace)> edits)
+    {
+        if (!File.Exists(fullPath))
+            return (false, $"Error: File '{fullPath}' does not exist.", null, "", "");
+
+        var before = File.ReadAllText(fullPath);
+        var sim = SimulateMultiPatch(before, edits);
+        if (!sim.Success)
+            return (false, sim.Message, null, before, before);
+
+        var cp = CreateCheckpoint(fullPath, "Multi-Patched");
+        WriteFile(fullPath, sim.UpdatedContent);
+        return (true, $"Successfully patched '{Path.GetFileName(fullPath)}': {sim.Message}", cp, before, sim.UpdatedContent);
+    }
+
+    public static List<string> GlobFiles(string workspacePath, string pattern, int maxResults = 150)
+    {
+        var results = new List<string>();
+        if (string.IsNullOrWhiteSpace(workspacePath) || !Directory.Exists(workspacePath))
+            return results;
+
+        var cleanPattern = (pattern ?? "*").Trim().Replace('\\', '/');
+        if (string.IsNullOrEmpty(cleanPattern)) cleanPattern = "**/*";
+        var regex = GlobToRegex(cleanPattern);
+        var matcher = new WorkspaceIgnoreMatcher(workspacePath, IgnoredDirs);
+        var cap = Math.Clamp(maxResults <= 0 ? 150 : maxResults, 1, 500);
+
+        var queue = new Queue<string>();
+        queue.Enqueue(workspacePath);
+        while (queue.Count > 0 && results.Count < cap)
+        {
+            var dir = queue.Dequeue();
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(dir))
+                {
+                    if (results.Count >= cap) break;
+                    if (matcher.IsIgnored(file, isDirectory: false)) continue;
+                    var rel = Path.GetRelativePath(workspacePath, file).Replace('\\', '/');
+                    if (regex.IsMatch(rel) || (!cleanPattern.Contains('/') && regex.IsMatch(Path.GetFileName(file))))
+                        results.Add(rel);
+                }
+
+                foreach (var sub in Directory.EnumerateDirectories(dir))
+                {
+                    if (matcher.IsIgnored(sub, isDirectory: true)) continue;
+                    queue.Enqueue(sub);
+                }
+            }
+            catch (UnauthorizedAccessException) { /* skip protected directory */ }
+            catch (IOException) { /* skip unreadable directory */ }
+        }
+
+        results.Sort(StringComparer.OrdinalIgnoreCase);
+        return results;
+    }
+
+    private static Regex GlobToRegex(string glob)
+    {
+        var sb = new StringBuilder("^");
+        for (int i = 0; i < glob.Length; i++)
+        {
+            char c = glob[i];
+            if (c == '*')
+            {
+                if (i + 1 < glob.Length && glob[i + 1] == '*')
+                {
+                    i++;
+                    if (i + 1 < glob.Length && glob[i + 1] == '/')
+                    {
+                        i++;
+                        sb.Append("(?:.*/)?");
+                    }
+                    else
+                    {
+                        sb.Append(".*");
+                    }
+                }
+                else
+                {
+                    sb.Append("[^/]*");
+                }
+            }
+            else if (c == '?')
+            {
+                sb.Append("[^/]");
+            }
+            else
+            {
+                sb.Append(Regex.Escape(c.ToString()));
+            }
+        }
+        sb.Append('$');
+        return new Regex(sb.ToString(), RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    }
+
     public static FileNode GetDirectoryTree(string rootPath)
     {
         var dirInfo = new DirectoryInfo(rootPath);

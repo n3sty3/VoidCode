@@ -362,6 +362,25 @@ export function setupAgentComposer() {
   function triggerAgent() {
     if (!agentInput) return;
     let text = agentInput.value.trim();
+
+    // Mid-run steering: if the agent is already running, queue this guidance for the next step
+    // instead of cancelling or starting a conflicting run.
+    if (btnCancel && btnCancel.style.display !== 'none' && text) {
+      agentInput.value = '';
+      agentInput.style.height = '';
+      globalThis.VoidBridge?.request?.('agent_steer', { message: text });
+      const container = document.getElementById('agent-chat-container');
+      if (container) {
+        const note = document.createElement('div');
+        note.style.cssText = 'align-self:flex-end;padding:6px 10px;border-radius:10px;border:1px dashed var(--glacier-line);background:var(--glacier-wash);font-size:11px;color:var(--glacier);max-width:86%;';
+        note.textContent = `Queued guidance: ${text}`;
+        container.appendChild(note);
+        globalThis.scrollAgentToBottom?.();
+      }
+      globalThis.showToast?.('Guidance queued for next agent step', 'info');
+      return;
+    }
+
     if (!text && !attachedContextItems.some(i => i.type === 'image')) return;
     if (!text) text = 'Analyze the attached screenshot.';
 

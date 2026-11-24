@@ -23,7 +23,7 @@ public class AgentEngine
     // Exposed for tests: plan mode must never allow a mutating or process-running tool.
     public static bool IsAllowedInPlanMode(string toolName) => ToolCatalog.IsAllowedInPlanMode(toolName);
 
-    public static void ResolveToolApproval(string toolId, bool approved) => AgentLoop.ResolveToolApproval(toolId, approved);
+    public static void ResolveToolApproval(string toolId, bool approved, bool approveTurn = false, string? reason = null) => AgentLoop.ResolveToolApproval(toolId, approved, approveTurn, reason);
 
     public static Task<(bool success, string message, List<string> models)> TestConnectionAsync(AppSettings settings)
         => ProviderFactory.Create(settings).TestConnectionAsync(settings);

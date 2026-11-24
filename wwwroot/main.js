@@ -33,6 +33,9 @@ import { init as initBranchReview } from './modules/branch-review.js';
 import { init as initApiClient } from './modules/api-client.js';
 import { init as initIdeImport } from './modules/ide-import.js';
 import { init as initDbExplorer } from './modules/db-explorer.js';
+import { init as initModelSwitcher } from './modules/model-switcher.js';
+import { init as initGitGraph } from './modules/git-graph.js';
+import { init as initOnboarding } from './modules/onboarding.js';
 import { init as initGit } from './modules/git.js';
 import { init as initTerminal } from './modules/terminal.js';
 import { init as initShell } from './modules/shell.js';
@@ -115,6 +118,9 @@ initBranchReview(); // AI Pre-PR Branch Code Reviewer
 initApiClient(); // Built-In API / HTTP Client Studio
 initIdeImport(); // 1-Click Import from VS Code / Cursor
 initDbExplorer(); // Built-In SQLite Database Explorer
+initModelSwitcher(); // 1-Click Quick Model Switcher Popover (Ctrl+Alt+M)
+initGitGraph(); // Visual Git Commit Graph, Stash & Clone Repository
+initOnboarding(); // 15-Second First-Run Onboarding Wizard
 initGit(); // publishes the git source-control + diff entry points
 initIcons(); // the themed icon pack, so the shell can be lazy
 initTerminal(); // publishes the PTY terminal entry points

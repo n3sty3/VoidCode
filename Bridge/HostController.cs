@@ -80,7 +80,8 @@ public sealed class HostController
             () => _currentWorkspace,
             () => _settings,
             updated => _settings = updated,
-            SendToJs);
+            SendToJs,
+            folder => ActivateWorkspace(folder, notifyUi: true));
 
         RegisterBridgeActions();
 

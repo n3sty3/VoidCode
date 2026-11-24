@@ -12,14 +12,15 @@ internal static class ToolCatalog
 {
     internal static readonly HashSet<string> ApprovalRequiredTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "write_file", "patch_file", "delete_file", "move_file", "run_command", "web_fetch"
+        "write_file", "patch_file", "multi_patch_file", "delete_file", "move_file", "run_command", "web_fetch"
     };
 
     // Strictly read-only tools allowed during plan mode. Every mutating or
     // Process-running tool is refused server-side so "plan" can never act.
     internal static readonly HashSet<string> PlanModeTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "read_file", "view_image", "list_dir", "search_code", "search_codebase", "git_status_diff"
+        "read_file", "view_image", "list_dir", "glob_files", "search_code", "search_codebase",
+        "git_status_diff", "get_lsp_diagnostics", "delegate_research"
     };
 
 
@@ -94,7 +95,7 @@ internal static class ToolCatalog
                 ["function"] = new JsonObject
                 {
                     ["name"] = "patch_file",
-                    ["description"] = "Surgically replace a block of text inside an existing file (supports exact and whitespace-tolerant matching). Automatically creates an undo checkpoint.",
+                    ["description"] = "Surgically replace a single block of text inside an existing file (supports exact and whitespace-tolerant matching). Automatically creates an undo checkpoint.",
                     ["parameters"] = new JsonObject
                     {
                         ["type"] = "object",
@@ -105,6 +106,39 @@ internal static class ToolCatalog
                             ["replace"] = new JsonObject { ["type"] = "string", ["description"] = "New replacement code block." }
                         },
                         ["required"] = new JsonArray { "path", "search", "replace" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "multi_patch_file",
+                    ["description"] = "Atomically apply multiple search/replace hunks to a single file in one turn with a single undo checkpoint. Prefer this over calling patch_file repeatedly on the same file.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["path"] = new JsonObject { ["type"] = "string", ["description"] = "Relative path to the file." },
+                            ["edits"] = new JsonObject
+                            {
+                                ["type"] = "array",
+                                ["description"] = "Ordered list of { search, replace } hunks to apply atomically.",
+                                ["items"] = new JsonObject
+                                {
+                                    ["type"] = "object",
+                                    ["properties"] = new JsonObject
+                                    {
+                                        ["search"] = new JsonObject { ["type"] = "string", ["description"] = "Existing code block to find." },
+                                        ["replace"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement code block." }
+                                    },
+                                    ["required"] = new JsonArray { "search", "replace" }
+                                }
+                            }
+                        },
+                        ["required"] = new JsonArray { "path", "edits" }
                     }
                 }
             },
@@ -327,6 +361,59 @@ internal static class ToolCatalog
                             ["id"] = new JsonObject { ["type"] = "string", ["description"] = "The memory ID shown in the Persistent Agent Memory Bank." }
                         },
                         ["required"] = new JsonArray { "id" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "glob_files",
+                    ["description"] = "Find workspace files matching a glob pattern (e.g. '**/*.cs', 'tests/**/*.spec.js', '*Settings*'). Fast and respects .gitignore.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "Glob pattern relative to workspace root." }
+                        },
+                        ["required"] = new JsonArray { "pattern" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "get_lsp_diagnostics",
+                    ["description"] = "Instantly read live LSP compiler/type errors and warnings cached by active language servers without running a shell build.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["path"] = new JsonObject { ["type"] = "string", ["description"] = "Optional relative file path to filter diagnostics." }
+                        }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "delegate_research",
+                    ["description"] = "Delegate a broad read-only codebase investigation question to a fast isolated research subagent that returns a concise file:line-cited brief.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["question"] = new JsonObject { ["type"] = "string", ["description"] = "Specific research question about the codebase architecture, call sites, or symbols." }
+                        },
+                        ["required"] = new JsonArray { "question" }
                     }
                 }
             }

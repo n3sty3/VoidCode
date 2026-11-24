@@ -844,6 +844,7 @@ public static class LspService
 {
     private static readonly ConcurrentDictionary<string, LspServerSession> _sessions = new();
     private static readonly ConcurrentDictionary<string, (string Status, string Detail)> _unavailableLanguages = new();
+    private static readonly ConcurrentDictionary<string, List<LspDiagnosticItem>> _latestDiagnostics = new(StringComparer.OrdinalIgnoreCase);
     private static Action<string, List<LspDiagnosticItem>>? _diagnosticsCallback;
     private static Action<string, string, string?>? _statusCallback;
     private static Func<string, string?, JsonObject, Task<LspApplyEditResult>>? _workspaceEditCallback;
@@ -965,7 +966,16 @@ public static class LspService
         var session = new LspServerSession(
             lang,
             root,
-            (path, diags) => _diagnosticsCallback?.Invoke(path, diags),
+            (path, diags) =>
+            {
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    var key = Path.GetFullPath(path);
+                    if (diags == null || diags.Count == 0) _latestDiagnostics.TryRemove(key, out _);
+                    else _latestDiagnostics[key] = new List<LspDiagnosticItem>(diags);
+                }
+                _diagnosticsCallback?.Invoke(path, diags ?? new List<LspDiagnosticItem>());
+            },
             (language, label, edit) => _workspaceEditCallback != null
                 ? _workspaceEditCallback(language, label, edit)
                 : Task.FromResult(new LspApplyEditResult
@@ -1858,8 +1868,65 @@ public static class LspService
         }
     }
 
+    public static Dictionary<string, List<LspDiagnosticItem>> GetCachedDiagnostics(string? filePath = null)
+    {
+        var result = new Dictionary<string, List<LspDiagnosticItem>>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            try
+            {
+                var key = Path.GetFullPath(filePath);
+                if (_latestDiagnostics.TryGetValue(key, out var list) && list.Count > 0)
+                    result[key] = new List<LspDiagnosticItem>(list);
+            }
+            catch (Exception ex) { LoggingService.Swallowed(ex, "LspService.GetCachedDiagnostics"); }
+            return result;
+        }
+
+        foreach (var kv in _latestDiagnostics)
+        {
+            if (kv.Value.Count > 0)
+                result[kv.Key] = new List<LspDiagnosticItem>(kv.Value);
+        }
+        return result;
+    }
+
+    public static string FormatCachedDiagnostics(string? filePath = null, string? workspacePath = null, int maxItems = 40)
+    {
+        var map = GetCachedDiagnostics(filePath);
+        if (map.Count == 0)
+            return string.IsNullOrWhiteSpace(filePath)
+                ? "No live LSP diagnostics reported across open files."
+                : $"No live LSP diagnostics for '{Path.GetFileName(filePath)}'.";
+
+        var sb = new StringBuilder();
+        int count = 0;
+        foreach (var kv in map.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var rel = !string.IsNullOrWhiteSpace(workspacePath)
+                ? Path.GetRelativePath(workspacePath, kv.Key)
+                : kv.Key;
+            foreach (var d in kv.Value)
+            {
+                if (count >= maxItems) break;
+                var sev = d.Severity switch
+                {
+                    1 => "ERROR",
+                    2 => "WARN",
+                    3 => "INFO",
+                    _ => "HINT"
+                };
+                sb.AppendLine($"[{sev}] {rel}:{d.StartLine}:{d.StartCol} — {d.Message}");
+                count++;
+            }
+            if (count >= maxItems) break;
+        }
+        return sb.ToString().TrimEnd();
+    }
+
     public static void ShutdownAll()
     {
+        _latestDiagnostics.Clear();
         foreach (var kvp in _sessions)
         {
             kvp.Value.Dispose();

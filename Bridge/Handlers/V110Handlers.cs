@@ -18,6 +18,15 @@ public static class V110Routes
     public const string DbDiscover = "db_discover";
     public const string DbSchema = "db_schema";
     public const string DbQuery = "db_query";
+    public const string AgentSteer = "agent_steer";
+    public const string AgentClearTrace = "agent_clear_trace";
+    public const string GitCloneRepo = "git_clone_repo";
+    public const string GitCommitGraph = "git_commit_graph";
+    public const string GitCommitShow = "git_commit_show";
+    public const string GitStashList = "git_stash_list";
+    public const string GitStashPush = "git_stash_push";
+    public const string GitStashPop = "git_stash_pop";
+    public const string GitHunkApply = "git_hunk_apply";
 }
 
 /// <summary>
@@ -31,17 +40,20 @@ public sealed class V110Handlers
     private readonly Func<AppSettings> _settings;
     private readonly Action<AppSettings> _setSettings;
     private readonly Action<string, object> _send;
+    private readonly Action<string>? _activateWorkspace;
 
     public V110Handlers(
         Func<string?> workspace,
         Func<AppSettings> settings,
         Action<AppSettings> setSettings,
-        Action<string, object> send)
+        Action<string, object> send,
+        Action<string>? activateWorkspace = null)
     {
         _workspace = workspace;
         _settings = settings;
         _setSettings = setSettings;
         _send = send;
+        _activateWorkspace = activateWorkspace;
     }
 
     public sealed class EmptyPayload { }
@@ -80,6 +92,51 @@ public sealed class V110Handlers
         public int MaxRows { get; init; } = 200;
     }
 
+    public sealed class AgentSteerRequest
+    {
+        public required string Message { get; init; }
+    }
+
+    public sealed class SimpleOkResult
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("ok")]
+        public bool Ok { get; init; } = true;
+    }
+
+    public sealed class GitCloneRequest
+    {
+        public required string Url { get; init; }
+        public string? DestinationDir { get; init; }
+        public string? FolderName { get; init; }
+    }
+
+    public sealed class GitCommitGraphRequest
+    {
+        public int MaxCount { get; init; } = 60;
+    }
+
+    public sealed class GitCommitShowRequest
+    {
+        public required string Hash { get; init; }
+    }
+
+    public sealed class GitStashPushRequest
+    {
+        public string? Message { get; init; }
+    }
+
+    public sealed class GitStashPopRequest
+    {
+        public string? StashRef { get; init; }
+    }
+
+    public sealed class GitHunkApplyRequest
+    {
+        public required string Patch { get; init; }
+        public bool Cached { get; init; } = true;
+        public bool Reverse { get; init; }
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<EmptyPayload, List<MemoryItem>>(V110Routes.MemoryList, MemoryListAsync, envelope: true);
@@ -92,6 +149,15 @@ public sealed class V110Handlers
         router.Register<EmptyPayload, List<DiscoveredDatabase>>(V110Routes.DbDiscover, DbDiscoverAsync, envelope: true);
         router.Register<DbPathRequest, DbSchemaReport>(V110Routes.DbSchema, DbSchemaAsync, envelope: true);
         router.Register<DbQueryRequest, DbQueryResult>(V110Routes.DbQuery, DbQueryAsync, envelope: true);
+        router.Register<AgentSteerRequest, SimpleOkResult>(V110Routes.AgentSteer, AgentSteerAsync, envelope: true);
+        router.Register<EmptyPayload, SimpleOkResult>(V110Routes.AgentClearTrace, AgentClearTraceAsync, envelope: true);
+        router.Register<GitCloneRequest, GitPowerResult>(V110Routes.GitCloneRepo, GitCloneRepoAsync, envelope: true);
+        router.Register<GitCommitGraphRequest, List<GitGraphCommit>>(V110Routes.GitCommitGraph, GitCommitGraphAsync, envelope: true);
+        router.Register<GitCommitShowRequest, GitPowerResult>(V110Routes.GitCommitShow, GitCommitShowAsync, envelope: true);
+        router.Register<EmptyPayload, List<GitStashItem>>(V110Routes.GitStashList, GitStashListAsync, envelope: true);
+        router.Register<GitStashPushRequest, GitPowerResult>(V110Routes.GitStashPush, GitStashPushAsync, envelope: true);
+        router.Register<GitStashPopRequest, GitPowerResult>(V110Routes.GitStashPop, GitStashPopAsync, envelope: true);
+        router.Register<GitHunkApplyRequest, GitPowerResult>(V110Routes.GitHunkApply, GitHunkApplyAsync, envelope: true);
     }
 
     private Task<List<MemoryItem>> MemoryListAsync(EmptyPayload _, BridgeContext __)
@@ -146,6 +212,47 @@ public sealed class V110Handlers
         var fullPath = ResolveDbPath(req.Path);
         return Task.Run(() => DatabaseExplorerService.ExecuteQuery(fullPath, req.Sql, req.MaxRows));
     }
+
+    private Task<SimpleOkResult> AgentSteerAsync(AgentSteerRequest req, BridgeContext _)
+    {
+        VoidCode.Agent.AgentSessionMemory.EnqueueSteer(req.Message);
+        return Task.FromResult(new SimpleOkResult { Ok = true });
+    }
+
+    private Task<SimpleOkResult> AgentClearTraceAsync(EmptyPayload _, BridgeContext __)
+    {
+        VoidCode.Agent.AgentSessionMemory.ClearWorkspace(_workspace());
+        VoidCode.Agent.AgentSessionMemory.ClearSteers();
+        return Task.FromResult(new SimpleOkResult { Ok = true });
+    }
+
+    private async Task<GitPowerResult> GitCloneRepoAsync(GitCloneRequest req, BridgeContext _)
+    {
+        var result = await GitPowerService.CloneAsync(req.Url, req.DestinationDir ?? "", req.FolderName);
+        if (result.Ok && !string.IsNullOrEmpty(result.Path))
+        {
+            _activateWorkspace?.Invoke(result.Path);
+        }
+        return result;
+    }
+
+    private Task<List<GitGraphCommit>> GitCommitGraphAsync(GitCommitGraphRequest req, BridgeContext _)
+        => GitPowerService.GetCommitGraphAsync(_workspace() ?? "", req.MaxCount);
+
+    private Task<GitPowerResult> GitCommitShowAsync(GitCommitShowRequest req, BridgeContext _)
+        => GitPowerService.ShowCommitAsync(_workspace() ?? "", req.Hash);
+
+    private Task<List<GitStashItem>> GitStashListAsync(EmptyPayload _, BridgeContext __)
+        => GitPowerService.ListStashesAsync(_workspace() ?? "");
+
+    private Task<GitPowerResult> GitStashPushAsync(GitStashPushRequest req, BridgeContext _)
+        => GitPowerService.PushStashAsync(_workspace() ?? "", req.Message);
+
+    private Task<GitPowerResult> GitStashPopAsync(GitStashPopRequest req, BridgeContext _)
+        => GitPowerService.PopStashAsync(_workspace() ?? "", req.StashRef);
+
+    private Task<GitPowerResult> GitHunkApplyAsync(GitHunkApplyRequest req, BridgeContext _)
+        => GitPowerService.ApplyHunkPatchAsync(_workspace() ?? "", req.Patch, req.Cached, req.Reverse);
 
     private string ResolveDbPath(string rawPath)
     {

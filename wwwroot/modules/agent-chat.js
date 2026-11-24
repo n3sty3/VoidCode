@@ -135,6 +135,74 @@ export function addUserMessageActions(msgEl) {
   content.appendChild(bar);
 }
 
+export function refreshUserMessageRewindButton(msgEl) {
+  if (!msgEl) return;
+  const bar = msgEl.querySelector('.msg-actions--user');
+  if (!bar || bar.querySelector('.btn-rewind-turn')) return;
+  const checkpoints = /** @type {any} */ (msgEl)._turnCheckpoints;
+  if (!Array.isArray(checkpoints) || checkpoints.length === 0) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'msg-action-btn btn-rewind-turn';
+  btn.title = 'Restore modified workspace files and rewind chat back to before this prompt';
+  btn.textContent = '↩ Restore';
+  btn.addEventListener('click', async () => {
+    const container = control('agent-chat-container');
+    if (!container) return;
+
+    // Collect all checkpoints from this user message and every subsequent user message.
+    const allNodes = Array.from(container.children);
+    const startIdx = allNodes.indexOf(msgEl);
+    if (startIdx < 0) return;
+
+    const toRestore = [];
+    const seenFiles = new Set();
+    for (let i = startIdx; i < allNodes.length; i++) {
+      const cps = /** @type {any} */ (allNodes[i])._turnCheckpoints;
+      if (Array.isArray(cps)) {
+        for (const cp of cps) {
+          toRestore.push(cp);
+          if (cp.path) seenFiles.add(cp.path.split(/[\\/]/).pop());
+        }
+      }
+    }
+
+    const filePreview = Array.from(seenFiles).slice(0, 6).join(', ');
+    const ok = typeof globalThis.showConfirmDialog === 'function'
+      ? await globalThis.showConfirmDialog(
+        'Restore Workspace Checkpoint',
+        `Revert ${toRestore.length} edit checkpoint${toRestore.length === 1 ? '' : 's'} (${filePreview || 'modified files'}) and rewind chat to before this prompt?`,
+        'Restore'
+      )
+      : true;
+    if (!ok) return;
+
+    // Restore in reverse chronological order so earliest snapshot wins cleanly.
+    for (let i = toRestore.length - 1; i >= 0; i--) {
+      if (toRestore[i].checkpointId) {
+        sendHost('restore_checkpoint', { checkpointId: toRestore[i].checkpointId });
+      }
+    }
+
+    // Rewind DOM and chatHistory back to just before this user message.
+    const histIdx = parseInt(msgEl.dataset.historyIndex || '-1', 10);
+    const history = window.VoidState.get('chatHistory');
+    if (Array.isArray(history) && histIdx >= 0) {
+      history.splice(histIdx);
+    }
+    for (let i = allNodes.length - 1; i >= startIdx; i--) {
+      allNodes[i].remove();
+    }
+    globalThis.clearSessionChangedFiles?.();
+    globalThis.VoidBridge?.request?.('agent_clear_trace', {});
+    globalThis.saveCurrentSessionToStorage?.();
+    globalThis.showToast?.(`Restored workspace to checkpoint (${toRestore.length} edit${toRestore.length === 1 ? '' : 's'} reverted)`, 'success');
+  });
+
+  bar.appendChild(btn);
+}
+
 // Re-run the most recent user prompt, replacing the last answer.
 export function regenerateLastAnswer() {
   const container = control('agent-chat-container');
@@ -226,11 +294,12 @@ export function init(ctx = {}) {
   Object.assign(globalThis, {
     addAssistantMessageActions,
     addUserMessageActions,
+    refreshUserMessageRewindButton,
     regenerateLastAnswer,
     renderRunFooter,
     buildPatchPreview,
     scrollAgentToBottom,
     renderAgentError
   });
-  return { addAssistantMessageActions, addUserMessageActions, regenerateLastAnswer, renderRunFooter, buildPatchPreview, scrollAgentToBottom, renderAgentError };
+  return { addAssistantMessageActions, addUserMessageActions, refreshUserMessageRewindButton, regenerateLastAnswer, renderRunFooter, buildPatchPreview, scrollAgentToBottom, renderAgentError };
 }

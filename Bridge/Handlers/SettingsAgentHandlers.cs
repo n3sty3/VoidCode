@@ -119,6 +119,8 @@ public sealed class SettingsAgentHandlers
         public required string Id { get; init; }
 
         public bool Approved { get; init; }
+        public bool ApproveTurn { get; init; }
+        public string? Reason { get; init; }
     }
 
     public sealed class InlineAssistStartRequest
@@ -385,7 +387,7 @@ public sealed class SettingsAgentHandlers
 
     private Task<object?> ResolveToolApprovalAsync(ResolveToolApprovalRequest request, BridgeContext context)
     {
-        AgentEngine.ResolveToolApproval(request.Id, request.Approved);
+        AgentEngine.ResolveToolApproval(request.Id, request.Approved, request.ApproveTurn, request.Reason);
         return Task.FromResult<object?>(null);
     }
 

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using VoidCode.Agent;
 using VoidCode.Services;
@@ -24,7 +25,10 @@ internal static class ToolExecutor
         string workspacePath,
         Action<string, object> emitEvent,
         Action<(string path, string dataUri, string mime)>? onImage = null,
-        TurnTransaction? turn = null)
+        TurnTransaction? turn = null,
+        AppSettings? settings = null,
+        bool autoVerify = false,
+        CancellationToken cancellationToken = default)
     {
         JsonNode? argsNode = null;
         try
@@ -82,7 +86,9 @@ internal static class ToolExecutor
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
                 await Task.Run(() => FileSystemService.WriteFile(fullPath, content));
 
-                return ($"Successfully wrote {content.Length} chars ({content.Split('\n').Length} lines) to '{relPath}'.", cp.IsRestorable ? cp.Id : null, fullPath);
+                var writeMsg = $"Successfully wrote {content.Length} chars ({content.Split('\n').Length} lines) to '{relPath}'.";
+                writeMsg += AppendPostEditDiagnostics(fullPath, workspacePath, autoVerify);
+                return (writeMsg, cp.IsRestorable ? cp.Id : null, fullPath);
             }
 
             case "patch_file":
@@ -94,6 +100,21 @@ internal static class ToolExecutor
 
                 if (File.Exists(fullPath)) turn?.SnapshotBeforeMutation(fullPath, "edit");
                 var (success, message, cp) = FileSystemService.PatchFileSmart(fullPath, search, replace);
+                if (success) message += AppendPostEditDiagnostics(fullPath, workspacePath, autoVerify);
+                return (message, cp?.IsRestorable == true ? cp.Id : null, success ? fullPath : null);
+            }
+
+            case "multi_patch_file":
+            {
+                var relPath = argsNode?["path"]?.GetValue<string>() ?? "";
+                var fullPath = ResolvePath(workspacePath, relPath);
+                var edits = UnifiedDiffService.ParseMultiPatchEdits(argsNode);
+                if (edits.Count == 0)
+                    return ("Error: 'edits' must be a non-empty array of { search, replace } objects.", null, null);
+
+                if (File.Exists(fullPath)) turn?.SnapshotBeforeMutation(fullPath, "edit");
+                var (success, message, cp, _, _) = FileSystemService.MultiPatchFileSmart(fullPath, edits);
+                if (success) message += AppendPostEditDiagnostics(fullPath, workspacePath, autoVerify);
                 return (message, cp?.IsRestorable == true ? cp.Id : null, success ? fullPath : null);
             }
 
@@ -306,8 +327,51 @@ internal static class ToolExecutor
                 return (res.Message, null, null);
             }
 
+            case "glob_files":
+            {
+                var pattern = argsNode?["pattern"]?.GetValue<string>() ?? "**/*";
+                var files = await Task.Run(() => FileSystemService.GlobFiles(workspacePath, pattern, 150), cancellationToken);
+                if (files.Count == 0) return ($"No files matched pattern '{pattern}'.", null, null);
+                var body = string.Join("\n", files);
+                return ($"Matched {files.Count} file{(files.Count == 1 ? "" : "s")} for '{pattern}':\n{body}", null, null);
+            }
+
+            case "get_lsp_diagnostics":
+            {
+                var relPath = argsNode?["path"]?.GetValue<string>();
+                var target = string.IsNullOrWhiteSpace(relPath) ? null : ResolvePath(workspacePath, relPath);
+                var diagText = LspService.FormatCachedDiagnostics(target, workspacePath);
+                return (diagText, null, null);
+            }
+
+            case "delegate_research":
+            {
+                var question = argsNode?["question"]?.GetValue<string>() ?? "";
+                if (settings == null)
+                    return ("Error: Model settings unavailable for research subagent.", null, null);
+                var brief = await ResearchSubagent.RunAsync(question, workspacePath, settings, emitEvent, cancellationToken);
+                return (ToolOutputPolicy.Truncate(brief, ToolOutputPolicy.ReadFileMaxChars, "research summary clipped"), null, null);
+            }
+
             default:
                 return ($"Error: Unknown tool '{name}'.", null, null);
+        }
+    }
+
+    private static string AppendPostEditDiagnostics(string fullPath, string workspacePath, bool autoVerify)
+    {
+        if (!autoVerify) return "";
+        try
+        {
+            var diags = LspService.GetCachedDiagnostics(fullPath);
+            if (diags.Count == 0) return "";
+            var formatted = LspService.FormatCachedDiagnostics(fullPath, workspacePath, 10);
+            return $"\n\n[Live LSP Diagnostics for edited file]\n{formatted}";
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "ToolExecutor.AppendPostEditDiagnostics");
+            return "";
         }
     }
 
