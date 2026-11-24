@@ -36,7 +36,7 @@ function ensureModal() {
     </div>
 
     <div style="display:flex;gap:8px;align-items:center;">
-      <select id="db-discovered-select" class="text-input" aria-label="Discovered databases" style="width:240px;height:34px;color-scheme:dark;background:var(--glass-hover);color:var(--text);border:1px solid var(--seam);border-radius:8px;padding:0 8px;">
+      <select id="db-discovered-select" aria-label="Discovered databases" style="width:240px;">
         <option value="">Scanning workspace...</option>
       </select>
       <input type="text" id="db-path-input" class="text-input" placeholder="Path to .sqlite / .db file (relative or absolute)" style="flex:1;" />
@@ -87,6 +87,7 @@ function ensureModal() {
     }
   });
   document.getElementById('btn-db-attach-ai')?.addEventListener('click', attachSchemaToAgent);
+  globalThis.setupCustomSelects?.();
 
   return overlay;
 }
@@ -117,6 +118,8 @@ async function discoverDatabases() {
         loadSchema(db.path);
       }
     });
+    if (activeDbPath) sel.value = activeDbPath;
+    globalThis.syncAllCustomSelects?.();
   } catch (err) {
     globalThis.logSwallowed?.(err, 'db-explorer.discover');
   }
