@@ -39,9 +39,7 @@ public class StorageServiceTests
     {
         WithNoEnvironmentRoot(() =>
         {
-            var expected = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "VoidCode");
+            var expected = PlatformServices.GetDefaultAppDataRoot();
 
             Assert.Equal(expected, StorageService.Root);
         });

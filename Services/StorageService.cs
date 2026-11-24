@@ -87,6 +87,18 @@ public static class StorageService
     /// Kept as a property instead of the old static readonly fields so the two overrides below can
     /// Take effect, and resolved per access so a scope that ends mid-run is honoured by the next write.
     /// </summary>
+    internal static bool IsRootOverridden
+    {
+        get
+        {
+            lock (RootGate)
+            {
+                if (_rootOverride != null) return true;
+            }
+            return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VOIDCODE_STORAGE_ROOT"));
+        }
+    }
+
     public static string Root
     {
         get

@@ -85,6 +85,7 @@ const COMMAND_REGISTRY = [
   { id: 'debug.toggleBreakpoint', category: 'Debug', title: 'Toggle Breakpoint', defaultKeys: 'F9', run: () => { const editor = globalThis.getMonacoEditor?.(); if (activeTab && editor) toggleEditorBreakpoint(editor.getPosition().lineNumber); } },
   { id: 'view.toggleAgent', category: 'AI', title: 'Focus AI Agent Chat', defaultKeys: 'Ctrl+L', run: () => { toggleWorkspacePane('agent', true); control('agent-input-text')?.focus(); } },
   { id: 'ai.toggleAutocomplete', category: 'AI', title: 'AI: Toggle Tab Autocomplete (FIM Ghost Text)', defaultKeys: '', run: () => globalThis.toggleTabAutocomplete?.() },
+  { id: 'ai.missionControl', category: 'AI', title: 'AI: Open Mission Control (Parallel Worktree Agents)', defaultKeys: 'Ctrl+Shift+B', run: () => globalThis.openMissionControl?.() },
   { id: 'codebase.search', category: 'Codebase', title: 'Search Indexed Code & Symbols', defaultKeys: 'Ctrl+T', run: () => openCodebaseSearch() },
   { id: 'language.restart', category: 'Language', title: 'Restart Language Servers', defaultKeys: '', run: () => sendHost('lsp_restart') },
   { id: 'git.generateCommit', category: 'AI', title: 'Generate AI Commit Message', defaultKeys: '', run: () => sendHost('generate_commit_message') },

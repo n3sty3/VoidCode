@@ -24,6 +24,7 @@ import { init as initDebug } from './modules/debug.js';
 import { init as initInlineAi } from './modules/inline-ai.js';
 import { init as initAutocomplete } from './modules/autocomplete.js';
 import { init as initInlineDiff } from './modules/inline-diff.js';
+import { init as initMissionControl } from './modules/mission-control.js';
 import { init as initGit } from './modules/git.js';
 import { init as initTerminal } from './modules/terminal.js';
 import { init as initShell } from './modules/shell.js';
@@ -97,6 +98,7 @@ initDebug(); // publishes the debugger entry points + installs its debug_unsuppo
 initInlineAi(); // publishes the inline AI assist entry points
 initAutocomplete(); // Monaco Tab Autocomplete (FIM ghost text) + local AI discovery
 initInlineDiff(); // floating inline AI Accept / Diff / Revert bar inside Monaco
+initMissionControl(); // Mission Control parallel Git-worktree agents
 initGit(); // publishes the git source-control + diff entry points
 initIcons(); // the themed icon pack, so the shell can be lazy
 initTerminal(); // publishes the PTY terminal entry points

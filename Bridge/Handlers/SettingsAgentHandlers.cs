@@ -170,6 +170,17 @@ public sealed class SettingsAgentHandlers
         public bool Silent { get; init; }
     }
 
+    public sealed class MissionStartRequest
+    {
+        public string? Title { get; init; }
+        public required string Prompt { get; init; }
+    }
+
+    public sealed class MissionIdRequest
+    {
+        public required string MissionId { get; init; }
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<ProviderProbeRequest, object?>(SettingsAgentRoutes.TestConnection, TestConnectionAsync, envelope: false);
@@ -192,6 +203,12 @@ public sealed class SettingsAgentHandlers
         router.Register<CheckForUpdatesRequest, object?>(SettingsAgentRoutes.CheckForUpdates, CheckForUpdatesAsync, envelope: false);
         router.Register<InlineCompleteRequest, InlineCompleteResponse>(SettingsAgentRoutes.AiInlineComplete, AiInlineCompleteAsync, envelope: true);
         router.Register<NoPayload, LocalDiscoveryReport>(SettingsAgentRoutes.DiscoverLocalModels, DiscoverLocalModelsAsync, envelope: true);
+        router.Register<MissionStartRequest, MissionActionResult>(SettingsAgentRoutes.MissionStart, MissionStartAsync, envelope: true);
+        router.Register<NoPayload, List<MissionSnapshot>>(SettingsAgentRoutes.MissionList, MissionListAsync, envelope: true);
+        router.Register<MissionIdRequest, MissionDiffResult>(SettingsAgentRoutes.MissionDiff, MissionDiffAsync, envelope: true);
+        router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionMerge, MissionMergeAsync, envelope: true);
+        router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionCancel, MissionCancelAsync, envelope: true);
+        router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionDiscard, MissionDiscardAsync, envelope: true);
     }
 
     private Task<object?> TestConnectionAsync(ProviderProbeRequest request, BridgeContext context)
@@ -551,6 +568,41 @@ public sealed class SettingsAgentHandlers
         return LocalModelDiscoveryService.DiscoverAsync();
     }
 
+    private Task<MissionActionResult> MissionStartAsync(MissionStartRequest request, BridgeContext context)
+    {
+        return WorktreeMissionService.StartMissionAsync(_workspace() ?? "", request.Title ?? "", request.Prompt, _settings());
+    }
+
+    private Task<List<MissionSnapshot>> MissionListAsync(NoPayload request, BridgeContext context)
+    {
+        return Task.FromResult(WorktreeMissionService.ListMissions(_workspace()));
+    }
+
+    private Task<MissionDiffResult> MissionDiffAsync(MissionIdRequest request, BridgeContext context)
+    {
+        return WorktreeMissionService.GetMissionDiffAsync(request.MissionId);
+    }
+
+    private async Task<MissionActionResult> MissionMergeAsync(MissionIdRequest request, BridgeContext context)
+    {
+        var result = await WorktreeMissionService.MergeMissionAsync(request.MissionId);
+        if (result.Ok)
+        {
+            RefreshWorkspaceTreeIfPresent();
+        }
+        return result;
+    }
+
+    private Task<MissionActionResult> MissionCancelAsync(MissionIdRequest request, BridgeContext context)
+    {
+        return Task.FromResult(WorktreeMissionService.CancelMission(request.MissionId));
+    }
+
+    private Task<MissionActionResult> MissionDiscardAsync(MissionIdRequest request, BridgeContext context)
+    {
+        return WorktreeMissionService.DiscardMissionAsync(request.MissionId);
+    }
+
     private void RefreshWorkspaceTreeIfPresent()
     {
         var workspace = _workspace();
@@ -589,4 +641,10 @@ public static class SettingsAgentRoutes
     public const string CheckForUpdates = "check_for_updates";
     public const string AiInlineComplete = "ai_inline_complete";
     public const string DiscoverLocalModels = "discover_local_models";
+    public const string MissionStart = "mission_start";
+    public const string MissionList = "mission_list";
+    public const string MissionDiff = "mission_diff";
+    public const string MissionMerge = "mission_merge";
+    public const string MissionCancel = "mission_cancel";
+    public const string MissionDiscard = "mission_discard";
 }

@@ -136,7 +136,7 @@ public static class SecretService
 
     private static bool TrySaveToMacKeychain(string apiKey)
     {
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VOIDCODE_STORAGE_ROOT")))
+        if (StorageService.IsRootOverridden)
         {
             // Keep isolated test/portable profiles completely self-contained on disk.
             return false;

@@ -245,6 +245,18 @@ public static class GitService
         return (result.ExitCode, result.Stdout, result.Stderr);
     }
 
+    internal static async Task<(int ExitCode, string Stdout, string Stderr)> RunGitArgsAsync(
+        string workspace,
+        IEnumerable<string> arguments,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CheckGitAvailable() || string.IsNullOrEmpty(_gitPath))
+            return (-1, "", "Git is not installed on this machine.");
+
+        var result = await ProcessRunner.RunAsync(_gitPath, arguments.ToList(), workspace, null, cancellationToken);
+        return (result.ExitCode, result.Stdout, result.Stderr);
+    }
+
     private static async Task<(int ExitCode, string Stdout, string Stderr)> RunGitArgumentsAsync(
         string workspace,
         IEnumerable<string> arguments,

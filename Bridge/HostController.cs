@@ -202,6 +202,7 @@ public sealed class HostController
         _fileSystemHandlers.CancelPending();
         _lspEditHandlers.CancelPending();
         _ = DebugService.StopDebuggingAsync();
+        WorktreeMissionService.ShutdownAll();
         LspService.ShutdownAll();
         PtyManager.KillAll();
         TerminalService.KillActiveProcess();

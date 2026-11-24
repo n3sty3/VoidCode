@@ -34,6 +34,9 @@ public class CodeChunk
 
     [JsonIgnore]
     public HashSet<string> Terms { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public float[]? SemanticVector { get; set; }
 }
 
 public class CodebaseIndexData
@@ -203,7 +206,9 @@ public static class CodebaseIndexService
                     {
                         foreach (var chunk in loaded.Chunks)
                         {
-                            chunk.Terms = ExtractTerms(chunk.Preview + " " + string.Join(" ", chunk.Symbols));
+                            var text = chunk.Preview + " " + string.Join(" ", chunk.Symbols) + " " + chunk.FilePath;
+                            chunk.Terms = ExtractTerms(text);
+                            chunk.SemanticVector = EmbeddingService.ComputeLocalVector(text);
                         }
                         _cache[workspace] = loaded;
                         indexData = loaded;
@@ -223,7 +228,22 @@ public static class CodebaseIndexService
         if (indexData == null || indexData.Chunks.Count == 0) return new List<SearchResultItem>();
 
         var queryTerms = ExtractTerms(query).ToList();
-        if (queryTerms.Count == 0) return new List<SearchResultItem>();
+        var queryVector = EmbeddingService.ComputeLocalVector(query);
+        if (queryTerms.Count == 0 && queryVector.All(v => v == 0f)) return new List<SearchResultItem>();
+
+        // Compute inverse-document-frequency (IDF) weights across chunks so rare symbols outrank boilerplate.
+        int totalChunks = Math.Max(1, indexData.Chunks.Count);
+        var termIdf = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var q in queryTerms)
+        {
+            if (termIdf.ContainsKey(q)) continue;
+            int df = 0;
+            foreach (var c in indexData.Chunks)
+            {
+                if (c.Terms.Contains(q)) df++;
+            }
+            termIdf[q] = Math.Log((totalChunks + 1.0) / (df + 1.0)) + 1.0;
+        }
 
         var scored = new List<SearchResultItem>();
 
@@ -231,36 +251,46 @@ public static class CodebaseIndexService
         {
             double score = 0;
 
-            // 1. Symbol matches (high weight)
+            // 1. Exact & partial symbol definition matches (highest signal)
             foreach (var sym in chunk.Symbols)
             {
                 foreach (var q in queryTerms)
                 {
                     if (sym.Equals(q, StringComparison.OrdinalIgnoreCase)) score += 10.0;
-                    else if (sym.Contains(q, StringComparison.OrdinalIgnoreCase)) score += 4.0;
+                    else if (sym.Contains(q, StringComparison.OrdinalIgnoreCase)) score += 4.5;
                 }
             }
 
-            // 2. Term matches in chunk body
+            // 2. IDF-weighted lexical BM25-style matches
             int matches = 0;
             foreach (var q in queryTerms)
             {
                 if (chunk.Terms.Contains(q))
                 {
                     matches++;
-                    score += 2.0;
+                    score += 2.0 * (termIdf.TryGetValue(q, out var idf) ? idf : 1.0);
                 }
             }
 
-            // 3. File name match boost
+            // 3. File path & filename match boost
             var fileName = Path.GetFileName(chunk.FilePath);
             foreach (var q in queryTerms)
             {
                 if (fileName.Contains(q, StringComparison.OrdinalIgnoreCase)) score += 5.0;
+                else if (chunk.FilePath.Contains(q, StringComparison.OrdinalIgnoreCase)) score += 2.0;
             }
 
-            if (score > 0)
+            // 4. Dense semantic cosine similarity (captures fuzzy/morphological/conceptual matches)
+            chunk.SemanticVector ??= EmbeddingService.ComputeLocalVector(chunk.Preview + " " + string.Join(" ", chunk.Symbols) + " " + chunk.FilePath);
+            double cosine = EmbeddingService.CosineSimilarity(queryVector, chunk.SemanticVector);
+            if (cosine > 0.18)
             {
+                score += cosine * 8.0;
+            }
+
+            if (score > 0.5)
+            {
+                double coverageBonus = queryTerms.Count > 0 ? (matches / (double)queryTerms.Count) : 0.0;
                 scored.Add(new SearchResultItem
                 {
                     FilePath = chunk.FilePath,
@@ -268,7 +298,7 @@ public static class CodebaseIndexService
                     EndLine = chunk.EndLine,
                     Symbols = chunk.Symbols,
                     Preview = chunk.Preview,
-                    Score = score + (matches / (double)queryTerms.Count)
+                    Score = score + coverageBonus
                 });
             }
         }
@@ -431,15 +461,30 @@ public static class CodebaseIndexService
         var lines = File.ReadAllLines(fullPath);
         if (lines.Length == 0) return chunks;
 
-        const int chunkSize = 40;
-        const int overlap = 8;
+        // Symbol-boundary chunking: start new chunks at class/function/method declarations when
+        // the current chunk already has >= minChunkLines, capping any single chunk at maxChunkLines.
+        const int minChunkLines = 14;
+        const int maxChunkLines = 52;
+        const int overlap = 6;
 
-        for (int i = 0; i < lines.Length; i += (chunkSize - overlap))
+        int i = 0;
+        while (i < lines.Length)
         {
             int start = i;
-            int count = Math.Min(chunkSize, lines.Length - start);
-            var slice = lines.Skip(start).Take(count).ToArray();
+            int end = Math.Min(lines.Length, start + maxChunkLines);
 
+            // Look for a clean symbol declaration boundary between start + minChunkLines and end.
+            for (int probe = start + minChunkLines; probe < end; probe++)
+            {
+                if (SymbolDefRegex.IsMatch(lines[probe]))
+                {
+                    end = probe;
+                    break;
+                }
+            }
+
+            int count = Math.Max(1, end - start);
+            var slice = lines.Skip(start).Take(count).ToArray();
             var previewText = string.Join("\n", slice);
             var symbols = new List<string>();
 
@@ -456,7 +501,8 @@ public static class CodebaseIndexService
                 }
             }
 
-            var chunk = new CodeChunk
+            var semanticSource = previewText + " " + string.Join(" ", symbols) + " " + relPath;
+            chunks.Add(new CodeChunk
             {
                 Id = $"{relPath}:{start + 1}",
                 FilePath = relPath,
@@ -464,11 +510,13 @@ public static class CodebaseIndexService
                 EndLine = start + count,
                 Symbols = symbols,
                 Preview = previewText,
-                Terms = ExtractTerms(previewText + " " + string.Join(" ", symbols))
-            };
+                Terms = ExtractTerms(semanticSource),
+                SemanticVector = EmbeddingService.ComputeLocalVector(semanticSource)
+            });
 
-            chunks.Add(chunk);
-            if (start + count >= lines.Length) break;
+            if (end >= lines.Length) break;
+            // If we split on a symbol boundary, start right at that declaration; otherwise keep small overlap.
+            i = (end < start + maxChunkLines) ? end : Math.Max(start + 1, end - overlap);
         }
 
         return chunks;
