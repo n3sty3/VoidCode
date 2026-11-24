@@ -16,6 +16,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Inject private VoidAgent Core prompt
+        shell: pwsh
+        env:
+          VOIDAGENT_CORE_PROMPT: ${{ secrets.VOIDAGENT_CORE_PROMPT }}
+        run: |
+          if ($env:VOIDAGENT_CORE_PROMPT) {
+            New-Item -ItemType Directory -Force -Path Agent/Private | Out-Null
+            [IO.File]::WriteAllText("Agent/Private/voidagent-core.md", $env:VOIDAGENT_CORE_PROMPT)
+            Write-Host "Private VoidAgent Core prompt injected."
+          } else {
+            Write-Host "::warning::VOIDAGENT_CORE_PROMPT secret not set; building with public fallback prompt."
+          }
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -67,6 +80,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Inject private VoidAgent Core prompt
+        env:
+          VOIDAGENT_CORE_PROMPT: ${{ secrets.VOIDAGENT_CORE_PROMPT }}
+        run: |
+          if [ -n "$VOIDAGENT_CORE_PROMPT" ]; then
+            mkdir -p Agent/Private
+            printf '%s' "$VOIDAGENT_CORE_PROMPT" > Agent/Private/voidagent-core.md
+            echo "Private VoidAgent Core prompt injected."
+          else
+            echo "::warning::VOIDAGENT_CORE_PROMPT secret not set; building with public fallback prompt."
+          fi
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -107,6 +132,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Inject private VoidAgent Core prompt
+        env:
+          VOIDAGENT_CORE_PROMPT: ${{ secrets.VOIDAGENT_CORE_PROMPT }}
+        run: |
+          if [ -n "$VOIDAGENT_CORE_PROMPT" ]; then
+            mkdir -p Agent/Private
+            printf '%s' "$VOIDAGENT_CORE_PROMPT" > Agent/Private/voidagent-core.md
+            echo "Private VoidAgent Core prompt injected."
+          else
+            echo "::warning::VOIDAGENT_CORE_PROMPT secret not set; building with public fallback prompt."
+          fi
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4

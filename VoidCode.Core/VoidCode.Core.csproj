@@ -33,4 +33,10 @@
     <InternalsVisibleTo Include="VoidCode.Tests" />
   </ItemGroup>
 
+  <!-- Private VoidAgent Core prompt: gitignored, embedded only when present (local dev or release CI secret).
+       Public/open-source builds fall back to Prompts.PublicCoreDoctrine. -->
+  <ItemGroup Condition="Exists('..\Agent\Private\voidagent-core.md')">
+    <EmbeddedResource Include="..\Agent\Private\voidagent-core.md" LogicalName="VoidCode.Agent.CoreDoctrine.md" />
+  </ItemGroup>
+
 </Project>

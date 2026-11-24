@@ -1614,10 +1614,10 @@
               <div class="form-group">
                 <div class="label-row">
                   <label for="settings-system-prompt">Specialist profile &amp; extra operator rules</label>
-                  <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-system-prompt">Reset to Default</button>
+                  <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-system-prompt">Clear</button>
                 </div>
-                <small style="margin-bottom:4px;">VoidAgent Core's built-in engineering engine is always active under the hood (parallel exploration, multi-hunk patching, live plans &amp; LSP verification). Rules below layer cleanly on top.</small>
-                <textarea id="settings-system-prompt" rows="6"></textarea>
+                <small style="margin-bottom:4px;">VoidAgent Core's built-in engineering prompt is always active and managed by VoidCode. Anything you write here is optional and layers on top: focus areas, conventions, tone.</small>
+                <textarea id="settings-system-prompt" rows="6" placeholder="Optional. Leave empty to run pure VoidAgent Core. Example: Prefer immutable records. Always add xUnit tests for new services."></textarea>
                 <div class="agent-contract-chips" aria-label="Built-in VoidAgent Core capabilities">
                   <span class="val-badge is-ok">VoidAgent Core Built-In</span>
                   <span class="val-badge is-muted">+ Parallel Tools &amp; Repo Map</span>

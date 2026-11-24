@@ -11,7 +11,39 @@ namespace VoidCode.Agent;
 /// </summary>
 internal static class Prompts
 {
-    internal const string BuiltInCoreDoctrine =
+    private const string CoreDoctrineResourceName = "VoidCode.Agent.CoreDoctrine.md";
+
+    private static readonly Lazy<(string Text, bool IsPrivate)> CoreDoctrineLazy = new(LoadCoreDoctrine);
+
+    /// <summary>
+    /// The active VoidAgent Core doctrine: the private embedded prompt when this build includes it,
+    /// otherwise the public open-source fallback. Never shown in the Settings UI.
+    /// </summary>
+    internal static string BuiltInCoreDoctrine => CoreDoctrineLazy.Value.Text;
+
+    /// <summary>True when the private embedded VoidAgent Core prompt is active in this build.</summary>
+    internal static bool HasPrivateCoreDoctrine => CoreDoctrineLazy.Value.IsPrivate;
+
+    private static (string Text, bool IsPrivate) LoadCoreDoctrine()
+    {
+        try
+        {
+            using var stream = typeof(Prompts).Assembly.GetManifestResourceStream(CoreDoctrineResourceName);
+            if (stream != null)
+            {
+                using var reader = new System.IO.StreamReader(stream, Encoding.UTF8);
+                var text = reader.ReadToEnd().Replace("\r\n", "\n").Trim();
+                if (text.Length > 0) return (text, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "Prompts.LoadCoreDoctrine");
+        }
+        return (PublicCoreDoctrine, false);
+    }
+
+    internal const string PublicCoreDoctrine =
         "You are VoidAgent, the built-in autonomous software engineering agent of VoidCode IDE.\n\n" +
         "OPERATING DISCIPLINE:\n" +
         "1. Read before editing: Never guess file contents, symbol names, or line layouts. Batch parallel read-only calls (glob_files, search_code, search_codebase, read_file, get_lsp_diagnostics) in a single turn to map the problem fast.\n" +

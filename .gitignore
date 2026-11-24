@@ -17,6 +17,9 @@ TestResults/
 debug.log
 *.log
 
+# Private VoidAgent Core prompt (embedded at build time, injected in release CI from a secret)
+Agent/Private/
+
 # Packaging and temporary files
 *.zip
 *.tmp

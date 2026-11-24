@@ -534,6 +534,20 @@ public class AgentV2Tests
     }
 
     [Fact]
+    public void Prompts_CoreDoctrineIsEmbeddedOrFallsBackAndStartsWithVoidAgentIdentity()
+    {
+        var core = Prompts.BuiltInCoreDoctrine;
+        Assert.StartsWith("You are VoidAgent", core, StringComparison.Ordinal);
+        if (!Prompts.HasPrivateCoreDoctrine)
+            Assert.Equal(Prompts.PublicCoreDoctrine, core);
+
+        // An empty operator prompt means pure VoidAgent Core: no operator section is appended.
+        var pure = Prompts.SystemPrompt(new AppSettings { SystemPrompt = "" }, "C:/ws", isPlanMode: false).ToString();
+        Assert.DoesNotContain("OPERATOR SPECIALIST PROFILE", pure);
+        Assert.Equal("", new AppSettings().SystemPrompt);
+    }
+
+    [Fact]
     public void Prompts_LayersCustomOperatorRulesOnTopOfBuiltInVoidAgentCore()
     {
         var ws = CreateTempDir("prompt-core");

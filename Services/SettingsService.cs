@@ -36,7 +36,9 @@ public class AppSettings
         "4. Native & binary fluency: When analyzing compiled artifacts (.exe, .dll, native binaries), use inspect_binary to audit PE headers, architecture, sections, hashes, and extracted strings directly.\n" +
         "5. High-signal operator communication: VoidCode automatically records every file edit into the Turn Review card and Activity Timeline for hunk-level rollback. Keep responses concise, technical, and direct—cite exact file paths and verification results without filler or preachy disclaimers.";
 
-    public string SystemPrompt { get; set; } = DefaultSystemPrompt;
+    // Empty = VoidAgent Core only. The built-in core prompt is never stored here or shown in Settings;
+    // this field holds only the operator's optional specialist profile / extra rules layered on top.
+    public string SystemPrompt { get; set; } = "";
     public bool AutoApproveTools { get; set; } = false;
     // "review" (default), "workspace_auto" (in-workspace edits auto, commands/network ask), or "full_system".
     public string AuthorityMode { get; set; } = "review";
@@ -92,9 +94,10 @@ public static class SettingsService
                 var json = File.ReadAllText(SettingsFile);
                 var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                 if (string.IsNullOrWhiteSpace(settings.SystemPrompt) ||
-                    string.Equals(settings.SystemPrompt.Trim(), AppSettings.LegacyDefaultSystemPrompt.Trim(), StringComparison.Ordinal))
+                    string.Equals(settings.SystemPrompt.Trim(), AppSettings.LegacyDefaultSystemPrompt.Trim(), StringComparison.Ordinal) ||
+                    string.Equals(settings.SystemPrompt.Trim(), AppSettings.DefaultSystemPrompt.Trim(), StringComparison.Ordinal))
                 {
-                    settings.SystemPrompt = AppSettings.DefaultSystemPrompt;
+                    settings.SystemPrompt = "";
                 }
 
                 // One-time migration from the old plaintext ApiKey property.
