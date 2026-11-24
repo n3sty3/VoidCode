@@ -57,6 +57,8 @@ export function openAboutModal() {
   const trust = lastCapabilities?.workspaceTrust || 'trusted';
   setHtml(body, '');
   const appVer = lastUpdateResult?.currentVersion || '1.1.0';
+  const verBadge = byId('about-version-badge');
+  if (verBadge) verBadge.textContent = `v${appVer}`;
   const infoSec = makeSection('Release & Runtime Environment');
   infoSec.appendChild(makeRow('VoidCode IDE', 'Desktop Edition (.NET 10 + Monaco + Native Terminal)', `v${appVer}`));
   infoSec.appendChild(makeRow('Agent Engine', 'VoidAgent Core (EXPLORE -> PATCH -> VERIFY + Turn Transaction Ledger)', settings.AgentMode === 'plan' ? 'Plan mode' : 'Act mode'));
