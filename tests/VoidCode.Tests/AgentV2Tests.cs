@@ -8,6 +8,7 @@ using Xunit;
 
 namespace VoidCode.Tests;
 
+[Collection("StorageRoot")]
 public class AgentV2Tests
 {
     private static string CreateTempDir(string prefix)
@@ -163,5 +164,35 @@ public class AgentV2Tests
         Assert.Contains("HEAD -> main", parsed[0].Refs);
         Assert.Equal("feat(v2): VoidAgent recode", parsed[0].Subject);
         Assert.Equal("| *", parsed[1].Graph);
+    }
+
+    [Fact]
+    public void HostController_ConstructsAndRegistersAllBridgeRoutesWithoutCollisions()
+    {
+        var dir = CreateTempDir("host-ctrl");
+        using var scope = StorageService.UseRoot(dir);
+        try
+        {
+            var hooks = new VoidCode.Bridge.HostController.HostHooks(
+                SendRawJson: _ => { },
+                ApplyThemeIcon: _ => { },
+                OnWorkspaceMapped: _ => { },
+                OnMinimize: null,
+                OnMaximize: null,
+                WindowChrome: new VoidCode.Bridge.Handlers.SessionWindowHandlers.WindowChrome(
+                    () => { },
+                    () => { },
+                    () => { },
+                    () => { }));
+
+            var controller = new VoidCode.Bridge.HostController(hooks);
+            Assert.NotNull(controller);
+            Assert.False(string.IsNullOrWhiteSpace(controller.BridgeNonce));
+            controller.Shutdown();
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch (IOException) { /* cleanup */ }
+        }
     }
 }

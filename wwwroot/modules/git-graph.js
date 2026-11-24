@@ -57,12 +57,12 @@ function ensureGraphModal() {
   document.getElementById('btn-gg-stash-push')?.addEventListener('click', async () => {
     const msg = await globalThis.showInputDialog?.('Stash Working Changes', 'WIP snapshot', 'Stash');
     if (msg === null || msg === undefined) return;
-    const res = await hostRequest('git_stash_push', { message: msg }, 15000);
+    const res = await hostRequest('git_graph_stash_push', { message: msg }, 15000);
     globalThis.showToast?.(res?.data?.message || 'Stashed', res?.data?.ok ? 'success' : 'error');
     loadCommitGraph();
   });
   document.getElementById('btn-gg-stash-pop')?.addEventListener('click', async () => {
-    const res = await hostRequest('git_stash_pop', {}, 15000);
+    const res = await hostRequest('git_graph_stash_pop', {}, 15000);
     globalThis.showToast?.(res?.data?.message || 'Stash popped', res?.data?.ok ? 'success' : 'error');
     loadCommitGraph();
   });
@@ -98,7 +98,7 @@ async function loadCommitGraph() {
   try {
     const [graphRes, stashRes] = await Promise.all([
       hostRequest('git_commit_graph', { maxCount: 60 }, 15000),
-      hostRequest('git_stash_list', {}, 8000)
+      hostRequest('git_graph_stash_list', {}, 8000)
     ]);
 
     const stashes = stashRes?.ok && Array.isArray(stashRes.data) ? stashRes.data : [];
@@ -116,7 +116,7 @@ async function loadCommitGraph() {
           b.textContent = `${st.ref}: ${st.message.slice(0, 32)}`;
           b.title = `Click to pop ${st.ref}`;
           b.addEventListener('click', async () => {
-            const pop = await hostRequest('git_stash_pop', { stashRef: st.ref }, 15000);
+            const pop = await hostRequest('git_graph_stash_pop', { stashRef: st.ref }, 15000);
             globalThis.showToast?.(pop?.data?.message || 'Stash popped', pop?.data?.ok ? 'success' : 'error');
             loadCommitGraph();
           });

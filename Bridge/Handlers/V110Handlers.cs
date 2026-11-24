@@ -23,9 +23,9 @@ public static class V110Routes
     public const string GitCloneRepo = "git_clone_repo";
     public const string GitCommitGraph = "git_commit_graph";
     public const string GitCommitShow = "git_commit_show";
-    public const string GitStashList = "git_stash_list";
-    public const string GitStashPush = "git_stash_push";
-    public const string GitStashPop = "git_stash_pop";
+    public const string GitStashList = "git_graph_stash_list";
+    public const string GitStashPush = "git_graph_stash_push";
+    public const string GitStashPop = "git_graph_stash_pop";
     public const string GitHunkApply = "git_hunk_apply";
 }
 
