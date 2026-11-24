@@ -166,6 +166,66 @@ public static class TestService
         return false;
     }
 
+    /// <summary>
+    /// Applies a single-test or pattern filter cleanly across dotnet, pytest, go, cargo, and npm runners
+    /// while stripping shell-breaking characters.
+    /// </summary>
+    public static string ApplyTestFilter(string runner, string workspace, string baseArgs, string? filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter)) return baseArgs;
+        var safe = Regex.Replace(filter.Trim(), @"\$\(|\$\{|[""`;\r\n&<>]", "").Trim();
+        if (string.IsNullOrEmpty(safe)) return baseArgs;
+
+        if (runner.StartsWith("dotnet", StringComparison.OrdinalIgnoreCase))
+            return $"{baseArgs} --filter \"{safe}\"";
+
+        if (runner.StartsWith("pytest", StringComparison.OrdinalIgnoreCase))
+            return $"{baseArgs} -k \"{safe}\"";
+
+        if (runner.StartsWith("go", StringComparison.OrdinalIgnoreCase))
+            return $"test -json -run \"{safe}\" ./...";
+
+        if (runner.StartsWith("cargo", StringComparison.OrdinalIgnoreCase))
+            return $"{baseArgs} \"{safe}\"";
+
+        if (runner.StartsWith("npm", StringComparison.OrdinalIgnoreCase))
+        {
+            safe = safe.Replace("$", "");
+            var scriptText = ReadNpmTestScript(workspace);
+            string extra;
+            if (scriptText.Contains("playwright", StringComparison.OrdinalIgnoreCase) ||
+                scriptText.Contains("mocha", StringComparison.OrdinalIgnoreCase))
+                extra = $"-- -g \"{safe}\"";
+            else if (scriptText.Contains("node --test", StringComparison.OrdinalIgnoreCase))
+                extra = $"-- --test-name-pattern=\"{safe}\"";
+            else
+                extra = $"-- -t \"{safe}\"";
+
+            if (baseArgs.StartsWith("-c \"", StringComparison.Ordinal) && baseArgs.EndsWith("\"", StringComparison.Ordinal))
+                return $"-c \"npm test {extra.Replace("\"", "\\\"")}\"";
+            return $"{baseArgs} {extra}";
+        }
+
+        return baseArgs;
+    }
+
+    private static string ReadNpmTestScript(string workspace)
+    {
+        try
+        {
+            var pkgPath = Path.Combine(workspace, "package.json");
+            if (!File.Exists(pkgPath)) return "";
+            using var doc = JsonDocument.Parse(File.ReadAllText(pkgPath));
+            if (doc.RootElement.TryGetProperty("scripts", out var scripts) &&
+                scripts.ValueKind == JsonValueKind.Object &&
+                scripts.TryGetProperty("test", out var testProp) &&
+                testProp.ValueKind == JsonValueKind.String)
+                return testProp.GetString() ?? "";
+        }
+        catch (Exception ex) { LoggingService.Swallowed(ex, "TestService.ReadNpmTestScript"); }
+        return "";
+    }
+
     public static async Task<TestRunResult> RunTestsAsync(
         string workspace,
         string? filter = null,
@@ -182,23 +242,7 @@ public static class TestService
 
         result.Runner = detected.Value.Runner;
         var fileName = detected.Value.Command;
-        var args = detected.Value.Args;
-
-        if (!string.IsNullOrEmpty(filter))
-        {
-            if (result.Runner.StartsWith("dotnet"))
-            {
-                args += $" --filter \"{filter}\"";
-            }
-            else if (result.Runner.StartsWith("pytest"))
-            {
-                args += $" -k \"{filter}\"";
-            }
-            else if (result.Runner.StartsWith("go"))
-            {
-                args = $"test -json -run \"{filter}\" ./...";
-            }
-        }
+        var args = ApplyTestFilter(result.Runner, workspace, detected.Value.Args, filter);
 
         ConfigureStructuredOutput(result.Runner, ref args, out var resultDirectory, out var resultPath, out var resultFormat);
 

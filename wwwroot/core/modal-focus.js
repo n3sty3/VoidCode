@@ -38,6 +38,7 @@ function isVisible(el) {
 
 function isModal(dialog) {
   if (!isVisible(dialog)) return false;
+  if (dialog.closest('.editor-tool-pane, .is-tab-docked')) return false;
   if (dialog.getAttribute('aria-modal') === 'true') return true;
   return dialog.closest(MODAL_CONTAINER_SELECTOR) !== null && isVisible(dialog.parentElement);
 }

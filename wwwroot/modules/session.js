@@ -178,7 +178,7 @@ function collectSessionState() {
   });
   return {
     tabs,
-    active: activeTab ? activeTab.path : null,
+    active: activeTab && !activeTab.isVirtual ? activeTab.path : null,
     cursors,
     split: globalThis.getIsSplitEditorActive ? globalThis.getIsSplitEditorActive() : false
   };
@@ -223,7 +223,7 @@ function collectRecoveryState() {
 
   return {
     workspace: currentWorkspace,
-    activePath: activeTab?.path || null,
+    activePath: activeTab && !activeTab.isVirtual ? activeTab.path : null,
     buffers
   };
 }

@@ -14,7 +14,7 @@ using Xunit;
 
 namespace VoidCode.Tests;
 
-[Collection("StorageRoot")]
+[Collection("Storage root")]
 public class AgentV2Tests
 {
     private static string CreateTempDir(string prefix)

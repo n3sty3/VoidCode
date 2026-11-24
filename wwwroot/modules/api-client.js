@@ -30,26 +30,19 @@ function pushHistory(entry) {
   }
 }
 
-function ensureModal() {
-  if (modalEl && document.body.contains(modalEl)) return modalEl;
+function ensureView() {
+  if (modalEl) return modalEl;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'api-client-modal';
-  overlay.className = 'modal-overlay';
-  overlay.style.cssText = 'display:none;z-index:2600;';
+  const view = document.createElement('div');
+  view.id = 'api-client-modal';
+  view.className = 'tool-tab-view';
+  view.setAttribute('aria-label', 'API & HTTP Client');
 
-  const card = document.createElement('div');
-  card.className = 'glass glass--float';
-  card.setAttribute('role', 'dialog');
-  card.setAttribute('aria-modal', 'true');
-  card.setAttribute('aria-label', 'API & HTTP Client');
-  card.style.cssText = 'width:min(940px,95vw);max-height:88vh;display:flex;flex-direction:column;border-radius:16px;padding:18px;gap:10px;';
-
-  setHtml(card, html`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+  setHtml(view, html`
+    <div class="tool-tab-head">
       <div>
-        <div style="font-size:16px;font-weight:700;">API &amp; HTTP Client</div>
-        <div style="font-size:12px;opacity:0.75;">Test REST/JSON APIs natively inside VoidCode and send responses straight to VoidAgent.</div>
+        <div style="font-size:15px;font-weight:700;">API &amp; HTTP Client</div>
+        <div style="font-size:11.5px;opacity:0.72;">Test REST/JSON APIs natively inside VoidCode and send responses straight to VoidAgent.</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button type="button" class="btn btn--quiet btn--xs" id="btn-api-ai-types" style="white-space:nowrap;flex-shrink:0;">Generate Types / Tests with AI</button>
@@ -58,7 +51,7 @@ function ensureModal() {
     </div>
 
     <div style="display:flex;gap:8px;align-items:center;">
-      <select id="api-method" class="text-input" aria-label="HTTP Method" style="width:110px;height:34px;font-weight:600;color-scheme:dark;background:var(--glass-hover);color:var(--text);border:1px solid var(--seam);border-radius:8px;padding:0 8px;">
+      <select id="api-method" class="text-input" aria-label="HTTP Method" style="width:110px;">
         <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>
@@ -75,48 +68,41 @@ function ensureModal() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <label for="api-headers" style="font-size:11px;opacity:0.75;">Headers (one per line: Key: Value)</label>
-        <textarea id="api-headers" rows="4" class="text-input" spellcheck="false" placeholder="Accept: application/json&#10;Authorization: Bearer ..." style="font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+        <textarea id="api-headers" rows="4" class="text-input" spellcheck="false" placeholder="Accept: application/json&#10;Authorization: Bearer ..." style="font-family:var(--font-code);font-size:12px;resize:vertical;"></textarea>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;">
         <label for="api-body" style="font-size:11px;opacity:0.75;">Request Body (JSON / text)</label>
-        <textarea id="api-body" rows="4" class="text-input" spellcheck="false" placeholder='{"hello": "voidcode"}' style="font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+        <textarea id="api-body" rows="4" class="text-input" spellcheck="false" placeholder='{"hello": "voidcode"}' style="font-family:var(--font-code);font-size:12px;resize:vertical;"></textarea>
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:4px;border-top:1px solid var(--border-subtle,rgba(255,255,255,0.1));">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:4px;border-top:1px solid var(--seam);">
       <div style="display:flex;gap:6px;align-items:center;">
         <button type="button" class="btn btn--quiet btn--xs" data-api-resp-tab="body" style="white-space:nowrap;flex-shrink:0;">Response Body</button>
         <button type="button" class="btn btn--quiet btn--xs" data-api-resp-tab="headers" style="white-space:nowrap;flex-shrink:0;">Headers</button>
       </div>
-      <div id="api-resp-meta" style="font-size:12px;font-family:monospace;opacity:0.85;">Ready</div>
+      <div id="api-resp-meta" style="font-size:12px;font-family:var(--font-code);opacity:0.85;">Ready</div>
     </div>
 
-    <pre id="api-resp-output" style="margin:0;padding:12px;border-radius:10px;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));background:rgba(0,0,0,0.28);font-family:monospace;font-size:12px;line-height:1.45;overflow:auto;min-height:190px;max-height:38vh;white-space:pre-wrap;word-break:break-word;">Enter a URL and click Send.</pre>
+    <pre id="api-resp-output" style="margin:0;padding:12px;border-radius:10px;border:1px solid var(--seam);background:rgba(0,0,0,0.28);font-family:var(--font-code);font-size:12px;line-height:1.45;overflow:auto;flex:1;min-height:180px;white-space:pre-wrap;word-break:break-word;">Enter a URL and click Send.</pre>
   `);
 
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-  modalEl = overlay;
-  globalThis.setupCustomSelects?.();
+  modalEl = view;
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeApiClientModal();
+  view.querySelector('#btn-api-close')?.addEventListener('click', closeApiClientModal);
+  view.querySelector('#btn-api-send')?.addEventListener('click', sendRequest);
+  view.querySelector('#btn-api-ai-types')?.addEventListener('click', sendResponseToAgent);
+  view.querySelector('#api-url')?.addEventListener('keydown', (e) => {
+    if (/** @type {KeyboardEvent} */ (e).key === 'Enter') sendRequest();
   });
-  document.getElementById('btn-api-close')?.addEventListener('click', closeApiClientModal);
-  document.getElementById('btn-api-send')?.addEventListener('click', sendRequest);
-  document.getElementById('btn-api-ai-types')?.addEventListener('click', sendResponseToAgent);
-  document.getElementById('api-url')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendRequest();
-  });
-  card.querySelectorAll('[data-api-resp-tab]').forEach((btn) => {
+  view.querySelectorAll('[data-api-resp-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       activeRespTab = btn.getAttribute('data-api-resp-tab') || 'body';
       renderResponse();
     });
   });
 
-  renderHistory();
-  return overlay;
+  return view;
 }
 
 function renderHistory() {
@@ -234,7 +220,6 @@ function sendResponseToAgent() {
     label: `HTTP ${method} (${lastResponse.statusCode})`,
     content: `${method} ${url}\nStatus: ${lastResponse.statusCode} ${lastResponse.statusText} (${lastResponse.elapsedMs}ms)\n\n${snippet}`
   });
-  closeApiClientModal();
   globalThis.toggleWorkspacePane?.('agent', true);
   const box = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('agent-input-text'));
   if (box) {
@@ -244,18 +229,37 @@ function sendResponseToAgent() {
 }
 
 export function openApiClientModal(prefill = null) {
-  const el = ensureModal();
-  el.style.display = 'flex';
+  const el = ensureView();
+  if (globalThis.openToolTab) {
+    globalThis.openToolTab({
+      id: 'api-client',
+      name: 'API Client',
+      icon: '\u26a1',
+      toolKind: 'HTTP',
+      mountEl: el,
+      onActivate: () => {
+        globalThis.setupCustomSelects?.();
+        globalThis.syncAllCustomSelects?.();
+      }
+    });
+  } else {
+    if (!el.isConnected) document.body.appendChild(el);
+    el.style.display = 'flex';
+  }
+  globalThis.setupCustomSelects?.();
+  renderHistory();
   if (prefill?.url) {
     const u = /** @type {HTMLInputElement | null} */ (document.getElementById('api-url'));
     const m = /** @type {HTMLSelectElement | null} */ (document.getElementById('api-method'));
     if (u) u.value = prefill.url;
     if (m && prefill.method) m.value = prefill.method;
+    globalThis.syncAllCustomSelects?.();
   }
 }
 
 export function closeApiClientModal() {
-  if (modalEl) modalEl.style.display = 'none';
+  if (globalThis.closeToolTab) globalThis.closeToolTab('api-client');
+  else if (modalEl) modalEl.style.display = 'none';
 }
 
 export function init(ctx = {}) {

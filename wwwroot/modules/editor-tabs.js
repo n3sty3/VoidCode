@@ -142,13 +142,82 @@ function refreshOpenTabIfLoaded(path, content) {
   }
 }
 
+function openToolTab(spec) {
+  if (!spec || !spec.id || !spec.mountEl) return null;
+  const virtualPath = `voidtool://${spec.id}`;
+  let existing = openTabs.find(t => normalizePath(t.path) === normalizePath(virtualPath));
+  if (!existing) {
+    existing = {
+      path: virtualPath,
+      name: spec.name || spec.id,
+      dirty: false,
+      model: null,
+      isVirtual: true,
+      toolId: spec.id,
+      toolKind: spec.toolKind || 'Tool',
+      icon: spec.icon || '',
+      mountEl: spec.mountEl,
+      onActivate: spec.onActivate || null,
+      onClose: spec.onClose || null
+    };
+    openTabs.push(existing);
+  } else {
+    if (spec.name) existing.name = spec.name;
+    if (spec.icon !== undefined) existing.icon = spec.icon;
+    if (spec.toolKind) existing.toolKind = spec.toolKind;
+    existing.mountEl = spec.mountEl;
+    if (spec.onActivate) existing.onActivate = spec.onActivate;
+    if (spec.onClose) existing.onClose = spec.onClose;
+  }
+  setActiveTab(existing);
+  return existing;
+}
+
+function closeToolTab(id) {
+  if (!id) return;
+  closeTab(`voidtool://${id}`);
+}
+
 function setActiveTab(tab) {
   setActiveTabSlice(tab);
-  control('no-file-state').style.display = 'none';
+  const emptyEl = control('no-file-state');
+  if (emptyEl) emptyEl.style.display = 'none';
   const diffMount = control('monaco-diff-mount');
   if (diffMount) diffMount.style.display = 'none';
+  const toolPane = document.getElementById('editor-tool-pane');
+  const splitWrap = document.getElementById('editor-workspace-split');
   const mount = control('monaco-mount');
-  mount.style.display = 'block';
+
+  if (tab.isVirtual) {
+    if (splitWrap) splitWrap.style.display = 'none';
+    if (mount) mount.style.display = 'none';
+    if (toolPane) {
+      toolPane.style.display = 'flex';
+      Array.from(toolPane.children).forEach((child) => {
+        if (child !== tab.mountEl) /** @type {HTMLElement} */ (child).style.display = 'none';
+      });
+      if (tab.mountEl && tab.mountEl.parentElement !== toolPane) {
+        toolPane.appendChild(tab.mountEl);
+      }
+      if (tab.mountEl) tab.mountEl.style.display = 'flex';
+    }
+    const langText = tab.toolKind || 'Tool';
+    if (control('status-lang')) control('status-lang').textContent = langText;
+    setStatusSlot('status-lang', langText);
+    setStatusSlot('status-eol', '');
+    setStatusSlot('status-encoding', '');
+    setStatusSlot('status-cursor', '');
+    updateLspStatus({ language: langText, status: 'builtin', detail: 'Built-in VoidCode workbench tab.' });
+    renderTabs();
+    updateEditorContextActions(null);
+    updateBreadcrumbs(null);
+    tab.onActivate?.();
+    return;
+  }
+
+  if (toolPane) toolPane.style.display = 'none';
+  if (splitWrap) splitWrap.style.display = '';
+  if (mount) mount.style.display = 'block';
   const editor = currentEditor();
   if (editor) {
     editor.setModel(tab.model);
@@ -187,14 +256,22 @@ function closeTab(path) {
   const idx = openTabs.findIndex(t => normalizePath(t.path) === normalizePath(path));
   if (idx === -1) return;
 
-  notifyLspDidClose(path);
   const [removed] = openTabs.splice(idx, 1);
-  if (removed?.path) {
-    recentlyClosedTabs.push(removed.path);
-    if (recentlyClosedTabs.length > 25) recentlyClosedTabs.shift();
+  if (removed.isVirtual) {
+    try { removed.onClose?.(); } catch (err) { globalThis.logSwallowed?.(err, 'editor-tabs.toolClose'); }
+    if (removed.mountEl && removed.mountEl.parentElement?.id === 'editor-tool-pane') {
+      removed.mountEl.style.display = 'none';
+      removed.mountEl.remove();
+    }
+  } else {
+    notifyLspDidClose(path);
+    if (removed?.path) {
+      recentlyClosedTabs.push(removed.path);
+      if (recentlyClosedTabs.length > 25) recentlyClosedTabs.shift();
+    }
+    removed._modelSubscription?.dispose?.();
+    if (removed.model) removed.model.dispose();
   }
-  removed._modelSubscription?.dispose?.();
-  if (removed.model) removed.model.dispose();
 
   const current = activeTab;
   if (current && normalizePath(current.path) === normalizePath(path)) {
@@ -202,6 +279,10 @@ function closeTab(path) {
       setActiveTab(openTabs[Math.max(0, idx - 1)]);
     } else {
       setActiveTabSlice(null);
+      const toolPane = document.getElementById('editor-tool-pane');
+      if (toolPane) toolPane.style.display = 'none';
+      const splitWrap = document.getElementById('editor-workspace-split');
+      if (splitWrap) splitWrap.style.display = '';
       control('no-file-state').style.display = 'flex';
       control('monaco-mount').style.display = 'none';
       control('status-lang').textContent = 'Plain text';
@@ -218,7 +299,7 @@ function closeTab(path) {
       updateEditorContextActions(null);
       updateBreadcrumbs(null);
       refreshRunConfig();
-  syncRunAvailability();
+      syncRunAvailability();
     }
   }
   renderTabs();
@@ -263,7 +344,7 @@ function updateEditorContextActions(tab) {
   const container = control('editor-context-actions');
   if (!container) return;
   setHtml(container, '');
-  if (!tab || !tab.path) return;
+  if (!tab || !tab.path || tab.isVirtual) return;
 
   const ext = tab.path.split('.').pop().toLowerCase();
 
@@ -273,8 +354,12 @@ function updateEditorContextActions(tab) {
     btn.className = 'btn btn--primary btn--xs';
     btn.textContent = 'Live preview';
     btn.addEventListener('click', () => {
-      toggleMiniWindow('win-preview', true);
-      renderLivePreviewFromActiveTab();
+      if (globalThis.openWebPreviewTab) {
+        globalThis.openWebPreviewTab({ mode: 'active-file' });
+      } else {
+        toggleMiniWindow('win-preview', true);
+        renderLivePreviewFromActiveTab();
+      }
     });
     container.appendChild(btn);
   } else if (['md', 'markdown'].includes(ext)) {
@@ -283,11 +368,16 @@ function updateEditorContextActions(tab) {
     btn.className = 'btn btn--primary btn--xs';
     btn.textContent = 'Read rendered';
     btn.addEventListener('click', () => {
-      toggleMiniWindow('win-preview', true);
-      renderLivePreviewFromActiveTab();
+      if (globalThis.openWebPreviewTab) {
+        globalThis.openWebPreviewTab({ mode: 'active-file' });
+      } else {
+        toggleMiniWindow('win-preview', true);
+        renderLivePreviewFromActiveTab();
+      }
     });
     container.appendChild(btn);
   }
+  globalThis.renderTestContextAction?.(container, tab);
   // Runnable files use the single Smart Run button (F5) in the tabs bar.
 }
 
@@ -358,11 +448,14 @@ function renderTabs() {
   openTabs.forEach(tab => {
     const isAct = activeTab && normalizePath(activeTab.path) === normalizePath(tab.path);
     const el = document.createElement('div');
-    el.className = 'tab-item' + (isAct ? ' active' : '') + (tab.pinned ? ' is-pinned' : '');
-    el.title = tab.pinned ? `${tab.path} (Pinned)` : tab.path;
+    el.className = 'tab-item' + (isAct ? ' active' : '') + (tab.pinned ? ' is-pinned' : '') + (tab.isVirtual ? ' tab-item--tool' : '');
+    el.title = tab.isVirtual ? `${tab.name} (${tab.toolKind || 'Tool Tab'})` : (tab.pinned ? `${tab.path} (Pinned)` : tab.path);
     el.draggable = true;
-    const iconMarkup = globalThis.fileTypeIcon ? globalThis.fileTypeIcon(tab.name) : '';
+    const iconMarkup = tab.isVirtual
+      ? ''
+      : (globalThis.fileTypeIcon ? globalThis.fileTypeIcon(tab.name) : '');
     setHtml(el, html`
+      ${tab.isVirtual ? raw(`<span class="tab-tool-glyph" aria-hidden="true">${tab.icon || '\u25c8'}</span>`) : ''}
       ${iconMarkup ? raw(`<span class="tab-file-icon" aria-hidden="true">${iconMarkup}</span>`) : ''}
       ${tab.dirty ? raw('<span class="tab-dirty-dot" aria-label="Unsaved changes"></span>') : ''}
       <span>${tab.pinned ? '\ud83d\udccc ' : ''}${tab.name}</span>
@@ -395,7 +488,7 @@ function renderTabs() {
     el.addEventListener('click', (e) => {
       if (/** @type {HTMLInputElement} */ (e.target).classList.contains('tab-close-btn')) {
         requestCloseTab(tab);
-      } else if (e.altKey) {
+      } else if (e.altKey && !tab.isVirtual) {
         openSplitEditor(tab);
       } else {
         setActiveTab(tab);
@@ -508,9 +601,12 @@ export function init(ctx = {}) {
         else if (act === 'close-others') closeOtherTabs(t.path);
         else if (act === 'close-saved') closeSavedTabs();
         else if (act === 'close-all') closeAllTabs();
-        else if (act === 'split') openSplitEditor(t);
-        else if (act === 'reveal') sendHost('reveal_in_explorer', { path: t.path });
-        else if (act === 'copy-path') {
+        else if (act === 'split') {
+          if (t.isVirtual) showToast('Split view is only available for file tabs', 'info');
+          else openSplitEditor(t);
+        } else if (act === 'reveal') {
+          if (!t.isVirtual) sendHost('reveal_in_explorer', { path: t.path });
+        } else if (act === 'copy-path') {
           const ws = window.VoidState?.get?.('workspace') || '';
           const rel = (ws && t.path.startsWith(ws)) ? t.path.slice(ws.length).replace(/^[\\/]/, '') : t.path;
           navigator.clipboard?.writeText?.(rel);
@@ -518,12 +614,18 @@ export function init(ctx = {}) {
         }
       });
     });
+
+    wireDockButtons();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireTabContextMenu, { once: true });
   else wireTabContextMenu();
 
   Object.assign(globalThis, {
     openFileInEditor,
+    openToolTab,
+    closeToolTab,
+    dockSettingsAsTab,
+    dockDiffAsTab,
     refreshOpenTabIfLoaded,
     setActiveTab,
     closeTab,
@@ -542,6 +644,10 @@ export function init(ctx = {}) {
 
   return {
     openFileInEditor,
+    openToolTab,
+    closeToolTab,
+    dockSettingsAsTab,
+    dockDiffAsTab,
     refreshOpenTabIfLoaded,
     setActiveTab,
     closeTab,
@@ -557,4 +663,95 @@ export function init(ctx = {}) {
     saveTabNow,
     saveAllDirtyTabs
   };
+}
+
+let dockedSettingsState = null;
+function dockSettingsAsTab() {
+  const modal = document.getElementById('settings-modal');
+  const card = document.getElementById('win-settings');
+  if (!modal || !card) return;
+  if (dockedSettingsState) {
+    closeToolTab('settings');
+    return;
+  }
+  const btn = document.getElementById('btn-dock-settings-tab');
+  const origParent = modal.parentElement;
+  const origNext = modal.nextSibling;
+  const hostWrap = document.createElement('div');
+  hostWrap.className = 'tool-tab-view tool-tab-view--docked';
+  dockedSettingsState = { modal, card, origParent, origNext, btn };
+  modal.classList.add('is-tab-docked');
+  card.classList.add('is-tab-docked');
+  modal.style.display = 'flex';
+  hostWrap.appendChild(modal);
+  if (btn) btn.textContent = 'Undock';
+  openToolTab({
+    id: 'settings',
+    name: 'Settings',
+    icon: '\u2699',
+    toolKind: 'Settings',
+    mountEl: hostWrap,
+    onActivate: () => { modal.style.display = 'flex'; },
+    onClose: () => {
+      if (!dockedSettingsState) return;
+      const st = dockedSettingsState;
+      dockedSettingsState = null;
+      st.modal.classList.remove('is-tab-docked');
+      st.card.classList.remove('is-tab-docked');
+      st.modal.style.display = 'none';
+      if (st.origParent) st.origParent.insertBefore(st.modal, st.origNext || null);
+      if (st.btn) st.btn.textContent = 'Open as Tab';
+    }
+  });
+}
+
+let dockedDiffState = null;
+function dockDiffAsTab() {
+  const win = document.getElementById('win-diff');
+  if (!win) return;
+  if (dockedDiffState) {
+    closeToolTab('diff-review');
+    return;
+  }
+  const btn = document.getElementById('btn-dock-diff-tab');
+  const origParent = win.parentElement;
+  const origNext = win.nextSibling;
+  const origStyle = win.getAttribute('style') || '';
+  const hostWrap = document.createElement('div');
+  hostWrap.className = 'tool-tab-view tool-tab-view--docked';
+  dockedDiffState = { win, origParent, origNext, origStyle, btn };
+  win.classList.add('is-tab-docked');
+  win.style.cssText = 'display:flex;';
+  hostWrap.appendChild(win);
+  if (btn) btn.textContent = 'Undock';
+  const titleText = document.getElementById('diff-win-title')?.textContent?.trim() || 'Diff Review';
+  openToolTab({
+    id: 'diff-review',
+    name: titleText,
+    icon: '\u21c4',
+    toolKind: 'Diff',
+    mountEl: hostWrap,
+    onActivate: () => setTimeout(() => window.dispatchEvent(new Event('resize')), 40),
+    onClose: () => {
+      if (!dockedDiffState) return;
+      const st = dockedDiffState;
+      dockedDiffState = null;
+      st.win.classList.remove('is-tab-docked');
+      st.win.setAttribute('style', st.origStyle);
+      st.win.style.display = 'none';
+      if (st.origParent) st.origParent.insertBefore(st.win, st.origNext || null);
+      if (st.btn) st.btn.textContent = 'Open as Tab';
+    }
+  });
+}
+
+function wireDockButtons() {
+  document.getElementById('btn-dock-settings-tab')?.addEventListener('click', dockSettingsAsTab);
+  document.getElementById('btn-dock-diff-tab')?.addEventListener('click', dockDiffAsTab);
+  document.getElementById('btn-close-settings')?.addEventListener('click', () => {
+    if (dockedSettingsState) closeToolTab('settings');
+  });
+  document.querySelector('[data-close-window="win-diff"]')?.addEventListener('click', () => {
+    if (dockedDiffState) closeToolTab('diff-review');
+  });
 }

@@ -151,7 +151,7 @@ function wireEditorClick() {
 export async function refreshGitGutter() {
   const tab = window.VoidState?.get?.('activeTab');
   const ws = window.VoidState?.get?.('workspace');
-  if (!tab?.path || !ws) {
+  if (!tab?.path || tab.isVirtual || !ws) {
     currentHunks = [];
     applyGutterDecorations();
     return;

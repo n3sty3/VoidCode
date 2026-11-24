@@ -191,9 +191,10 @@ export function handleDebugUnsupported(payload) {
   syncDebugAvailability();
 }
 
-export function toggleEditorBreakpoint(line) {
+export function toggleEditorBreakpoint(line, opts = {}) {
   const tab = window.VoidState.get('activeTab');
-  if (!tab) return;
+  if (!tab || tab.isVirtual) return;
+  if (!opts?.forceBreakpoint && globalThis.handleTestGutterLineClick?.(line)) return;
   const path = tab.path;
   if (!breakpointsByFile[path]) breakpointsByFile[path] = [];
 
@@ -314,7 +315,7 @@ export function renderBreakpointsList() {
 
     item.querySelector('.remove').addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleEditorBreakpoint(bp.line);
+      toggleEditorBreakpoint(bp.line, { forceBreakpoint: true });
     });
 
     item.addEventListener('click', () => {

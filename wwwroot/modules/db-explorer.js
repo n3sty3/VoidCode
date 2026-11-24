@@ -8,26 +8,19 @@ let modalEl = null;
 let activeDbPath = '';
 let lastSchemaSummary = '';
 
-function ensureModal() {
-  if (modalEl && document.body.contains(modalEl)) return modalEl;
+function ensureView() {
+  if (modalEl) return modalEl;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'db-explorer-modal';
-  overlay.className = 'modal-overlay';
-  overlay.style.cssText = 'display:none;z-index:2600;';
+  const view = document.createElement('div');
+  view.id = 'db-explorer-modal';
+  view.className = 'tool-tab-view';
+  view.setAttribute('aria-label', 'SQLite Database Explorer');
 
-  const card = document.createElement('div');
-  card.className = 'glass glass--float';
-  card.setAttribute('role', 'dialog');
-  card.setAttribute('aria-modal', 'true');
-  card.setAttribute('aria-label', 'SQLite Database Explorer');
-  card.style.cssText = 'width:min(980px,95vw);max-height:88vh;display:flex;flex-direction:column;border-radius:16px;padding:18px;gap:10px;';
-
-  setHtml(card, html`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+  setHtml(view, html`
+    <div class="tool-tab-head">
       <div>
-        <div style="font-size:16px;font-weight:700;">SQLite Database Explorer</div>
-        <div style="font-size:12px;opacity:0.75;">Inspect local .db / .sqlite schemas, run SQL queries, and attach table schemas directly to VoidAgent.</div>
+        <div style="font-size:15px;font-weight:700;">SQLite Database Explorer</div>
+        <div style="font-size:11.5px;opacity:0.72;">Inspect local .db / .sqlite schemas, run SQL queries, and attach table schemas directly to VoidAgent.</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button type="button" class="btn btn--quiet btn--xs" id="btn-db-attach-ai" style="white-space:nowrap;flex-shrink:0;">Attach Schema to VoidAgent</button>
@@ -43,53 +36,48 @@ function ensureModal() {
       <button type="button" class="btn btn--quiet btn--sm" id="btn-db-load" style="white-space:nowrap;flex-shrink:0;">Load Schema</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:250px 1fr;gap:12px;min-height:360px;max-height:60vh;">
-      <div id="db-tables-list" style="overflow-y:auto;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));border-radius:10px;padding:8px;background:var(--surface-1,rgba(255,255,255,0.02));display:flex;flex-direction:column;gap:6px;">
+    <div style="display:grid;grid-template-columns:260px 1fr;gap:12px;flex:1;min-height:0;">
+      <div id="db-tables-list" style="overflow-y:auto;border:1px solid var(--seam);border-radius:10px;padding:8px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:6px;min-height:0;">
         <div style="font-size:12px;opacity:0.65;padding:8px;">Select or enter a SQLite database file to inspect tables.</div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px;min-width:0;">
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;">
         <div style="display:flex;gap:8px;align-items:flex-start;">
-          <textarea id="db-sql-input" rows="3" class="text-input" spellcheck="false" placeholder="SELECT * FROM users LIMIT 50;" style="flex:1;font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+          <textarea id="db-sql-input" rows="3" class="text-input" spellcheck="false" placeholder="SELECT * FROM users LIMIT 50;" style="flex:1;font-family:var(--font-code);font-size:12px;resize:vertical;"></textarea>
           <button type="button" class="btn btn--primary btn--sm" id="btn-db-run-sql" style="white-space:nowrap;flex-shrink:0;">Run SQL</button>
         </div>
-        <div id="db-query-meta" style="font-size:11px;font-family:monospace;opacity:0.8;">Ready</div>
-        <div id="db-query-grid" style="flex:1;overflow:auto;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));border-radius:10px;background:rgba(0,0,0,0.22);min-height:200px;"></div>
+        <div id="db-query-meta" style="font-size:11px;font-family:var(--font-code);opacity:0.8;">Ready</div>
+        <div id="db-query-grid" style="flex:1;overflow:auto;border:1px solid var(--seam);border-radius:10px;background:rgba(0,0,0,0.22);min-height:180px;"></div>
       </div>
     </div>
   `);
 
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-  modalEl = overlay;
+  modalEl = view;
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeDbExplorerModal();
-  });
-  document.getElementById('btn-db-close')?.addEventListener('click', closeDbExplorerModal);
-  document.getElementById('btn-db-load')?.addEventListener('click', () => {
-    const p = (/** @type {HTMLInputElement | null} */ (document.getElementById('db-path-input'))?.value || '').trim();
+  view.querySelector('#btn-db-close')?.addEventListener('click', closeDbExplorerModal);
+  view.querySelector('#btn-db-load')?.addEventListener('click', () => {
+    const p = (/** @type {HTMLInputElement | null} */ (view.querySelector('#db-path-input'))?.value || '').trim();
     if (p) loadSchema(p);
   });
-  document.getElementById('db-discovered-select')?.addEventListener('change', (e) => {
+  view.querySelector('#db-discovered-select')?.addEventListener('change', (e) => {
     const val = /** @type {HTMLSelectElement} */ (e.target).value;
     if (val) {
-      const inp = /** @type {HTMLInputElement | null} */ (document.getElementById('db-path-input'));
+      const inp = /** @type {HTMLInputElement | null} */ (view.querySelector('#db-path-input'));
       if (inp) inp.value = val;
       loadSchema(val);
     }
   });
-  document.getElementById('btn-db-run-sql')?.addEventListener('click', runQuery);
-  document.getElementById('db-sql-input')?.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
+  view.querySelector('#btn-db-run-sql')?.addEventListener('click', runQuery);
+  view.querySelector('#db-sql-input')?.addEventListener('keydown', (e) => {
+    const ke = /** @type {KeyboardEvent} */ (e);
+    if ((ke.ctrlKey || ke.metaKey) && ke.key === 'Enter') {
+      ke.preventDefault();
       runQuery();
     }
   });
-  document.getElementById('btn-db-attach-ai')?.addEventListener('click', attachSchemaToAgent);
-  globalThis.setupCustomSelects?.();
+  view.querySelector('#btn-db-attach-ai')?.addEventListener('click', attachSchemaToAgent);
 
-  return overlay;
+  return view;
 }
 
 async function discoverDatabases() {
@@ -127,6 +115,12 @@ async function discoverDatabases() {
 
 async function loadSchema(path) {
   activeDbPath = path;
+  const openTabs = globalThis.VoidState?.get?.('openTabs') || [];
+  const dbTab = openTabs.find((t) => t.toolId === 'db-explorer');
+  if (dbTab && path) {
+    dbTab.name = path.split(/[\\/]/).pop() || 'SQLite Explorer';
+    globalThis.renderTabs?.();
+  }
   const listEl = document.getElementById('db-tables-list');
   if (!listEl) return;
   setHtml(listEl, html`<div style="font-size:12px;opacity:0.7;padding:8px;">Loading schema...</div>`);
@@ -257,15 +251,31 @@ function attachSchemaToAgent() {
     label: `DB Schema (${activeDbPath.split(/[\\/]/).pop()})`,
     content: lastSchemaSummary
   });
-  closeDbExplorerModal();
   globalThis.toggleWorkspacePane?.('agent', true);
   globalThis.showToast?.('Database schema attached to VoidAgent', 'success');
 }
 
 export function openDbExplorerModal(initialPath = '') {
-  const el = ensureModal();
-  el.style.display = 'flex';
+  const el = ensureView();
   const clean = typeof initialPath === 'string' ? initialPath.trim() : '';
+  const tabName = clean ? (clean.split(/[\\/]/).pop() || 'SQLite Explorer') : 'SQLite Explorer';
+  if (globalThis.openToolTab) {
+    globalThis.openToolTab({
+      id: 'db-explorer',
+      name: tabName,
+      icon: '\u26c1',
+      toolKind: 'SQLite',
+      mountEl: el,
+      onActivate: () => {
+        globalThis.setupCustomSelects?.();
+        globalThis.syncAllCustomSelects?.();
+      }
+    });
+  } else {
+    if (!el.isConnected) document.body.appendChild(el);
+    el.style.display = 'flex';
+  }
+  globalThis.setupCustomSelects?.();
   if (clean) {
     activeDbPath = clean;
     const inp = /** @type {HTMLInputElement | null} */ (document.getElementById('db-path-input'));
@@ -276,7 +286,8 @@ export function openDbExplorerModal(initialPath = '') {
 }
 
 export function closeDbExplorerModal() {
-  if (modalEl) modalEl.style.display = 'none';
+  if (globalThis.closeToolTab) globalThis.closeToolTab('db-explorer');
+  else if (modalEl) modalEl.style.display = 'none';
 }
 
 export function init(ctx = {}) {

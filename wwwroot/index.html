@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="VoidCode is a local autonomous coding environment with direct file, search, binary inspection, and PowerShell tools.">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' http://workspace.local; img-src 'self' data: blob: http://workspace.local; font-src 'self' data:; worker-src 'self' blob:; frame-src 'self' data: blob: http://workspace.local; connect-src 'self'; object-src 'none'; base-uri 'self' http://workspace.local; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' http://workspace.local; img-src 'self' data: blob: http://workspace.local; font-src 'self' data:; worker-src 'self' blob:; frame-src 'self' data: blob: http://workspace.local http://localhost:* http://127.0.0.1:*; connect-src 'self'; object-src 'none'; base-uri 'self' http://workspace.local; form-action 'none'">
   <title>VoidCode</title>
   <link rel="stylesheet" href="vendor/fonts/fonts.css">
   <link rel="preload" as="style" href="vendor/xterm/xterm.css" id="xterm-stylesheet">
@@ -640,6 +640,7 @@
             </div>
           </div>
           <div id="monaco-diff-mount" style="display: none;"></div>
+          <div id="editor-tool-pane" class="editor-tool-pane" style="display: none;"></div>
           <div id="no-file-state" class="center-empty-state">
             <div class="empty-mark" aria-hidden="true">
               <svg viewBox="0 0 512 512"><use href="#vc-mark"/></svg>
@@ -1267,6 +1268,7 @@
         <div class="mini-win-actions">
           <button class="btn btn--quiet btn--xs" id="btn-diff-prev-change" type="button" title="Previous change">Prev</button>
           <button class="btn btn--quiet btn--xs" id="btn-diff-next-change" type="button" title="Next change">Next</button>
+          <button class="btn btn--quiet btn--xs" id="btn-dock-diff-tab" type="button" title="Open Diff Viewer as a native editor tab">Open as Tab</button>
           <button class="icon-btn icon-btn--sm" data-close-window="win-diff" aria-label="Close diff window">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
           </button>
@@ -1465,8 +1467,11 @@
             <h3 id="settings-title">Settings</h3>
             <p class="modal-subtitle" id="settings-subtitle">Configure AI model endpoints, system instructions, editor ergonomics, and liquid glass optics</p>
           </div>
-          <button class="icon-btn icon-btn--sm" id="btn-close-settings" aria-label="Close settings"><span class="icon" data-icon="close" data-variant="muted"></span>
-          </button>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <button type="button" class="btn btn--quiet btn--sm" id="btn-dock-settings-tab" title="Dock Settings as a native editor tab">Open as Tab</button>
+            <button class="icon-btn icon-btn--sm" id="btn-close-settings" aria-label="Close settings"><span class="icon" data-icon="close" data-variant="muted"></span>
+            </button>
+          </div>
         </div>
 
         <!-- a searchable rail. The audit asked for ~10 sections; the content has five groups and

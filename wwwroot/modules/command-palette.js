@@ -82,7 +82,7 @@ const COMMAND_REGISTRY = [
   { id: 'debug.stepOver', category: 'Debug', title: 'Step Over', defaultKeys: 'F10', run: () => sendHost('debug_step_over') },
   { id: 'debug.stepInto', category: 'Debug', title: 'Step Into', defaultKeys: 'F11', run: () => sendHost('debug_step_into') },
   { id: 'debug.stepOut', category: 'Debug', title: 'Step Out', defaultKeys: 'Shift+F11', run: () => sendHost('debug_step_out') },
-  { id: 'debug.toggleBreakpoint', category: 'Debug', title: 'Toggle Breakpoint', defaultKeys: 'F9', run: () => { const editor = globalThis.getMonacoEditor?.(); if (activeTab && editor) toggleEditorBreakpoint(editor.getPosition().lineNumber); } },
+  { id: 'debug.toggleBreakpoint', category: 'Debug', title: 'Toggle Breakpoint', defaultKeys: 'F9', run: () => { const editor = globalThis.getMonacoEditor?.(); if (activeTab && editor) toggleEditorBreakpoint(editor.getPosition().lineNumber, { forceBreakpoint: true }); } },
   { id: 'view.toggleAgent', category: 'AI', title: 'Focus AI Agent Chat', defaultKeys: 'Ctrl+L', run: () => { toggleWorkspacePane('agent', true); control('agent-input-text')?.focus(); } },
   { id: 'ai.toggleAutocomplete', category: 'AI', title: 'AI: Toggle Tab Autocomplete (FIM Ghost Text)', defaultKeys: '', run: () => globalThis.toggleTabAutocomplete?.() },
   { id: 'ai.missionControl', category: 'AI', title: 'AI: Open Mission Control (Parallel Worktree Agents)', defaultKeys: 'Ctrl+Shift+B', run: () => globalThis.openMissionControl?.() },
@@ -92,8 +92,9 @@ const COMMAND_REGISTRY = [
   { id: 'mcp.gallery', category: 'AI', title: 'MCP: Open MCP Server Gallery (Stdio & HTTP/SSE)', defaultKeys: '', run: () => globalThis.openMcpGallery?.() },
   { id: 'git.commitGraph', category: 'Git', title: 'Git: Open Visual Commit Graph & Stash Manager', defaultKeys: '', run: () => globalThis.openGitGraphModal?.() },
   { id: 'git.cloneRepo', category: 'Git', title: 'Git: Clone Repository from URL', defaultKeys: '', run: () => globalThis.openGitCloneModal?.() },
-  { id: 'tools.apiClient', category: 'Tools', title: 'API: Open Built-In HTTP / REST Client', defaultKeys: 'Ctrl+Shift+R', run: () => globalThis.openApiClientModal?.() },
-  { id: 'tools.dbExplorer', category: 'Tools', title: 'Database: Open SQLite Database Explorer', defaultKeys: '', run: () => globalThis.openDbExplorerModal?.() },
+  { id: 'tools.apiClient', category: 'Tools', title: 'API: Open Built-In HTTP / REST Client (Tab)', defaultKeys: 'Ctrl+Shift+R', run: () => globalThis.openApiClientModal?.() },
+  { id: 'tools.dbExplorer', category: 'Tools', title: 'Database: Open SQLite Database Explorer (Tab)', defaultKeys: '', run: () => globalThis.openDbExplorerModal?.() },
+  { id: 'tools.webPreview', category: 'View', title: 'View: Open Live Localhost / Web Preview (Tab)', defaultKeys: 'Ctrl+Shift+V', run: () => globalThis.openWebPreviewTab?.() },
   { id: 'settings.importIde', category: 'Settings', title: 'Settings: Import from VS Code / Cursor', defaultKeys: '', run: () => globalThis.openIdeImportModal?.() },
   { id: 'help.onboarding', category: 'Help', title: 'VoidCode: Open Welcome & Setup Wizard', defaultKeys: '', run: () => globalThis.openOnboardingModal?.() },
   { id: 'binary.workbench', category: 'Tools', title: 'Binary: Open Hex & x86-64 Disassembler Workbench', defaultKeys: 'Ctrl+Shift+X', run: () => globalThis.openBinaryWorkbench?.() },
@@ -120,6 +121,7 @@ const COMMAND_REGISTRY = [
 
   // Tests
   { id: 'tests.runAll', category: 'Tests', title: 'Tests: Run All Tests', defaultKeys: '', run: () => { switchBottomView('tests'); toggleWorkspacePane('terminal', true); sendHost('run_tests'); } },
+  { id: 'tests.runActiveFile', category: 'Tests', title: 'Tests: Run Tests in Active File', defaultKeys: '', run: () => globalThis.runActiveFileTests?.() },
   { id: 'tests.view', category: 'Tests', title: 'Tests: View Tests Panel', defaultKeys: '', run: () => { switchBottomView('tests'); toggleWorkspacePane('terminal', true); } },
 
   // AI Workflows
@@ -152,7 +154,7 @@ const COMMAND_REGISTRY = [
   { id: 'editor.zoomOut', category: 'View', title: 'View: Zoom Out Editor Font', defaultKeys: 'Ctrl+-', run: () => globalThis.adjustEditorZoom?.(-1) },
   { id: 'editor.zoomReset', category: 'View', title: 'View: Reset Editor Font Zoom', defaultKeys: 'Ctrl+0', run: () => globalThis.adjustEditorZoom?.(0) },
   { id: 'editor.wordWrap', category: 'View', title: 'View: Toggle Word Wrap', defaultKeys: 'Alt+Z', run: () => globalThis.toggleEditorWordWrap?.() },
-  { id: 'view.zenMode', category: 'View', title: 'View: Toggle Distraction-Free Zen Mode', defaultKeys: 'Ctrl+Shift+Z', run: () => globalThis.toggleZenMode?.() },
+  { id: 'window.settingsTab', category: 'Preferences', title: 'Preferences: Open Settings as Editor Tab', defaultKeys: '', run: () => globalThis.dockSettingsAsTab?.() },
   { id: 'ai.switchModel', category: 'AI', title: 'AI: Switch Active Model...', defaultKeys: '', run: () => globalThis.switchActiveModelQuick?.() },
   { id: 'agent.exportMarkdown', category: 'Agent', title: 'Agent: Export Conversation as Markdown (.md)', defaultKeys: '', run: () => globalThis.exportCurrentSessionAsMarkdown?.() },
   { id: 'agent.initRules', category: 'Agent', title: 'Agent: Initialize AGENTS.md Project Rules', defaultKeys: '', run: () => {

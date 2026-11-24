@@ -196,7 +196,8 @@ public static class UpdateCheckService
             var newer = !string.IsNullOrWhiteSpace(tagName) && IsNewerVersion(currentVer, tagName);
 
             string downloadUrl = "";
-            string fallbackUrl = "";
+            string fallbackSetupUrl = "";
+            string fallbackZipUrl = "";
             if (node?["assets"] is JsonArray assets)
             {
                 bool isMac = OperatingSystem.IsMacOS();
@@ -209,11 +210,16 @@ public static class UpdateCheckService
                     var browserUrl = asset?["browser_download_url"]?.GetValue<string>() ?? "";
                     if (string.IsNullOrEmpty(browserUrl) || name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)) continue;
 
-                    if (string.IsNullOrEmpty(fallbackUrl) &&
-                        ((name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
-                         || name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
+                    if (string.IsNullOrEmpty(fallbackSetupUrl) &&
+                        name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                        name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
                     {
-                        fallbackUrl = browserUrl;
+                        fallbackSetupUrl = browserUrl;
+                    }
+                    else if (string.IsNullOrEmpty(fallbackZipUrl) &&
+                        name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fallbackZipUrl = browserUrl;
                     }
 
                     if (isMac)
@@ -255,7 +261,8 @@ public static class UpdateCheckService
                     }
                 }
             }
-            if (string.IsNullOrEmpty(downloadUrl)) downloadUrl = fallbackUrl;
+            if (string.IsNullOrEmpty(downloadUrl))
+                downloadUrl = !string.IsNullOrEmpty(fallbackSetupUrl) ? fallbackSetupUrl : fallbackZipUrl;
 
             return new UpdateCheckResult
             {

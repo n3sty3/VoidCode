@@ -9,26 +9,19 @@ let cloneModalEl = null;
 let selectedCommit = null;
 let lastCommitDiff = '';
 
-function ensureGraphModal() {
-  if (graphModalEl && document.body.contains(graphModalEl)) return graphModalEl;
+function ensureGraphView() {
+  if (graphModalEl) return graphModalEl;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'git-graph-modal';
-  overlay.className = 'modal-overlay';
-  overlay.style.cssText = 'display:none;z-index:2600;';
+  const view = document.createElement('div');
+  view.id = 'git-graph-modal';
+  view.className = 'tool-tab-view';
+  view.setAttribute('aria-label', 'Git Commit Graph & Stash Manager');
 
-  const card = document.createElement('div');
-  card.className = 'glass glass--float';
-  card.setAttribute('role', 'dialog');
-  card.setAttribute('aria-modal', 'true');
-  card.setAttribute('aria-label', 'Git Commit Graph & Stash Manager');
-  card.style.cssText = 'width:min(1040px,95vw);max-height:88vh;display:flex;flex-direction:column;border-radius:16px;padding:18px;gap:10px;';
-
-  setHtml(card, html`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+  setHtml(view, html`
+    <div class="tool-tab-head">
       <div>
-        <div style="font-size:16px;font-weight:700;">Git Commit Graph &amp; Stash</div>
-        <div style="font-size:12px;opacity:0.75;">Inspect branches, commit history diffs, and working-tree stashes visually.</div>
+        <div style="font-size:15px;font-weight:700;">Git Commit Graph &amp; Stash</div>
+        <div style="font-size:11.5px;opacity:0.72;">Inspect branches, commit history diffs, and working-tree stashes visually.</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button type="button" class="btn btn--quiet btn--xs" id="btn-gg-stash-push" style="white-space:nowrap;flex-shrink:0;">Stash Changes</button>
@@ -41,32 +34,29 @@ function ensureGraphModal() {
 
     <div id="gg-stashes-bar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px;border-radius:8px;border:1px solid var(--seam);background:rgba(255,255,255,0.03);font-size:11px;"></div>
 
-    <div style="display:grid;grid-template-columns:minmax(320px,42%) 1fr;gap:12px;min-height:400px;max-height:66vh;">
-      <div id="gg-commits-list" style="overflow-y:auto;border:1px solid var(--seam);border-radius:10px;padding:6px;background:rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:4px;"></div>
-      <pre id="gg-commit-diff" style="margin:0;padding:12px;border:1px solid var(--seam);border-radius:10px;background:rgba(0,0,0,0.28);font-family:var(--font-code);font-size:11px;line-height:1.45;overflow:auto;white-space:pre-wrap;word-break:break-word;">Select a commit on the left to inspect its diff.</pre>
+    <div style="display:grid;grid-template-columns:minmax(320px,40%) 1fr;gap:12px;flex:1;min-height:0;">
+      <div id="gg-commits-list" style="overflow-y:auto;border:1px solid var(--seam);border-radius:10px;padding:6px;background:rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:4px;min-height:0;"></div>
+      <pre id="gg-commit-diff" style="margin:0;padding:12px;border:1px solid var(--seam);border-radius:10px;background:rgba(0,0,0,0.28);font-family:var(--font-code);font-size:11px;line-height:1.45;overflow:auto;white-space:pre-wrap;word-break:break-word;min-height:0;">Select a commit on the left to inspect its diff.</pre>
     </div>
   `);
 
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-  graphModalEl = overlay;
+  graphModalEl = view;
 
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeGitGraphModal(); });
-  document.getElementById('btn-gg-close')?.addEventListener('click', closeGitGraphModal);
-  document.getElementById('btn-gg-refresh')?.addEventListener('click', loadCommitGraph);
-  document.getElementById('btn-gg-stash-push')?.addEventListener('click', async () => {
+  view.querySelector('#btn-gg-close')?.addEventListener('click', closeGitGraphModal);
+  view.querySelector('#btn-gg-refresh')?.addEventListener('click', loadCommitGraph);
+  view.querySelector('#btn-gg-stash-push')?.addEventListener('click', async () => {
     const msg = await globalThis.showInputDialog?.('Stash Working Changes', 'WIP snapshot', 'Stash');
     if (msg === null || msg === undefined) return;
     const res = await hostRequest('git_graph_stash_push', { message: msg }, 15000);
     globalThis.showToast?.(res?.data?.message || 'Stashed', res?.data?.ok ? 'success' : 'error');
     loadCommitGraph();
   });
-  document.getElementById('btn-gg-stash-pop')?.addEventListener('click', async () => {
+  view.querySelector('#btn-gg-stash-pop')?.addEventListener('click', async () => {
     const res = await hostRequest('git_graph_stash_pop', {}, 15000);
     globalThis.showToast?.(res?.data?.message || 'Stash popped', res?.data?.ok ? 'success' : 'error');
     loadCommitGraph();
   });
-  document.getElementById('btn-gg-ai-commit')?.addEventListener('click', () => {
+  view.querySelector('#btn-gg-ai-commit')?.addEventListener('click', () => {
     if (!selectedCommit || !lastCommitDiff) {
       globalThis.showToast?.('Select a commit first', 'info');
       return;
@@ -77,7 +67,6 @@ function ensureGraphModal() {
       label: `Commit ${selectedCommit.shortHash}`,
       content: lastCommitDiff.slice(0, 8000)
     });
-    closeGitGraphModal();
     globalThis.toggleWorkspacePane?.('agent', true);
     const box = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('agent-input-text'));
     if (box) {
@@ -86,7 +75,7 @@ function ensureGraphModal() {
     }
   });
 
-  return overlay;
+  return view;
 }
 
 async function loadCommitGraph() {
@@ -263,13 +252,25 @@ async function runClone() {
 }
 
 export function openGitGraphModal() {
-  const el = ensureGraphModal();
-  el.style.display = 'flex';
+  const el = ensureGraphView();
+  if (globalThis.openToolTab) {
+    globalThis.openToolTab({
+      id: 'git-graph',
+      name: 'Git Graph',
+      icon: '\u2387',
+      toolKind: 'Git',
+      mountEl: el
+    });
+  } else {
+    if (!el.isConnected) document.body.appendChild(el);
+    el.style.display = 'flex';
+  }
   loadCommitGraph();
 }
 
 export function closeGitGraphModal() {
-  if (graphModalEl) graphModalEl.style.display = 'none';
+  if (globalThis.closeToolTab) globalThis.closeToolTab('git-graph');
+  else if (graphModalEl) graphModalEl.style.display = 'none';
 }
 
 export function openGitCloneModal() {

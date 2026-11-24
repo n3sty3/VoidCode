@@ -42,6 +42,8 @@ import { init as initAgentSignals } from './modules/agent-signals.js';
 import { init as initGitGutter } from './modules/git-gutter.js';
 import { init as initAgentConvSwitcher } from './modules/agent-conv-switcher.js';
 import { init as initZenShortcuts } from './modules/zen-shortcuts.js';
+import { init as initWebPreview } from './modules/web-preview.js';
+import { init as initTestGutter } from './modules/test-gutter.js';
 import { init as initGit } from './modules/git.js';
 import { init as initTerminal } from './modules/terminal.js';
 import { init as initShell } from './modules/shell.js';
@@ -130,6 +132,8 @@ initAgentSignals(); // Agent sound chimes, desktop notifications & compact turn 
 initGitGutter(); // Live Git diff gutter bars & peek/revert popover in Monaco
 initAgentConvSwitcher(); // Inline Agent conversation dropdown switcher
 initZenShortcuts(); // Zen Mode, live Accent Color picker & searchable shortcuts reference
+initWebPreview(); // Native tabbed Live Localhost & Web Preview workbench
+initTestGutter(); // Clickable in-editor Monaco gutter test runner
 initModelSwitcher(); // 1-Click Quick Model Switcher Popover (Ctrl+Alt+M)
 initGitGraph(); // Visual Git Commit Graph, Stash & Clone Repository
 initOnboarding(); // 15-Second First-Run Onboarding Wizard
