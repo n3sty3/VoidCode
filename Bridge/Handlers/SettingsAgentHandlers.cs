@@ -181,6 +181,32 @@ public sealed class SettingsAgentHandlers
         public required string MissionId { get; init; }
     }
 
+    public sealed class McpGalleryInstallRequest
+    {
+        public required string ServerId { get; init; }
+        public string? Url { get; init; }
+        public string? Command { get; init; }
+        public List<string>? Args { get; init; }
+    }
+
+    public sealed class McpGalleryRemoveRequest
+    {
+        public required string ServerId { get; init; }
+    }
+
+    public sealed class BinaryWorkbenchRequest
+    {
+        public required string Path { get; init; }
+        public int HexOffset { get; init; }
+        public int HexLength { get; init; } = 512;
+        public int MaxInstructions { get; init; } = 120;
+    }
+
+    public sealed class NewWindowRequest
+    {
+        public string? Workspace { get; init; }
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<ProviderProbeRequest, object?>(SettingsAgentRoutes.TestConnection, TestConnectionAsync, envelope: false);
@@ -209,6 +235,11 @@ public sealed class SettingsAgentHandlers
         router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionMerge, MissionMergeAsync, envelope: true);
         router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionCancel, MissionCancelAsync, envelope: true);
         router.Register<MissionIdRequest, MissionActionResult>(SettingsAgentRoutes.MissionDiscard, MissionDiscardAsync, envelope: true);
+        router.Register<NoPayload, List<McpGalleryItem>>(SettingsAgentRoutes.McpGalleryList, McpGalleryListAsync, envelope: true);
+        router.Register<McpGalleryInstallRequest, McpGalleryActionResult>(SettingsAgentRoutes.McpGalleryInstall, McpGalleryInstallAsync, envelope: true);
+        router.Register<McpGalleryRemoveRequest, McpGalleryActionResult>(SettingsAgentRoutes.McpGalleryRemove, McpGalleryRemoveAsync, envelope: true);
+        router.Register<BinaryWorkbenchRequest, BinaryWorkbenchReport>(SettingsAgentRoutes.BinaryWorkbenchInspect, BinaryWorkbenchInspectAsync, envelope: true);
+        router.Register<NewWindowRequest, object>(SettingsAgentRoutes.WindowNew, WindowNewAsync, envelope: true);
     }
 
     private Task<object?> TestConnectionAsync(ProviderProbeRequest request, BridgeContext context)
@@ -603,6 +634,40 @@ public sealed class SettingsAgentHandlers
         return WorktreeMissionService.DiscardMissionAsync(request.MissionId);
     }
 
+    private Task<List<McpGalleryItem>> McpGalleryListAsync(NoPayload request, BridgeContext context)
+    {
+        return Task.FromResult(McpGalleryService.List(_workspace()));
+    }
+
+    private Task<McpGalleryActionResult> McpGalleryInstallAsync(McpGalleryInstallRequest request, BridgeContext context)
+    {
+        return Task.FromResult(McpGalleryService.Install(_workspace(), request.ServerId, request.Url, request.Command, request.Args));
+    }
+
+    private Task<McpGalleryActionResult> McpGalleryRemoveAsync(McpGalleryRemoveRequest request, BridgeContext context)
+    {
+        return Task.FromResult(McpGalleryService.Remove(_workspace(), request.ServerId));
+    }
+
+    private Task<BinaryWorkbenchReport> BinaryWorkbenchInspectAsync(BinaryWorkbenchRequest request, BridgeContext context)
+    {
+        var workspace = _workspace();
+        var resolved = !string.IsNullOrEmpty(workspace) && !Path.IsPathRooted(request.Path)
+            ? Path.Combine(workspace, request.Path)
+            : request.Path;
+        return Task.FromResult(BinaryWorkbenchService.Inspect(
+            resolved,
+            request.HexOffset,
+            request.HexLength > 0 ? request.HexLength : 512,
+            request.MaxInstructions > 0 ? request.MaxInstructions : 120));
+    }
+
+    private Task<object> WindowNewAsync(NewWindowRequest request, BridgeContext context)
+    {
+        var ok = PlatformServices.LaunchNewWindow(request.Workspace, out var error);
+        return Task.FromResult<object>(new { ok, error = error ?? "" });
+    }
+
     private void RefreshWorkspaceTreeIfPresent()
     {
         var workspace = _workspace();
@@ -647,4 +712,9 @@ public static class SettingsAgentRoutes
     public const string MissionMerge = "mission_merge";
     public const string MissionCancel = "mission_cancel";
     public const string MissionDiscard = "mission_discard";
+    public const string McpGalleryList = "mcp_gallery_list";
+    public const string McpGalleryInstall = "mcp_gallery_install";
+    public const string McpGalleryRemove = "mcp_gallery_remove";
+    public const string BinaryWorkbenchInspect = "binary_workbench_inspect";
+    public const string WindowNew = "window_new";
 }

@@ -26,19 +26,22 @@ public partial class App : Application
             LoggingService.LogInfo($"CLI target workspace: {CliLaunchService.PendingTarget.WorkspacePath}");
         }
 
-        // Single-instance guard: two copies fight over the WebView2 user-data folder and
-        // The second fails to initialize. Allow explicit multi-instance for dev isolation.
-        var allowMultiple = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VOIDCODE_WEBVIEW2_USER_DATA_FOLDER"));
-        if (!allowMultiple)
+        // Multi-window support: if another VoidCode window already holds the primary WebView2 data
+        // folder (or --new-window was requested), automatically allocate an isolated WebView2 profile
+        // subfolder instead of blocking the user from opening a second repository window.
+        var wantsNewWindow = Array.Exists(e.Args, a => string.Equals(a, "--new-window", StringComparison.OrdinalIgnoreCase));
+        var hasCustomDataDir = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VOIDCODE_WEBVIEW2_USER_DATA_FOLDER"));
+        if (!hasCustomDataDir)
         {
             _instanceMutex = new System.Threading.Mutex(true, "VoidCode.SingleInstance.v1", out var isFirstInstance);
-            if (!isFirstInstance)
+            if (!isFirstInstance || wantsNewWindow)
             {
-                MessageBox.Show(
-                    "VoidCode is already running. Close the existing window first.\n\nTo run a second instance, set the VOIDCODE_WEBVIEW2_USER_DATA_FOLDER environment variable to a different folder.",
-                    "VoidCode", MessageBoxButton.OK, MessageBoxImage.Information);
-                Shutdown();
-                return;
+                var isolated = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "VoidCode",
+                    $"WebView2Data-win-{Environment.ProcessId}");
+                Environment.SetEnvironmentVariable("VOIDCODE_WEBVIEW2_USER_DATA_FOLDER", isolated);
+                LoggingService.LogInfo($"Opening additional VoidCode window with isolated WebView2 cache: {isolated}");
             }
         }
 

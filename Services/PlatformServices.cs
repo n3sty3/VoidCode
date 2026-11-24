@@ -26,6 +26,35 @@ public static class PlatformServices
     public static string DefaultShellType =>
         OperatingSystem.IsWindows() ? "powershell" : "zsh";
 
+    /// <summary>Spawns a new independent VoidCode desktop window (optionally targeting a workspace folder).</summary>
+    public static bool LaunchNewWindow(string? workspacePath, out string? error)
+    {
+        error = null;
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
+            {
+                error = "Could not locate VoidCode executable path.";
+                return false;
+            }
+
+            var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+            psi.ArgumentList.Add("--new-window");
+            if (!string.IsNullOrWhiteSpace(workspacePath) && Directory.Exists(workspacePath))
+            {
+                psi.ArgumentList.Add(workspacePath);
+            }
+            Process.Start(psi);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
     public static void RegisterDialogs(Func<string?> openFolder, Func<string?, string[]> openFiles)
     {
         _openFolderHandler = openFolder;

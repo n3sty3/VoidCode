@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using VoidCode.Agent.Tools;
@@ -44,14 +46,21 @@ public sealed class McpServerConfig
     public string Command { get; set; } = "";
     public List<string> Args { get; set; } = new();
     public Dictionary<string, string> Env { get; set; } = new();
+    public string Url { get; set; } = "";
+    public Dictionary<string, string> Headers { get; set; } = new();
     public bool Disabled { get; set; }
+    public bool IsHttp => !string.IsNullOrWhiteSpace(Url);
 }
 
 public sealed class McpClient : IDisposable
 {
     private readonly Process? _process;
-    private readonly StreamWriter _writer;
-    private readonly StreamReader _reader;
+    private readonly StreamWriter? _writer;
+    private readonly StreamReader? _reader;
+    private readonly string? _httpEndpoint;
+    private readonly Dictionary<string, string>? _httpHeaders;
+    private readonly HttpClient? _httpClient;
+    private string? _mcpSessionId;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonObject>> _pending = new();
     private readonly CancellationTokenSource _cts = new();
@@ -59,7 +68,7 @@ public sealed class McpClient : IDisposable
     private bool _disposed;
 
     public string ServerName { get; }
-    public bool IsConnected => !_disposed && (_process == null || !_process.HasExited);
+    public bool IsConnected => !_disposed && (_httpEndpoint != null || _process == null || !_process.HasExited);
 
     public McpClient(string serverName, Stream serverStdout, Stream serverStdin)
     {
@@ -67,6 +76,15 @@ public sealed class McpClient : IDisposable
         _reader = new StreamReader(serverStdout, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
         _writer = new StreamWriter(serverStdin, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true };
         _ = Task.Run(ReadLoopAsync);
+    }
+
+    /// <summary>Streamable HTTP / SSE MCP client constructor (JSON-RPC 2.0 over HTTP POST + SSE response parsing).</summary>
+    public McpClient(string serverName, string endpointUrl, Dictionary<string, string>? headers = null, HttpClient? http = null)
+    {
+        ServerName = serverName;
+        _httpEndpoint = endpointUrl;
+        _httpHeaders = headers;
+        _httpClient = http ?? AgentHttp.Client;
     }
 
     private McpClient(string serverName, Process process)
@@ -77,6 +95,21 @@ public sealed class McpClient : IDisposable
         _writer = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false), 4096, leaveOpen: false) { AutoFlush = true };
         _ = Task.Run(ReadLoopAsync);
         _ = Task.Run(DrainStderrAsync);
+    }
+
+    public static McpClient? Connect(McpServerConfig config, string workspacePath)
+    {
+        if (config.IsHttp)
+        {
+            if (!Uri.TryCreate(config.Url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                LoggingService.LogWarning($"[MCP:{config.Name}] Rejected non-HTTP URL '{config.Url}'.", nameof(McpClient));
+                return null;
+            }
+            return new McpClient(config.Name, config.Url, config.Headers);
+        }
+        return StartProcess(config, workspacePath);
     }
 
     public static McpClient? StartProcess(McpServerConfig config, string workspacePath)
@@ -229,6 +262,12 @@ public sealed class McpClient : IDisposable
             ["params"] = parameters
         };
 
+        if (_httpEndpoint != null)
+        {
+            return await SendHttpRpcAsync(req, timeoutMs, cancellationToken);
+        }
+
+        if (_writer == null) return null;
         var tcs = new TaskCompletionSource<JsonObject>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
 
@@ -269,6 +308,74 @@ public sealed class McpClient : IDisposable
         }
     }
 
+    private async Task<JsonObject?> SendHttpRpcAsync(JsonObject rpcBody, int timeoutMs, CancellationToken ct)
+    {
+        if (_httpEndpoint == null || _httpClient == null) return null;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _cts.Token);
+        linked.CancelAfter(timeoutMs);
+        try
+        {
+            using var msg = new HttpRequestMessage(HttpMethod.Post, _httpEndpoint)
+            {
+                Content = new StringContent(rpcBody.ToJsonString(), Encoding.UTF8, "application/json")
+            };
+            msg.Headers.TryAddWithoutValidation("Accept", "application/json, text/event-stream");
+            if (!string.IsNullOrEmpty(_mcpSessionId))
+            {
+                msg.Headers.TryAddWithoutValidation("Mcp-Session-Id", _mcpSessionId);
+            }
+            if (_httpHeaders != null)
+            {
+                foreach (var kv in _httpHeaders)
+                {
+                    var expanded = Regex.Replace(kv.Value ?? "", @"\$\{([A-Za-z0-9_]+)\}", m =>
+                        Environment.GetEnvironmentVariable(m.Groups[1].Value) ?? "");
+                    if (!string.IsNullOrWhiteSpace(expanded))
+                    {
+                        msg.Headers.TryAddWithoutValidation(kv.Key, expanded);
+                    }
+                }
+            }
+
+            using var resp = await _httpClient.SendAsync(msg, linked.Token);
+            if (resp.Headers.TryGetValues("Mcp-Session-Id", out var sessionVals))
+            {
+                _mcpSessionId = sessionVals.FirstOrDefault() ?? _mcpSessionId;
+            }
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var bodyText = await resp.Content.ReadAsStringAsync(linked.Token);
+            if (string.IsNullOrWhiteSpace(bodyText)) return null;
+
+            // Support both direct JSON-RPC response and text/event-stream (SSE) frames.
+            var trimmed = bodyText.TrimStart();
+            if (trimmed.StartsWith("{", StringComparison.Ordinal))
+            {
+                return JsonNode.Parse(trimmed) as JsonObject;
+            }
+
+            JsonObject? lastObj = null;
+            foreach (var rawLine in bodyText.Split('\n'))
+            {
+                var line = rawLine.Trim();
+                if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
+                var data = line.Substring(5).Trim();
+                if (string.IsNullOrEmpty(data) || data == "[DONE]") continue;
+                try
+                {
+                    if (JsonNode.Parse(data) is JsonObject obj) lastObj = obj;
+                }
+                catch (Exception) { /* skip non-JSON SSE event line */ }
+            }
+            return lastObj;
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, $"McpClient.SendHttpRpc({ServerName})");
+            return null;
+        }
+    }
+
     private async Task SendNotificationAsync(string method, JsonObject parameters, CancellationToken cancellationToken)
     {
         if (!IsConnected) return;
@@ -278,6 +385,12 @@ public sealed class McpClient : IDisposable
             ["method"] = method,
             ["params"] = parameters
         };
+        if (_httpEndpoint != null)
+        {
+            await SendHttpRpcAsync(notif, 5000, cancellationToken);
+            return;
+        }
+        if (_writer == null) return;
         try
         {
             await _writeLock.WaitAsync(cancellationToken);
@@ -296,6 +409,7 @@ public sealed class McpClient : IDisposable
 
     private async Task ReadLoopAsync()
     {
+        if (_reader == null) return;
         try
         {
             string? line;
@@ -402,12 +516,14 @@ public static class McpManager
             {
                 if (prop.Value.ValueKind != JsonValueKind.Object) continue;
                 var cmd = prop.Value.TryGetProperty("command", out var c) ? c.GetString() : null;
-                if (string.IsNullOrWhiteSpace(cmd)) continue;
+                var url = prop.Value.TryGetProperty("url", out var u) ? u.GetString() : null;
+                if (string.IsNullOrWhiteSpace(cmd) && string.IsNullOrWhiteSpace(url)) continue;
 
                 var cfg = new McpServerConfig
                 {
                     Name = prop.Name,
-                    Command = TaskRunnerService.SubstituteVariables(cmd, workspacePath),
+                    Command = string.IsNullOrWhiteSpace(cmd) ? "" : TaskRunnerService.SubstituteVariables(cmd, workspacePath),
+                    Url = string.IsNullOrWhiteSpace(url) ? "" : url.Trim(),
                     Disabled = prop.Value.TryGetProperty("disabled", out var d) && d.ValueKind == JsonValueKind.True
                 };
 
@@ -426,6 +542,15 @@ public static class McpManager
                     {
                         if (envProp.Value.ValueKind == JsonValueKind.String)
                             cfg.Env[envProp.Name] = envProp.Value.GetString() ?? "";
+                    }
+                }
+
+                if (prop.Value.TryGetProperty("headers", out var hdrEl) && hdrEl.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var hdrProp in hdrEl.EnumerateObject())
+                    {
+                        if (hdrProp.Value.ValueKind == JsonValueKind.String)
+                            cfg.Headers[hdrProp.Name] = hdrProp.Value.GetString() ?? "";
                     }
                 }
 
@@ -473,7 +598,7 @@ public static class McpManager
                     client?.Dispose();
                     client = ClientFactoryOverrideForTests != null
                         ? ClientFactoryOverrideForTests(cfg, canonical)
-                        : McpClient.StartProcess(cfg, canonical);
+                        : McpClient.Connect(cfg, canonical);
                     if (client != null)
                     {
                         _clients[cfg.Name] = client;
