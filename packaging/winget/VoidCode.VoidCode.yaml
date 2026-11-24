@@ -1,0 +1,27 @@
+PackageIdentifier: VoidCode.VoidCode
+PackageVersion: 1.1.0
+PackageLocale: en-US
+Publisher: VoidCode Contributors
+PublisherUrl: https://github.com/n3sty3/VoidCode
+PackageName: VoidCode
+PackageUrl: https://github.com/n3sty3/VoidCode
+License: MIT
+LicenseUrl: https://github.com/n3sty3/VoidCode/blob/main/LICENSE
+ShortDescription: Native, local-first AI IDE powered by VoidAgent Core (BYOK & Ollama, Tab Autocomplete, Mission Control worktree agents, Iced disassembler)
+Tags:
+  - ide
+  - code-editor
+  - ai
+  - llm
+  - ollama
+  - reverse-engineering
+Installers:
+  - Architecture: x64
+    InstallerType: exe
+    Scope: user
+    InstallerUrl: https://github.com/n3sty3/VoidCode/releases/download/v1.1.0/VoidCode-Setup-1.1.0-win-x64.exe
+    InstallerSwitches:
+      Silent: /S
+      SilentWithProgress: /S
+ManifestType: singleton
+ManifestVersion: 1.6.0

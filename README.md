@@ -42,13 +42,15 @@ Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`*
 
 | Capability | VoidCode IDE | Electron AI IDEs (Cursor / Windsurf) |
 |---|---|---|
-| **Subscription Cost** | **$0 forever** (100% BYOK & local Ollama / LM Studio) | $20–$40/month mandatory subscription |
-| **Native Footprint** | **~70 MB** self-contained `.NET 10` WPF + OS WebView2 | 450–700+ MB bundled Electron/Chromium |
-| **Supported AI Providers** | **Google Gemini**, **Anthropic Claude**, **OpenAI**, **OpenRouter**, **xAI Grok**, **Groq**, **DeepSeek**, **Ollama**, **LM Studio** | Locked to vendor proxy or limited BYOK |
-| **Clipboard Vision (`Ctrl+V`)** | Paste screenshots directly into chat for instant UI/bug diagnosis | Varies / often restricted by plan |
-| **Reversible AI Edits** | **Atomic Turn Transaction Ledger** (per-file & per-hunk Accept/Reject + 1-click full turn rollback, including binaries) | Basic text undo |
-| **Native Binary & PE Inspector** | Built-in **PE header, section, entropy, string & SHA-256 inspector** (`inspect_binary` tool + UI window) | None (requires external tools) |
-| **Privacy & Telemetry** | **Zero telemetry**, keys encrypted locally via **Windows DPAPI** | Cloud telemetry & vendor routing |
+| **Subscription Cost** | **$0 forever** (100% BYOK & local Ollama / LM Studio + prompt caching) | $20–$40/month mandatory subscription |
+| **Native Footprint** | **~70 MB** `.NET 10` native WebView2 (Windows) / WKWebView (macOS) / WebKitGTK (Linux) | 450–700+ MB bundled Electron/Chromium |
+| **Tab Autocomplete (FIM)** | **Real-time Monaco ghost text** with dedicated fast/local model slot (Ollama / Groq / Flash) | Vendor-locked cloud autocomplete |
+| **Parallel Background Agents** | **Mission Control** — concurrent autonomous agents isolated in Git worktrees + 1-click Merge | Paid tiers / cloud runners only |
+| **Prompt Caching & Cost Meter** | Native Anthropic/OpenAI/Gemini **prompt caching** + live per-turn **`$` cost & savings** | Hidden credit/request math |
+| **MCP Ecosystem** | **Stdio + Streamable HTTP/SSE MCP** + built-in **1-Click MCP Gallery** | Manual JSON setup |
+| **Reversible AI Edits** | **Atomic Turn Transaction Ledger** + **Inline Monaco Accept/Diff/Revert bar (`Alt+Y`/`Alt+N`)** | Basic text undo |
+| **Systems & Reverse Engineering** | Built-in **PE + Mach-O + ELF Inspector**, **Hex Viewer**, & **`Iced` x86-64 Disassembler** + AI Decompile | None (requires external tools) |
+| **Privacy & Telemetry** | **Zero telemetry**, keys encrypted via **Windows DPAPI** / **macOS Keychain** | Cloud telemetry & vendor routing |
 
 ---
 
@@ -101,6 +103,10 @@ Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`*
 | `Ctrl+W` / `Ctrl+Tab` | Close active tab / Cycle open tabs |
 | `Ctrl+Shift+T` | Reopen last closed editor tab |
 | `Ctrl+Shift+Z` / `Alt+Z` | Toggle Zen Mode / Toggle Word Wrap |
+| `Ctrl+Shift+B` (`⌘⇧B`) | Open **Mission Control** (Parallel Git-Worktree Agents) |
+| `Ctrl+Shift+X` (`⌘⇧X`) | Open **Binary Workbench** (`Iced` x86-64 Disassembler & Hex Viewer) |
+| `Ctrl+Shift+N` (`⌘⇧N`) | Open New VoidCode Window (Multi-Window) |
+| `Alt+Y` / `Alt+N` | Inline Accept / Revert VoidAgent edits in active editor |
 | `F2` / `Shift+Alt+F` | Rename symbol or file / Format Document |
 | `F5` / `F9` / `F10` / `F11` | Start Debugging / Toggle Breakpoint / Step Over / Step Into |
 
