@@ -8,6 +8,22 @@ let hostSend = (action, data) => globalThis.VoidBridge.send(action, data);
 let providerRegistered = false;
 let requestSeq = 0;
 let isThinking = false;
+/** @type {string[]} */
+const recentEditsRing = [];
+
+function recordRecentEdit(model, lineNumber) {
+  if (!model || !lineNumber) return;
+  try {
+    const lineText = String(model.getLineContent(lineNumber) || '').trim();
+    if (!lineText) return;
+    const entry = `L${lineNumber}: ${lineText.slice(0, 110)}`;
+    if (recentEditsRing[recentEditsRing.length - 1] === entry) return;
+    recentEditsRing.push(entry);
+    if (recentEditsRing.length > 4) recentEditsRing.shift();
+  } catch (err) {
+    globalThis.logSwallowed?.(err, 'autocomplete.recordRecentEdit');
+  }
+}
 
 function getSettings() {
   return window.VoidState?.get?.('settings') || {};
@@ -96,6 +112,7 @@ function registerMonacoInlineProvider() {
         endColumn: model.getLineMaxColumn(endLine)
       });
 
+      recordRecentEdit(model, position.lineNumber);
       isThinking = true;
       updateStatusChip();
       try {
@@ -105,7 +122,8 @@ function registerMonacoInlineProvider() {
           prefix: fullBefore,
           suffix: fullAfter,
           line: position.lineNumber,
-          column: position.column
+          column: position.column,
+          recentEdits: recentEditsRing.slice(0, -1).join('\n')
         }, 5500);
 
         if (mySeq !== requestSeq || token.isCancellationRequested) return { items: [] };

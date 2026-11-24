@@ -125,7 +125,7 @@ jobs:
             dist/VoidCode-*-osx-*.dmg.sha256
             dist/VoidCode-osx-*.zip
             dist/VoidCode-osx-*.zip.sha256
-          generate_release_notes: true
+          generate_release_notes: false
 
   release-linux:
     runs-on: ubuntu-latest
@@ -170,4 +170,4 @@ jobs:
           files: |
             dist/VoidCode-linux-*.tar.gz
             dist/VoidCode-linux-*.tar.gz.sha256
-          generate_release_notes: true
+          generate_release_notes: false

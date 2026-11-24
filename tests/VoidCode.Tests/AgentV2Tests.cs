@@ -562,6 +562,40 @@ public class AgentV2Tests
             Assert.Contains("OPERATOR SPECIALIST PROFILE & EXTRA RULES", prompt);
             Assert.Contains("Always prefer immutable record structs.", prompt);
             Assert.Contains("update_plan", prompt);
+            Assert.Contains("find_symbol_graph", prompt);
+        }
+        finally
+        {
+            try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public async Task SymbolGraphService_IndexesSymbolsFindsCallersAndWorksViaToolExecutor()
+    {
+        var ws = CreateTempDir("symgraph");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(ws, "src"));
+            File.WriteAllText(Path.Combine(ws, "src", "Billing.cs"),
+                "namespace Demo;\npublic class InvoiceCalculator\n{\n    public decimal ComputeTotal(int count) => count * 9.99m;\n}\n");
+            File.WriteAllText(Path.Combine(ws, "src", "Checkout.cs"),
+                "namespace Demo;\npublic class CheckoutFlow\n{\n    public decimal Run() => new InvoiceCalculator().ComputeTotal(3);\n}\n");
+
+            var matches = SymbolGraphService.QuerySymbols(ws, "InvoiceCalc");
+            Assert.Contains(matches, m => m.Name == "InvoiceCalculator" && m.Kind == "class" && m.Path == "src/Billing.cs");
+
+            var graph = SymbolGraphService.FindSymbolGraph(ws, "ComputeTotal");
+            Assert.Contains(graph.Definitions, d => d.Path == "src/Billing.cs" && d.Line == 4);
+            Assert.Contains(graph.References, r => r.Path == "src/Checkout.cs" && r.Line == 4);
+
+            var (toolOut, _, _) = await ToolExecutor.ExecuteAsync(
+                "find_symbol_graph",
+                "{\"symbol\":\"ComputeTotal\"}",
+                ws,
+                (_, _) => { });
+            Assert.Contains("src/Billing.cs:4", toolOut);
+            Assert.Contains("src/Checkout.cs:4", toolOut);
         }
         finally
         {

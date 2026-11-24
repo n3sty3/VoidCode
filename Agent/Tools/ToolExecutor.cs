@@ -383,6 +383,16 @@ internal static class ToolExecutor
                 return ($"Updated live plan ({normalized.Count} step{(normalized.Count == 1 ? "" : "s")}).", null, null);
             }
 
+            case "find_symbol_graph":
+            {
+                var sym = (argsNode?["symbol"]?.GetValue<string>() ?? "").Trim();
+                if (string.IsNullOrEmpty(sym))
+                    return ("Error: 'symbol' is required.", null, null);
+                var maxRefs = argsNode?["max_references"]?.GetValue<int>() ?? 30;
+                var report = SymbolGraphService.FindSymbolGraph(workspacePath, sym, Math.Clamp(maxRefs, 1, 80));
+                return (ToolOutputPolicy.Truncate(SymbolGraphService.FormatGraphForAgent(report), ToolOutputPolicy.ReadFileMaxChars, "symbol graph clipped"), null, null);
+            }
+
             default:
                 return ($"Error: Unknown tool '{name}'.", null, null);
         }

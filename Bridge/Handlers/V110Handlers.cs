@@ -27,6 +27,8 @@ public static class V110Routes
     public const string GitStashPush = "git_graph_stash_push";
     public const string GitStashPop = "git_graph_stash_pop";
     public const string GitHunkApply = "git_hunk_apply";
+    public const string SymbolIndexQuery = "symbol_index_query";
+    public const string SymbolGraphFind = "symbol_graph_find";
 }
 
 /// <summary>
@@ -142,6 +144,18 @@ public sealed class V110Handlers
         public bool Reverse { get; init; }
     }
 
+    public sealed class SymbolIndexQueryRequest
+    {
+        public string? Query { get; init; }
+        public int Limit { get; init; } = 60;
+    }
+
+    public sealed class SymbolGraphFindRequest
+    {
+        public required string Symbol { get; init; }
+        public int MaxReferences { get; init; } = 35;
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<EmptyPayload, List<MemoryItem>>(V110Routes.MemoryList, MemoryListAsync, envelope: true);
@@ -163,6 +177,8 @@ public sealed class V110Handlers
         router.Register<GitStashPushRequest, GitPowerResult>(V110Routes.GitStashPush, GitStashPushAsync, envelope: true);
         router.Register<GitStashPopRequest, GitPowerResult>(V110Routes.GitStashPop, GitStashPopAsync, envelope: true);
         router.Register<GitHunkApplyRequest, GitPowerResult>(V110Routes.GitHunkApply, GitHunkApplyAsync, envelope: true);
+        router.Register<SymbolIndexQueryRequest, List<SymbolMatch>>(V110Routes.SymbolIndexQuery, SymbolIndexQueryAsync, envelope: true);
+        router.Register<SymbolGraphFindRequest, SymbolGraphReport>(V110Routes.SymbolGraphFind, SymbolGraphFindAsync, envelope: true);
     }
 
     private Task<List<MemoryItem>> MemoryListAsync(EmptyPayload _, BridgeContext __)
@@ -260,6 +276,12 @@ public sealed class V110Handlers
 
     private Task<GitPowerResult> GitHunkApplyAsync(GitHunkApplyRequest req, BridgeContext _)
         => GitPowerService.ApplyHunkPatchAsync(_workspace() ?? "", req.Patch, req.Cached, req.Reverse);
+
+    private Task<List<SymbolMatch>> SymbolIndexQueryAsync(SymbolIndexQueryRequest req, BridgeContext _)
+        => Task.Run(() => SymbolGraphService.QuerySymbols(_workspace(), req.Query, req.Limit));
+
+    private Task<SymbolGraphReport> SymbolGraphFindAsync(SymbolGraphFindRequest req, BridgeContext _)
+        => Task.Run(() => SymbolGraphService.FindSymbolGraph(_workspace(), req.Symbol, req.MaxReferences));
 
     private string ResolveDbPath(string rawPath)
     {

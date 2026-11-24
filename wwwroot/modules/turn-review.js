@@ -143,6 +143,40 @@ function renderReviewToolbarAndHunks(diff) {
     const actions = document.createElement('div');
     actions.className = 'diff-toolbar-actions';
 
+    if (files.length > 1) {
+      const curIdx = files.findIndex(f => normalizePathKey(f.path) === normalizePathKey(diff.path));
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.className = 'btn btn--quiet btn--xs';
+      prevBtn.textContent = '← Prev';
+      prevBtn.disabled = curIdx <= 0;
+      prevBtn.addEventListener('click', () => {
+        if (curIdx > 0) sendHost('get_turn_file_diff', { turnId: diff.turnId, path: files[curIdx - 1].path });
+      });
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.className = 'btn btn--quiet btn--xs';
+      nextBtn.textContent = 'Next →';
+      nextBtn.disabled = curIdx < 0 || curIdx >= files.length - 1;
+      nextBtn.addEventListener('click', () => {
+        if (curIdx >= 0 && curIdx < files.length - 1) sendHost('get_turn_file_diff', { turnId: diff.turnId, path: files[curIdx + 1].path });
+      });
+      actions.append(prevBtn, nextBtn);
+    }
+
+    const modeBtn = document.createElement('button');
+    modeBtn.type = 'button';
+    modeBtn.className = 'btn btn--quiet btn--xs';
+    let sideBySide = true;
+    modeBtn.textContent = 'Inline';
+    modeBtn.title = 'Toggle Side-by-Side / Inline diff view';
+    modeBtn.addEventListener('click', () => {
+      sideBySide = !sideBySide;
+      monacoDiffEditor?.updateOptions?.({ renderSideBySide: sideBySide });
+      modeBtn.textContent = sideBySide ? 'Inline' : 'Side-by-Side';
+    });
+
     const keepBtn = document.createElement('button');
     keepBtn.type = 'button';
     keepBtn.className = 'btn btn--accent-soft btn--xs';
@@ -162,7 +196,7 @@ function renderReviewToolbarAndHunks(diff) {
       sendHost('revert_turn_file', { turnId: diff.turnId, path: diff.path });
     });
 
-    actions.append(keepBtn, rejectBtn);
+    actions.append(modeBtn, keepBtn, rejectBtn);
     toolbar.append(fileStrip, actions);
   }
 

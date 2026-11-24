@@ -29,6 +29,9 @@ public sealed class InlineCompleteRequest
 
     [JsonPropertyName("column")]
     public int Column { get; init; }
+
+    [JsonPropertyName("recentEdits")]
+    public string? RecentEdits { get; init; }
 }
 
 public sealed class InlineCompleteResponse
@@ -61,10 +64,11 @@ public static class AutocompleteService
     private static readonly ConcurrentQueue<string> _cacheOrder = new();
 
     private const string FimSystemPrompt =
-        "You are VoidCode Tab Autocomplete, an ultra-fast Fill-in-the-Middle (FIM) code completion engine.\n" +
+        "You are VoidCode Tab Autocomplete, an ultra-fast Fill-in-the-Middle (FIM) and Next-Edit Prediction engine.\n" +
         "Return ONLY the exact raw code that should be inserted at <CURSOR/>.\n" +
         "Rules:\n" +
         "- Output raw code ONLY — never wrap in markdown fences (```), never explain, never repeat text already in <PREFIX> or <SUFFIX>.\n" +
+        "- When <RECENT_EDITS> is provided, use those recent buffer edits to predict consistent follow-up edits (e.g. renamed identifiers, updated signatures, parallel cases).\n" +
         "- Prefer concise, syntactically complete 1 to 6 line continuations matching the file's indentation and style.\n" +
         "- If no sensible continuation exists, return an empty string.";
 
@@ -128,7 +132,10 @@ public static class AutocompleteService
         var prefix = rawPrefix.Length > MaxPrefixChars ? rawPrefix[^MaxPrefixChars..] : rawPrefix;
         var suffix = rawSuffix.Length > MaxSuffixChars ? rawSuffix[..MaxSuffixChars] : rawSuffix;
 
-        var cacheKey = BuildCacheKey(effective.Model, request.Path ?? "", prefix, suffix);
+        var recentEdits = (request.RecentEdits ?? "").Trim();
+        if (recentEdits.Length > 600) recentEdits = recentEdits[^600..];
+
+        var cacheKey = BuildCacheKey(effective.Model, request.Path ?? "", prefix + "\u001e" + recentEdits, suffix);
         if (_cache.TryGetValue(cacheKey, out var cached))
         {
             return new InlineCompleteResponse
@@ -143,8 +150,10 @@ public static class AutocompleteService
         var lang = string.IsNullOrWhiteSpace(request.Language) ? "plaintext" : request.Language;
         var fileLabel = string.IsNullOrWhiteSpace(request.Path) ? "untitled" : request.Path;
 
+        var recentBlock = string.IsNullOrEmpty(recentEdits) ? "" : $"<RECENT_EDITS>\n{recentEdits}\n</RECENT_EDITS>\n";
         var userPrompt =
             $"File: {fileLabel} ({lang})\n" +
+            recentBlock +
             $"<PREFIX>\n{prefix}\n</PREFIX><CURSOR/><SUFFIX>\n{suffix}\n</SUFFIX>";
 
         var chatReq = new ChatRequest

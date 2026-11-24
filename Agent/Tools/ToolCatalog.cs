@@ -20,7 +20,7 @@ internal static class ToolCatalog
     internal static readonly HashSet<string> PlanModeTools = new(StringComparer.OrdinalIgnoreCase)
     {
         "read_file", "view_image", "list_dir", "glob_files", "search_code", "search_codebase",
-        "git_status_diff", "get_lsp_diagnostics", "delegate_research", "update_plan"
+        "find_symbol_graph", "git_status_diff", "get_lsp_diagnostics", "delegate_research", "update_plan"
     };
 
 
@@ -446,6 +446,25 @@ internal static class ToolCatalog
                             }
                         },
                         ["required"] = new JsonArray { "steps" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "find_symbol_graph",
+                    ["description"] = "Query the SQLite workspace symbol index for a class, interface, struct, function, or method name and return all definitions plus callers/references (path:line + snippets) in one call.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["symbol"] = new JsonObject { ["type"] = "string", ["description"] = "Exact or partial symbol name (e.g. 'AgentLoop', 'RunAsync', 'handleMessage')." },
+                            ["max_references"] = new JsonObject { ["type"] = "integer", ["description"] = "Optional cap on returned caller/reference sites (default 30)." }
+                        },
+                        ["required"] = new JsonArray { "symbol" }
                     }
                 }
             }

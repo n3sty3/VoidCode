@@ -104,6 +104,7 @@ let lastUserMsgEl = null;
 
 const TOOL_VERBS = {
   read_file: 'Read',
+  find_symbol_graph: 'Symbol graph',
   view_image: 'Viewed',
   write_file: 'Wrote',
   patch_file: 'Patched',
@@ -132,7 +133,7 @@ const FILE_TOOLS = new Set([
 ]);
 
 const READ_CATEGORY_TOOLS = new Set(['read_file', 'view_image', 'list_dir', 'glob_files']);
-const SEARCH_CATEGORY_TOOLS = new Set(['search_code', 'search_codebase', 'delegate_research']);
+const SEARCH_CATEGORY_TOOLS = new Set(['search_code', 'search_codebase', 'find_symbol_graph', 'delegate_research']);
 const EDIT_CATEGORY_TOOLS = new Set(['write_file', 'patch_file', 'multi_patch_file', 'delete_file', 'move_file']);
 
 function formatToolVerb(tool) {
