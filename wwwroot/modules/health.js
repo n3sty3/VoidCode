@@ -56,8 +56,9 @@ export function openAboutModal() {
   const runtime = window.VoidState?.get?.('selectedRuntime');
   const trust = lastCapabilities?.workspaceTrust || 'trusted';
   setHtml(body, '');
+  const appVer = lastUpdateResult?.currentVersion || '1.1.0';
   const infoSec = makeSection('Release & Runtime Environment');
-  infoSec.appendChild(makeRow('VoidCode IDE', 'Windows Desktop Edition (.NET 10 WPF + WebView2 + Monaco + ConPTY)', 'v1.0.0'));
+  infoSec.appendChild(makeRow('VoidCode IDE', 'Desktop Edition (.NET 10 + Monaco + Native Terminal)', `v${appVer}`));
   infoSec.appendChild(makeRow('Agent Engine', 'VoidAgent Core (EXPLORE -> PATCH -> VERIFY + Turn Transaction Ledger)', settings.AgentMode === 'plan' ? 'Plan mode' : 'Act mode'));
   infoSec.appendChild(makeRow('Active Model & Provider', `${settings.Provider || 'openrouter'} \u00b7 ${settings.Model || 'default'}`, settings.AuthorityMode || 'review'));
   infoSec.appendChild(makeRow('Active Workspace', workspace, `Trust: ${trust}`));
@@ -80,7 +81,7 @@ export function openAboutModal() {
   infoSec.appendChild(makeRow(
     'GitHub Release Updates',
     upd ? `${upd.message} (${upd.repo || 'GitHub'})` : 'Click "Check for updates" to query GitHub Releases.',
-    upd ? (upd.updateAvailable ? `Update: v${upd.latestVersion}` : (upd.checked ? 'Up to date' : 'Offline')) : 'v1.0.0',
+    upd ? (upd.updateAvailable ? `Update: v${upd.latestVersion}` : (upd.checked ? 'Up to date' : 'Offline')) : `v${appVer}`,
     updBtn
   ));
   body.appendChild(infoSec);
@@ -307,8 +308,9 @@ function setupHealthModal() {
     byId('btn-about-copy-info')?.addEventListener('click', () => {
       const settings = window.VoidState?.get?.('settings') || {};
       const ws = window.VoidState?.get?.('workspace') || 'none';
+      const appVer = lastUpdateResult?.currentVersion || '1.1.0';
       const info = [
-        'VoidCode IDE v1.0.0 (Windows x64 / .NET 10 / WebView2)',
+        `VoidCode IDE v${appVer} (.NET 10 / Desktop)`,
         `Agent: VoidAgent Core (${settings.Provider || 'openrouter'} / ${settings.Model || 'default'})`,
         `Authority: ${settings.AuthorityMode || 'review'} | Mode: ${settings.AgentMode || 'act'}`,
         `Workspace: ${ws}`,
@@ -345,7 +347,7 @@ export function init(ctx = {}) {
     setupHealthModal();
   }
 
-  if (globalThis.chrome?.webview) {
+  if (globalThis.chrome?.webview || /** @type {any} */ (globalThis.external)?.sendMessage) {
     setTimeout(() => checkForUpdates(true), 3500);
   }
 

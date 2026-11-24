@@ -21,10 +21,10 @@ public sealed class UpdateCheckResult
     public bool UpdateAvailable { get; init; }
 
     [JsonPropertyName("currentVersion")]
-    public string CurrentVersion { get; init; } = "1.0.0";
+    public string CurrentVersion { get; init; } = UpdateCheckService.CurrentAppVersion;
 
     [JsonPropertyName("latestVersion")]
-    public string LatestVersion { get; init; } = "1.0.0";
+    public string LatestVersion { get; init; } = UpdateCheckService.CurrentAppVersion;
 
     [JsonPropertyName("releaseUrl")]
     public string ReleaseUrl { get; init; } = "";
@@ -48,15 +48,27 @@ public sealed class UpdateCheckResult
 /// </summary>
 public static class UpdateCheckService
 {
-    public const string CurrentAppVersion = "1.0.0";
+    public static string CurrentAppVersion { get; } = ResolveAssemblyVersion();
     public const string DefaultGitHubRepo = "n3sty3/VoidCode";
+
+    private static string ResolveAssemblyVersion()
+    {
+        var v = typeof(UpdateCheckService).Assembly.GetName().Version;
+        if (v != null && (v.Major > 0 || v.Minor > 0 || v.Build > 0))
+        {
+            return $"{v.Major}.{v.Minor}.{(v.Build < 0 ? 0 : v.Build)}";
+        }
+        return "1.1.0";
+    }
 
     private static readonly Regex RepoSlugRegex = new(@"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", RegexOptions.Compiled);
     private static readonly Regex GitRemoteGithubRegex = new(@"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?\s*$", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     public static string ResolveGitHubRepo(string? configuredRepo, string? workspacePath = null)
     {
-        if (!string.IsNullOrWhiteSpace(configuredRepo) && RepoSlugRegex.IsMatch(configuredRepo.Trim()))
+        if (!string.IsNullOrWhiteSpace(configuredRepo) &&
+            !string.Equals(configuredRepo.Trim(), "VoidCode/VoidCode", StringComparison.OrdinalIgnoreCase) &&
+            RepoSlugRegex.IsMatch(configuredRepo.Trim()))
         {
             return configuredRepo.Trim();
         }
