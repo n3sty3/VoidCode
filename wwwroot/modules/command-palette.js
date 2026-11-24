@@ -99,8 +99,9 @@ const COMMAND_REGISTRY = [
   { id: 'binary.workbench', category: 'Tools', title: 'Binary: Open Hex & x86-64 Disassembler Workbench', defaultKeys: 'Ctrl+Shift+X', run: () => globalThis.openBinaryWorkbench?.() },
   { id: 'window.new', category: 'Window', title: 'Window: Open New VoidCode Window', defaultKeys: 'Ctrl+Shift+N', run: () => globalThis.VoidBridge?.request?.('window_new', {}) },
   { id: 'codebase.search', category: 'Codebase', title: 'Search Indexed Code & Symbols', defaultKeys: 'Ctrl+T', run: () => openCodebaseSearch() },
-  { id: 'codebase.symbolJump', category: 'Codebase', title: 'Go to Symbol in Workspace (SQLite Index)', defaultKeys: 'Ctrl+Shift+O', run: () => globalThis.openSymbolJump?.() },
+  { id: 'codebase.symbolJump', category: 'Codebase', title: 'Go to Symbol in Workspace (SQLite Index)', defaultKeys: 'Ctrl+Alt+T', run: () => globalThis.openSymbolJump?.() },
   { id: 'editor.vimMode', category: 'Editor', title: 'Editor: Toggle Native Vim Mode', defaultKeys: '', run: () => globalThis.toggleVimMode?.() },
+  { id: 'view.zenMode', category: 'View', title: 'View: Toggle Zen Mode (Distraction-Free)', defaultKeys: 'Ctrl+Alt+Z', run: () => globalThis.toggleZenMode?.() },
   { id: 'language.restart', category: 'Language', title: 'Restart Language Servers', defaultKeys: '', run: () => sendHost('lsp_restart') },
   { id: 'git.generateCommit', category: 'AI', title: 'Generate AI Commit Message', defaultKeys: '', run: () => sendHost('generate_commit_message') },
 

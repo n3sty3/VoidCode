@@ -57,6 +57,30 @@ public sealed class GitPowerResult
     public string? Output { get; set; }
 }
 
+public sealed class GitGutterHunk
+{
+    [JsonPropertyName("kind")]
+    public string Kind { get; init; } = "modified";
+
+    [JsonPropertyName("startLine")]
+    public int StartLine { get; init; } = 1;
+
+    [JsonPropertyName("endLine")]
+    public int EndLine { get; init; } = 1;
+
+    [JsonPropertyName("originalText")]
+    public string OriginalText { get; init; } = "";
+}
+
+public sealed class GitGutterReport
+{
+    [JsonPropertyName("path")]
+    public string Path { get; init; } = "";
+
+    [JsonPropertyName("hunks")]
+    public List<GitGutterHunk> Hunks { get; init; } = new();
+}
+
 /// <summary>
 /// Cross-platform Git power operations: repository cloning, commit graph log,
 /// commit inspection, stash/pop management, and hunk-level staging/reverting.
@@ -272,6 +296,103 @@ public static class GitPowerService
             Ok = res.ExitCode == 0,
             Message = res.ExitCode == 0 ? "Hunk applied cleanly." : $"git apply failed: {res.Stderr.Trim()}"
         };
+    }
+
+    private static readonly Regex GutterHunkHeaderRegex = new(@"^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@", RegexOptions.Compiled);
+
+    public static List<GitGutterHunk> ParseUnifiedDiffGutterHunks(string diffText)
+    {
+        var hunks = new List<GitGutterHunk>();
+        if (string.IsNullOrWhiteSpace(diffText)) return hunks;
+
+        var lines = diffText.Replace("\r\n", "\n").Split('\n');
+        int i = 0;
+        while (i < lines.Length)
+        {
+            var m = GutterHunkHeaderRegex.Match(lines[i]);
+            if (!m.Success)
+            {
+                i++;
+                continue;
+            }
+
+            int oldCount = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 1;
+            int newStart = int.Parse(m.Groups[3].Value);
+            int newCount = m.Groups[4].Success ? int.Parse(m.Groups[4].Value) : 1;
+            i++;
+
+            var removed = new List<string>();
+            while (i < lines.Length && !lines[i].StartsWith("@@ ", StringComparison.Ordinal) && !lines[i].StartsWith("diff --git ", StringComparison.Ordinal))
+            {
+                var l = lines[i];
+                if (l.StartsWith("-", StringComparison.Ordinal) && !l.StartsWith("---", StringComparison.Ordinal))
+                    removed.Add(l.Length > 1 ? l[1..] : "");
+                i++;
+            }
+
+            string kind;
+            int startLine;
+            int endLine;
+            if (oldCount == 0 && newCount > 0)
+            {
+                kind = "added";
+                startLine = Math.Max(1, newStart);
+                endLine = Math.Max(startLine, newStart + newCount - 1);
+            }
+            else if (newCount == 0 && oldCount > 0)
+            {
+                kind = "deleted";
+                startLine = Math.Max(1, newStart);
+                endLine = startLine;
+            }
+            else
+            {
+                kind = "modified";
+                startLine = Math.Max(1, newStart);
+                endLine = Math.Max(startLine, newStart + Math.Max(1, newCount) - 1);
+            }
+
+            hunks.Add(new GitGutterHunk
+            {
+                Kind = kind,
+                StartLine = startLine,
+                EndLine = endLine,
+                OriginalText = string.Join("\n", removed)
+            });
+        }
+        return hunks;
+    }
+
+    public static async Task<GitGutterReport> GetFileHeadDiffHunksAsync(string workspacePath, string filePath, CancellationToken ct = default)
+    {
+        var report = new GitGutterReport { Path = filePath ?? "" };
+        if (string.IsNullOrWhiteSpace(workspacePath) || string.IsNullOrWhiteSpace(filePath) || !Directory.Exists(workspacePath))
+            return report;
+
+        try
+        {
+            var rel = Path.IsPathRooted(filePath)
+                ? Path.GetRelativePath(workspacePath, filePath).Replace('\\', '/')
+                : filePath.Replace('\\', '/');
+            if (rel.StartsWith("..", StringComparison.Ordinal)) return report;
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(5_000);
+            var res = await Runner.RunAsync("git", new[] { "diff", "--no-color", "-U0", "HEAD", "--", rel }, workspacePath, null, cts.Token);
+            if (res.ExitCode != 0 || string.IsNullOrWhiteSpace(res.Stdout))
+                return report;
+
+            return new GitGutterReport
+            {
+                Path = filePath,
+                Hunks = ParseUnifiedDiffGutterHunks(res.Stdout)
+            };
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "GitPowerService.GetFileHeadDiffHunksAsync");
+            return report;
+        }
     }
 
     private static string InferRepoFolderName(string url)

@@ -190,3 +190,6 @@
 
 .authority-mode { white-space: nowrap; }
 .authority-mode.is-full-system { color: var(--coral); background: var(--coral-wash); border-color: var(--coral); }
+.vc-git-gutter-added { border-left: 3px solid #34d399; margin-left: 2px; cursor: pointer; }
+.vc-git-gutter-modified { border-left: 3px solid var(--glacier); margin-left: 2px; cursor: pointer; }
+.vc-git-gutter-deleted { border-bottom: 4px solid var(--coral); width: 6px !important; margin-left: 2px; cursor: pointer; }

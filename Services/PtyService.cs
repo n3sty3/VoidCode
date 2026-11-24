@@ -269,7 +269,15 @@ public sealed class PtySession : IDisposable
 
     private static string ResolveShellCommandLine(string shellType)
     {
-        return shellType.ToLowerInvariant() switch
+        var raw = (shellType ?? "").Trim();
+        if (raw.StartsWith("wsl:", StringComparison.OrdinalIgnoreCase))
+        {
+            var distro = raw["wsl:".Length..].Trim();
+            if (!string.IsNullOrEmpty(distro) && System.Text.RegularExpressions.Regex.IsMatch(distro, @"^[A-Za-z0-9._-]+$"))
+                return $"wsl.exe -d {distro}";
+            return "wsl.exe";
+        }
+        return raw.ToLowerInvariant() switch
         {
             "cmd" => "cmd.exe",
             "wsl" => "wsl.exe",

@@ -44,6 +44,142 @@ const treeDirectoryViews = new Map();
 let renderedTreeWorkspace = null;
 let selectedTreeNode = null;
 let ctxTargetNode = null;
+/** @type {Map<string, string>} */
+const gitStatusByPath = new Map();
+/** @type {Set<string>} */
+const gitDirtyDirs = new Set();
+/** @type {Map<string, number>} */
+const diagErrorsByPath = new Map();
+let explorerFilterQuery = '';
+let draggedTreePath = '';
+
+function updateExplorerGitDecorations(gitPayload) {
+  gitStatusByPath.clear();
+  gitDirtyDirs.clear();
+  const ws = window.VoidState?.get?.('workspace') || '';
+  const sep = ws.includes('\\') ? '\\' : '/';
+  const wsPrefix = ws ? ws.replace(/[\\/]+$/, '') + sep : '';
+
+  const ingest = (items) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (!item?.path) continue;
+      const full = (/^[a-zA-Z]:[\\/]/.test(item.path) || item.path.startsWith('/'))
+        ? item.path
+        : `${wsPrefix}${String(item.path).replace(/[\\/]/g, sep)}`;
+      const key = pathKey(full);
+      const rawStatus = String(item.status || 'M').trim().toUpperCase();
+      const code = rawStatus.includes('?') ? 'U' : rawStatus.charAt(0) || 'M';
+      gitStatusByPath.set(key, code);
+
+      // Mark every ancestor directory inside workspace as containing modified files.
+      let cur = full;
+      while (cur.length > wsPrefix.length) {
+        const last = Math.max(cur.lastIndexOf('\\'), cur.lastIndexOf('/'));
+        if (last <= 0) break;
+        cur = cur.slice(0, last);
+        gitDirtyDirs.add(pathKey(cur));
+      }
+    }
+  };
+
+  ingest(gitPayload?.working);
+  ingest(gitPayload?.staged);
+  applyExplorerBadges();
+}
+
+function updateExplorerDiagDecorations(diagPayload) {
+  if (!diagPayload?.path) return;
+  const key = pathKey(diagPayload.path);
+  const items = Array.isArray(diagPayload.diagnostics) ? diagPayload.diagnostics : [];
+  const errCount = items.filter((d) => d && (d.severity === 1 || String(d.severity || '').toLowerCase() === 'error')).length;
+  if (errCount > 0) diagErrorsByPath.set(key, errCount);
+  else diagErrorsByPath.delete(key);
+  applyExplorerBadges();
+}
+
+function applyExplorerBadges() {
+  const container = control('file-tree-container');
+  if (!container) return;
+  const rows = container.querySelectorAll('.tree-node[data-path]');
+  const colorByCode = { M: '#f5b963', U: '#6be2b3', A: '#7dd3fc', D: '#f87171', R: '#a78bfa' };
+
+  rows.forEach((rowEl) => {
+    const row = /** @type {HTMLElement} */ (rowEl);
+    const key = pathKey(row.dataset.path || '');
+    const label = /** @type {HTMLElement | null} */ (row.querySelector('.tree-label'));
+    const isDir = row.hasAttribute('aria-expanded');
+    row.querySelector('.tree-meta-badges')?.remove();
+
+    const gitCode = !isDir ? gitStatusByPath.get(key) : (gitDirtyDirs.has(key) ? '•' : '');
+    const errCount = !isDir ? (diagErrorsByPath.get(key) || 0) : 0;
+
+    if (label) {
+      if (errCount > 0) label.style.color = '#f87171';
+      else if (gitCode && gitCode !== '•') label.style.color = colorByCode[gitCode] || '';
+      else label.style.color = '';
+    }
+
+    if (gitCode || errCount > 0) {
+      const wrap = document.createElement('span');
+      wrap.className = 'tree-meta-badges';
+      wrap.style.cssText = 'margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding-right:6px;flex-shrink:0;font-family:var(--font-code);font-size:10px;font-weight:700;';
+      if (errCount > 0) {
+        const eb = document.createElement('span');
+        eb.style.cssText = 'color:#f87171;background:rgba(248,113,113,0.16);border-radius:999px;padding:0 5px;line-height:15px;';
+        eb.textContent = String(errCount);
+        eb.title = `${errCount} LSP error${errCount === 1 ? '' : 's'}`;
+        wrap.appendChild(eb);
+      }
+      if (gitCode) {
+        const gb = document.createElement('span');
+        gb.style.color = gitCode === '•' ? '#f5b963' : (colorByCode[gitCode] || 'var(--text-muted)');
+        gb.textContent = gitCode;
+        gb.title = gitCode === '•' ? 'Contains Git changes' : `Git: ${gitCode}`;
+        wrap.appendChild(gb);
+      }
+      row.appendChild(wrap);
+    }
+  });
+}
+
+function applyExplorerFilter() {
+  const container = control('file-tree-container');
+  if (!container) return;
+  const q = explorerFilterQuery.trim().toLowerCase();
+  const nodes = container.querySelectorAll('.tree-node[data-path]');
+  nodes.forEach((el) => {
+    const row = /** @type {HTMLElement} */ (el);
+    if (!q) {
+      row.style.display = '';
+      return;
+    }
+    const label = (row.querySelector('.tree-label')?.textContent || '').toLowerCase();
+    const isDir = row.hasAttribute('aria-expanded');
+    row.style.display = (isDir || label.includes(q)) ? '' : 'none';
+  });
+}
+
+function ensureExplorerFilterBar(container) {
+  if (!container || !container.parentElement) return;
+  let bar = document.getElementById('explorer-filter-bar');
+  if (bar) {
+    bar.style.display = 'flex';
+    return;
+  }
+  bar = document.createElement('div');
+  bar.id = 'explorer-filter-bar';
+  bar.style.cssText = 'display:flex;padding:4px 8px 6px;border-bottom:1px solid var(--seam);';
+  setHtml(bar, html`
+    <input id="explorer-filter-input" type="text" placeholder="Filter files…" autocomplete="off" spellcheck="false" style="width:100%;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--seam);background:rgba(0,0,0,0.22);color:var(--text);font-size:11.5px;" />
+  `);
+  container.parentElement.insertBefore(bar, container);
+  const inp = /** @type {HTMLInputElement | null} */ (document.getElementById('explorer-filter-input'));
+  inp?.addEventListener('input', () => {
+    explorerFilterQuery = inp.value || '';
+    applyExplorerFilter();
+  });
+}
 
 const FILE_ICON_PATHS = {
   code: '<path d="m9.5 8-3.5 4 3.5 4"/><path d="m14.5 8 3.5 4-3.5 4"/>',
@@ -95,9 +231,12 @@ export function renderFileTree(node) {
     return;
   }
 
+  ensureExplorerFilterBar(container);
   node.children.forEach(child => container.appendChild(buildFileTreeNode(child, 0)));
   const activeTab = activeTreeTab();
   if (activeTab) highlightActiveTreeNode(activeTab.path);
+  applyExplorerBadges();
+  if (explorerFilterQuery) applyExplorerFilter();
 }
 
 function buildFileTreeNode(node, depth = 0) {
@@ -124,6 +263,15 @@ function buildFileTreeNode(node, depth = 0) {
       }
       sendHost('read_file', { path: node.path });
     });
+    row.draggable = true;
+    row.addEventListener('dragstart', (ev) => {
+      draggedTreePath = node.path;
+      if (ev.dataTransfer) {
+        ev.dataTransfer.effectAllowed = 'move';
+        ev.dataTransfer.setData('text/plain', node.path);
+      }
+    });
+    row.addEventListener('dragend', () => { draggedTreePath = ''; });
     row.addEventListener('contextmenu', (event) => {
       selectedTreeNode = node;
       row.focus();
@@ -137,6 +285,35 @@ function buildFileTreeNode(node, depth = 0) {
   node.hasChildren = hasChildren;
   const isExpanded = hasChildren && expandedTreePaths.has(key);
   row.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+  row.addEventListener('dragover', (ev) => {
+    if (!draggedTreePath || pathKey(draggedTreePath) === key) return;
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+    row.style.outline = '1px solid var(--glacier)';
+    row.style.background = 'var(--glacier-wash)';
+  });
+  row.addEventListener('dragleave', () => {
+    row.style.outline = '';
+    row.style.background = '';
+  });
+  row.addEventListener('drop', async (ev) => {
+    ev.preventDefault();
+    row.style.outline = '';
+    row.style.background = '';
+    const src = draggedTreePath || ev.dataTransfer?.getData('text/plain') || '';
+    draggedTreePath = '';
+    if (!src || pathKey(src) === key) return;
+    try {
+      const res = await globalThis.VoidBridge?.request?.('move_entry', { sourcePath: src, targetDir: node.path }, 6000);
+      if (res?.ok && res?.data?.ok) {
+        globalThis.showToast?.(`Moved into ${node.name}`, 'success');
+      } else {
+        globalThis.showToast?.('Could not move file (destination may already exist)', 'error');
+      }
+    } catch (err) {
+      globalThis.logSwallowed?.(err, 'explorer.dropMove');
+    }
+  });
   setHtml(row, html`
     <span class="tree-glyph-slot">
       <svg class="tree-chevron ${isExpanded ? 'expanded' : ''} ${hasChildren ? '' : 'tree-chevron--empty'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -436,10 +613,17 @@ export function init(ctx = {}) {
       !!payload.hasMore,
       payload.total || 0
     );
+    applyExplorerBadges();
+    if (explorerFilterQuery) applyExplorerFilter();
   });
   hostEvents.on('all_files_response', (payload) => {
     setWorkspaceFiles(payload.files || [], !!payload.truncated);
     globalThis.renderQuickOpenList?.(control('quick-open-input')?.value ?? '');
+  });
+
+  window.VoidBridge?.subscribe?.((action, payload) => {
+    if (action === 'git_status_response') updateExplorerGitDecorations(payload);
+    else if (action === 'lsp_diagnostics') updateExplorerDiagDecorations(payload);
   });
 
   Object.assign(globalThis, {

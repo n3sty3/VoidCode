@@ -403,14 +403,36 @@ export function setupTerminalTabs() {
 
   const btnShellMenu = document.getElementById('btn-terminal-shell-menu');
   const shellMenu = document.getElementById('terminal-profile-menu');
+  let wslDistrosLoaded = false;
   if (btnShellMenu && shellMenu) {
     btnShellMenu.addEventListener('click', (e) => {
       e.stopPropagation();
       const rect = btnShellMenu.getBoundingClientRect();
       shellMenu.style.top = `${rect.bottom + 4}px`;
       shellMenu.style.left = `${rect.left}px`;
-      shellMenu.style.display = shellMenu.style.display === 'none' ? 'block' : 'none';
-      btnShellMenu.setAttribute('aria-expanded', shellMenu.style.display === 'block' ? 'true' : 'false');
+      const opening = shellMenu.style.display === 'none';
+      shellMenu.style.display = opening ? 'block' : 'none';
+      btnShellMenu.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      if (opening && !wslDistrosLoaded) {
+        wslDistrosLoaded = true;
+        globalThis.VoidBridge?.request?.('wsl_list_distros', {}, 4000)?.then?.((res) => {
+          const distros = Array.isArray(res?.data) ? res.data : [];
+          distros.forEach((d) => {
+            if (!d?.name) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ctx-item';
+            btn.setAttribute('data-shell-profile', `wsl:${d.name}`);
+            btn.textContent = `WSL · ${d.name}`;
+            btn.addEventListener('click', () => {
+              shellMenu.style.display = 'none';
+              btnShellMenu.setAttribute('aria-expanded', 'false');
+              addTerminalTab(`wsl:${d.name}`);
+            });
+            shellMenu.appendChild(btn);
+          });
+        })?.catch?.((err) => globalThis.logSwallowed?.(err, 'terminal.wslDiscover'));
+      }
     });
 
     shellMenu.querySelectorAll('[data-shell-profile]').forEach(item => {

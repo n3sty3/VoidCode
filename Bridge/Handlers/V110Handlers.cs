@@ -31,6 +31,8 @@ public static class V110Routes
     public const string SymbolGraphFind = "symbol_graph_find";
     public const string WslListDistros = "wsl_list_distros";
     public const string UpdateDownloadInstall = "update_download_install";
+    public const string GitFileGutter = "git_file_gutter";
+    public const string MoveEntry = "move_entry";
 }
 
 /// <summary>
@@ -163,6 +165,17 @@ public sealed class V110Handlers
         public required string DownloadUrl { get; init; }
     }
 
+    public sealed class GitFileGutterRequest
+    {
+        public required string Path { get; init; }
+    }
+
+    public sealed class MoveEntryRequest
+    {
+        public required string SourcePath { get; init; }
+        public required string TargetDir { get; init; }
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<EmptyPayload, List<MemoryItem>>(V110Routes.MemoryList, MemoryListAsync, envelope: true);
@@ -188,6 +201,8 @@ public sealed class V110Handlers
         router.Register<SymbolGraphFindRequest, SymbolGraphReport>(V110Routes.SymbolGraphFind, SymbolGraphFindAsync, envelope: true);
         router.Register<EmptyPayload, List<WslDistroInfo>>(V110Routes.WslListDistros, WslListDistrosAsync, envelope: true);
         router.Register<UpdateDownloadRequest, UpdateInstallResult>(V110Routes.UpdateDownloadInstall, UpdateDownloadInstallAsync, envelope: true);
+        router.Register<GitFileGutterRequest, GitGutterReport>(V110Routes.GitFileGutter, GitFileGutterAsync, envelope: true);
+        router.Register<MoveEntryRequest, SimpleOkResult>(V110Routes.MoveEntry, MoveEntryAsync, envelope: true);
     }
 
     private Task<List<MemoryItem>> MemoryListAsync(EmptyPayload _, BridgeContext __)
@@ -297,6 +312,40 @@ public sealed class V110Handlers
 
     private Task<UpdateInstallResult> UpdateDownloadInstallAsync(UpdateDownloadRequest req, BridgeContext _)
         => UpdateCheckService.DownloadAndInstallAsync(req.DownloadUrl, _settings().UpdateRepo);
+
+    private Task<GitGutterReport> GitFileGutterAsync(GitFileGutterRequest req, BridgeContext _)
+        => GitPowerService.GetFileHeadDiffHunksAsync(_workspace() ?? "", req.Path);
+
+    private Task<SimpleOkResult> MoveEntryAsync(MoveEntryRequest req, BridgeContext _)
+    {
+        var ws = _workspace();
+        if (string.IsNullOrWhiteSpace(ws) || string.IsNullOrWhiteSpace(req.SourcePath) || string.IsNullOrWhiteSpace(req.TargetDir))
+            return Task.FromResult(new SimpleOkResult { Ok = false });
+        if (!PathPolicy.IsInsideWorkspace(ws, req.SourcePath) || !PathPolicy.IsInsideWorkspace(ws, req.TargetDir))
+            return Task.FromResult(new SimpleOkResult { Ok = false });
+        try
+        {
+            var name = Path.GetFileName(req.SourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var dest = Path.Combine(req.TargetDir, name);
+            if (string.Equals(req.SourcePath, dest, StringComparison.OrdinalIgnoreCase))
+                return Task.FromResult(new SimpleOkResult { Ok = false });
+            if (File.Exists(req.SourcePath))
+                File.Move(req.SourcePath, dest, overwrite: false);
+            else if (Directory.Exists(req.SourcePath))
+                Directory.Move(req.SourcePath, dest);
+            else
+                return Task.FromResult(new SimpleOkResult { Ok = false });
+
+            var tree = FileSystemService.GetDirectoryTree(ws);
+            _send("tree_refreshed", new { tree });
+            return Task.FromResult(new SimpleOkResult { Ok = true });
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "V110Handlers.MoveEntryAsync");
+            return Task.FromResult(new SimpleOkResult { Ok = false });
+        }
+    }
 
     private string ResolveDbPath(string rawPath)
     {

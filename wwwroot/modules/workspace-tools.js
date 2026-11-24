@@ -177,6 +177,17 @@ export function getActiveSessionId() {
   return activeSessionId;
 }
 
+export function getSavedSessions() {
+  return Array.isArray(savedSessions) ? savedSessions.slice() : [];
+}
+
+export function deleteSessionById(sessionId) {
+  savedSessions = savedSessions.filter(s => s.id !== sessionId);
+  try { localStorage.setItem('voidcode_sessions_v2', JSON.stringify(savedSessions)); } catch (err) { globalThis.logSwallowed?.(err, 'workspace-tools.deleteSessionById'); }
+  sendHost('delete_session', { sessionId });
+  renderHistorySessions();
+}
+
 export function loadSessionIntoChat(sess) {
   activeSessionId = sess.id;
   globalThis.VoidBridge?.request?.('agent_clear_trace', { sessionId: activeSessionId });
@@ -665,6 +676,8 @@ export function init(ctx = {}) {
     hydrateSessions,
     hydrateCheckpoints,
     getActiveSessionId,
+    getSavedSessions,
+    deleteSessionById,
     saveCurrentSessionToStorage,
     renderHistorySessions,
     loadSessionIntoChat,

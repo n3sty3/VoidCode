@@ -696,4 +696,22 @@ public class AgentV2Tests
             "https://evil.example.com/VoidCode-Setup-1.1.0-win-x64.exe",
             "n3sty3/VoidCode"));
     }
+
+    [Fact]
+    public void GitPowerService_ParsesAddedModifiedAndDeletedGutterHunks()
+    {
+        var diff =
+            "@@ -4,0 +5,2 @@\n+lineA\n+lineB\n" +
+            "@@ -10 +12 @@\n-oldVal\n+newVal\n" +
+            "@@ -20,2 +22,0 @@\n-gone1\n-gone2\n";
+        var hunks = GitPowerService.ParseUnifiedDiffGutterHunks(diff);
+        Assert.Equal(3, hunks.Count);
+        Assert.Equal("added", hunks[0].Kind);
+        Assert.Equal(5, hunks[0].StartLine);
+        Assert.Equal(6, hunks[0].EndLine);
+        Assert.Equal("modified", hunks[1].Kind);
+        Assert.Equal("oldVal", hunks[1].OriginalText);
+        Assert.Equal("deleted", hunks[2].Kind);
+        Assert.Equal("gone1\ngone2", hunks[2].OriginalText);
+    }
 }

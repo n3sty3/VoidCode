@@ -47,7 +47,7 @@ function ensureModal() {
   setHtml(modalEl, html`
     <div class="modal-card glass glass--float" style="width:min(680px,92vw);max-height:72vh;display:flex;flex-direction:column;gap:8px;padding:12px;">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--glacier);padding:3px 7px;border-radius:6px;background:var(--glacier-wash);border:1px solid var(--glacier-line);">Ctrl+Shift+O</span>
+        <span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--glacier);padding:3px 7px;border-radius:6px;background:var(--glacier-wash);border:1px solid var(--glacier-line);">Ctrl+Alt+T</span>
         <input id="symbol-jump-input" type="text" placeholder="Go to symbol in workspace (class, interface, function, method)..." autocomplete="off" spellcheck="false" style="flex:1;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--seam);background:rgba(0,0,0,0.28);color:var(--text);font-size:13px;" />
         <button id="btn-symbol-jump-close" type="button" class="btn btn--quiet btn--xs">Esc</button>
       </div>
@@ -182,7 +182,7 @@ export function closeSymbolJump() {
 
 export function init() {
   window.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') {
+    if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.key.toLowerCase() === 't') {
       if (window.VoidState?.get?.('workspace')) {
         e.preventDefault();
         openSymbolJump();
