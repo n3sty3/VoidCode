@@ -126,7 +126,7 @@ export function addUserMessageActions(msgEl) {
   edit.textContent = 'Edit';
   edit.addEventListener('click', () => {
     const clone = content.cloneNode(true);
-    clone.querySelectorAll('.msg-attachments, .msg-actions').forEach(n => n.remove());
+    clone.querySelectorAll('.msg-attachments, .msg-actions, .user-prompt-eyebrow').forEach(n => n.remove());
     const plain = (clone.textContent || '').trim();
     const input = control('agent-input-text');
     if (input) { input.value = plain; input.focus(); input.scrollIntoView({ block: 'nearest' }); }

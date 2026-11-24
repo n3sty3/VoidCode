@@ -820,16 +820,15 @@
 
       <aside id="sidebar-agent" class="glass pane" style="width: 370px;">
         <div class="pane-head">
-          <span class="pane-title" id="active-session-title">Agent</span>
+          <span class="pane-title agent-brand-title" id="active-session-title"><span class="agent-brand-dot" aria-hidden="true"></span>VoidAgent</span>
           <div class="pane-actions">
             <button type="button" class="btn btn--quiet btn--xs agent-token-pill" id="btn-agent-token-pill" style="display: none;" title="Context token usage (click to open Agent Context Inspector)">~0 tok</button>
-            <button type="button" class="btn btn--quiet btn--xs" id="btn-agent-reasoning-effort" style="white-space:nowrap;flex-shrink:0;" title="Reasoning effort for thinking models (click to cycle Low / Medium / High)">Think: Med</button>
             <button class="icon-btn icon-btn--sm" id="btn-agent-memory-bank" aria-label="VoidAgent Memory Bank" title="VoidAgent Memory Bank (persistent facts &amp; conventions)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             </button>
             <button class="icon-btn icon-btn--sm" id="btn-sidebar-history" aria-label="Chat history" title="Chat history (Ctrl+H)"><span class="icon" data-icon="history" data-variant="muted"></span>
             </button>
-            <button class="icon-btn icon-btn--sm" id="btn-attach-pc-file" aria-label="Attach files from PC" title="Attach files from PC Explorer"><span class="icon" data-icon="paperclip" data-variant="muted"></span>
+            <button class="icon-btn icon-btn--sm" id="btn-attach-pc-file" aria-label="Attach files from PC" title="Attach files from PC Explorer" style="display:none;"><span class="icon" data-icon="paperclip" data-variant="muted"></span>
             </button>
             <button class="icon-btn icon-btn--sm" id="btn-clear-chat" aria-label="New conversation" title="New conversation"><span class="icon" data-icon="plus" data-variant="muted"></span>
             </button>
@@ -873,26 +872,36 @@
             <div class="mention-list" id="agent-mention-list"></div>
           </div>
           <div id="attached-context-bar" style="display: none;"></div>
-          <div class="composer glass glass--lens">
+          <div class="composer composer--v2 glass glass--lens">
+            <div class="composer-top-bar">
+              <div class="composer-top-left">
+                <button type="button" class="composer-chip composer-chip--model" id="btn-composer-model-pill" title="Switch active AI model (Ctrl+Alt+M)">
+                  <span class="composer-chip-dot" aria-hidden="true"></span>
+                  <span id="composer-model-label">deepseek-chat</span>
+                  <span class="composer-chip-caret" aria-hidden="true">▾</span>
+                </button>
+                <button type="button" class="composer-chip" id="btn-agent-reasoning-effort" title="Reasoning effort for thinking models (click to cycle Low / Medium / High)">Think: Med</button>
+              </div>
+              <button class="composer-chip authority-mode" id="btn-agent-authority-mode" type="button" title="Open Agent permission settings">Review</button>
+            </div>
             <div class="agent-status-wrap" id="agent-status-banner" role="status" style="display: none;">
               <span class="run-indicator idle" id="agent-status-dot" aria-hidden="true"></span>
               <span id="agent-status-label">Idle</span>
             </div>
-            <textarea id="agent-input-text" rows="3" aria-label="Message the agent" placeholder="Describe a task, bug, or feature to build... (Type @ to mention files, git, terminal)"></textarea>
+            <textarea id="agent-input-text" rows="3" aria-label="Message the agent" placeholder="Ask VoidAgent to build, debug, or refactor… (@ for context, / for workflows)"></textarea>
             <div class="agent-input-footer">
               <div class="agent-footer-left">
-                <button class="icon-btn icon-btn--xs" id="btn-composer-attach-pc" type="button" aria-label="Attach file from PC" title="Attach file from PC"><span class="icon" data-icon="paperclip" data-variant="muted"></span></button>
-                <button class="btn btn--quiet btn--xs" id="btn-attach-active-file" type="button" title="Attach active editor tab">
-                  <span>+ Tab</span>
-                </button>
                 <div class="agent-mode-toggle" id="agent-mode-toggle" role="group" aria-label="Agent mode">
                   <button class="mode-btn is-active" type="button" data-mode="act" aria-pressed="true" title="Act: the agent makes changes directly">Act</button>
                   <button class="mode-btn" type="button" data-mode="plan" aria-pressed="false" title="Plan: read-only, proposes steps for approval">Plan</button>
                 </div>
-                <button class="btn btn--quiet btn--xs authority-mode" id="btn-agent-authority-mode" type="button" title="Open Agent permission settings">Review</button>
+                <button class="icon-btn icon-btn--xs" id="btn-composer-attach-pc" type="button" aria-label="Attach file from PC" title="Attach file from PC"><span class="icon" data-icon="paperclip" data-variant="muted"></span></button>
+                <button class="btn btn--quiet btn--xs" id="btn-attach-active-file" type="button" title="Attach active editor tab">
+                  <span>+ Tab</span>
+                </button>
               </div>
               <div class="agent-btn-group">
-                <button id="btn-cancel-agent" class="btn btn--quiet btn--xs" style="display:none;">Stop</button>
+                <button id="btn-cancel-agent" class="btn btn--quiet btn--xs composer-stop-btn" style="display:none;">Stop</button>
                 <button id="btn-send-agent" class="btn btn--primary btn--xs agent-send-btn" aria-label="Send message" title="Send message (Enter)">
                   <span>Send</span>
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>

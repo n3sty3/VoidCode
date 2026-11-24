@@ -159,10 +159,15 @@ export function openQuickModelSwitcher(anchorEl = null) {
 
   if (anchor) {
     const rect = anchor.getBoundingClientRect();
+    const popRect = el.getBoundingClientRect();
+    const popH = Math.min(popRect.height || 380, window.innerHeight - 24);
     const x = Math.max(10, Math.min(rect.right - 340, window.innerWidth - 350));
-    const y = Math.min(rect.bottom + 6, window.innerHeight - 360);
+    const openAbove = rect.bottom + popH + 14 > window.innerHeight && rect.top > popH;
+    const y = openAbove
+      ? Math.max(12, rect.top - popH - 8)
+      : Math.min(rect.bottom + 6, window.innerHeight - popH - 12);
     el.style.left = `${x}px`;
-    el.style.top = `${Math.max(44, y)}px`;
+    el.style.top = `${y}px`;
   } else {
     el.style.left = `${Math.max(10, (window.innerWidth - 340) / 2)}px`;
     el.style.top = '54px';

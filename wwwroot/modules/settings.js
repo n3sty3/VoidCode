@@ -44,6 +44,11 @@ export function applySettingsToUI(s, settingScopes = null) {
     }
   }
   control('active-model-label').textContent = s.Model || 'deepseek/deepseek-chat';
+  const composerModelLbl = document.getElementById('composer-model-label');
+  if (composerModelLbl) {
+    const full = s.Model || 'deepseek/deepseek-chat';
+    composerModelLbl.textContent = full.includes('/') ? full.split('/').pop() : full;
+  }
   // The model chip collapses to its icon below 1280px, so the full name has to live in
   // The tooltip and the dot has to say whether the provider is configured - otherwise the collapse
   // Hides the only place the model name was visible.
@@ -782,6 +787,14 @@ export function syncReasoningEffortPill(effort) {
 }
 
 function setupAgentChatReasoningAndMemoryControls() {
+  const composerModelBtn = document.getElementById('btn-composer-model-pill');
+  if (composerModelBtn && !composerModelBtn.dataset.wired) {
+    composerModelBtn.dataset.wired = 'true';
+    composerModelBtn.addEventListener('click', () => {
+      globalThis.openQuickModelSwitcher?.(composerModelBtn);
+    });
+  }
+
   const memBtn = document.getElementById('btn-agent-memory-bank');
   if (memBtn && !memBtn.dataset.wired) {
     memBtn.dataset.wired = 'true';

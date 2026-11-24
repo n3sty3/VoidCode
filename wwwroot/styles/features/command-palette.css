@@ -890,12 +890,15 @@ input::placeholder, textarea::placeholder { color: var(--text-disabled); }
 .composer, .agent-input-footer { overflow: visible !important; }
 .agent-footer-left { overflow: visible !important; flex-wrap: wrap !important; }
 
-/* user chat turn: refined slate-tinted bubble */
+/* user chat turn: full-width VoidAgent v2 prompt card (styled in features/agent.css) */
 .chat-msg.user .msg-content {
+  width: 100%;
+  max-width: 100%;
   border: 1px solid var(--seam);
-  background: rgba(255, 255, 255, 0.065);
-  border-radius: 12px 12px 4px 12px;
-  padding: 9px 13px;
+  border-left: 2px solid var(--glacier);
+  background: rgba(255, 255, 255, 0.042);
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .pane-head { border-bottom: 1px solid var(--seam); }

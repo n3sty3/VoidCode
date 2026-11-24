@@ -27,6 +27,75 @@ let reasonStartTime = null;
 let activeToolGroup = null;
 let streamRenderScheduled = false;
 let lastCommittedBlockCount = 0;
+let liveTurnCardEl = null;
+let liveTurnTimer = null;
+let liveTurnStartMs = 0;
+const DEFAULT_COMPOSER_PLACEHOLDER = 'Ask VoidAgent to build, debug, or refactor… (@ for context, / for workflows)';
+
+function startLiveTurnCard(initialStatus = 'Connecting to model…') {
+  clearLiveTurnCard();
+  const container = document.getElementById('agent-chat-container');
+  if (!container) return;
+
+  const rawModel = window.VoidState?.get?.('settings')?.Model || document.getElementById('composer-model-label')?.textContent || 'active model';
+  const model = rawModel.includes('/') ? rawModel.split('/').pop() : rawModel;
+  const card = document.createElement('div');
+  card.className = 'agent-live-turn';
+  card.setAttribute('role', 'status');
+  setHtml(card, html`
+    <div class="agent-live-head">
+      <div class="agent-live-left">
+        <span class="agent-live-pulse" aria-hidden="true"></span>
+        <strong style="color:var(--text);">VoidAgent</strong>
+        <span class="agent-live-model">${model}</span>
+      </div>
+      <span class="agent-live-timer">0.0s</span>
+    </div>
+    <div class="agent-live-status">${initialStatus}</div>
+  `);
+
+  container.appendChild(card);
+  liveTurnCardEl = card;
+  liveTurnStartMs = Date.now();
+  liveTurnTimer = setInterval(() => {
+    if (!liveTurnCardEl || !document.body.contains(liveTurnCardEl)) {
+      clearLiveTurnCard();
+      return;
+    }
+    const t = liveTurnCardEl.querySelector('.agent-live-timer');
+    if (t) t.textContent = `${((Date.now() - liveTurnStartMs) / 1000).toFixed(1)}s`;
+  }, 100);
+
+  const input = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('agent-input-text'));
+  if (input) input.placeholder = 'Steer VoidAgent mid-run… (Enter to queue guidance)';
+  scrollAgentToBottom();
+}
+
+function updateLiveTurnStatus(statusText) {
+  if (!statusText) return;
+  if (!liveTurnCardEl || !document.body.contains(liveTurnCardEl)) {
+    // Only create live card if no stream message is currently open.
+    if (!currentStreamMsgEl) startLiveTurnCard(statusText);
+    return;
+  }
+  const el = liveTurnCardEl.querySelector('.agent-live-status');
+  if (el) el.textContent = statusText;
+}
+
+function clearLiveTurnCard(restorePlaceholder = false) {
+  if (liveTurnTimer) {
+    clearInterval(liveTurnTimer);
+    liveTurnTimer = null;
+  }
+  if (liveTurnCardEl) {
+    liveTurnCardEl.remove();
+    liveTurnCardEl = null;
+  }
+  if (restorePlaceholder) {
+    const input = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('agent-input-text'));
+    if (input) input.placeholder = DEFAULT_COMPOSER_PLACEHOLDER;
+  }
+}
 
 // Rich v2 payload cache populated via VoidBridge.subscribe before app.js invokes legacy signatures.
 const toolMetaById = new Map();
@@ -205,10 +274,11 @@ export function appendUserMessage(text, attachments, displayText) {
         '</div>';
     }
   }
-  setHtml(div, html`<div class="msg-content">${raw(chips)}${shown}${raw(previews)}</div>`);
+  setHtml(div, html`<div class="msg-content"><div class="user-prompt-eyebrow"><span>You</span></div>${raw(chips)}${shown}${raw(previews)}</div>`);
 
   container.appendChild(div);
   addUserMessageActions(div);
+  startLiveTurnCard('Sending prompt to model…');
   window.VoidState.set('agentAutoScroll', true);
   container.scrollTop = container.scrollHeight;
   window.VoidState.get('chatHistory').push({ role: 'user', content: text });
@@ -216,6 +286,7 @@ export function appendUserMessage(text, attachments, displayText) {
 }
 
 export function startAssistantStreamMessage() {
+  clearLiveTurnCard(false);
   const container = document.getElementById('agent-chat-container');
   currentStreamBuffer = '';
   currentReasoningBuffer = '';
@@ -775,8 +846,17 @@ export function init(ctx = {}) {
   // Capture rich v2 metadata directly from VoidBridge before legacy app.js handlers run.
   if (window.VoidBridge && typeof window.VoidBridge.subscribe === 'function') {
     window.VoidBridge.subscribe((action, payload) => {
+      if (action === 'agent_status' && payload?.status) {
+        updateLiveTurnStatus(payload.status);
+        return;
+      }
+      if (action === 'agent_done' || action === 'agent_error') {
+        clearLiveTurnCard(true);
+        return;
+      }
       if (!payload) return;
       if (action === 'agent_tool_start' || action === 'agent_tool_approval_needed' || action === 'agent_tool_finish') {
+        if (action === 'agent_tool_start') clearLiveTurnCard(false);
         if (payload.id) {
           const prev = toolMetaById.get(payload.id) || {};
           toolMetaById.set(payload.id, { ...prev, ...payload });
