@@ -222,36 +222,44 @@ async function runLocalDiscovery(resultsHost) {
 
 function mountSettingsPanel() {
   const providerTab = document.getElementById('tab-provider');
-  if (!providerTab || document.getElementById('voidcode-autocomplete-well')) return;
+  if (providerTab && !document.getElementById('btn-discover-local-models')) {
+    const scanRow = document.createElement('div');
+    scanRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;';
+    setHtml(scanRow, html`
+      <span style="font-size:11px;opacity:0.75;">Local AI: auto-detect running Ollama (11434) or LM Studio (1234) models</span>
+      <button type="button" class="btn btn--quiet btn--sm" id="btn-discover-local-models">Scan Local AI</button>
+    `);
+    const resultsHost = document.createElement('div');
+    resultsHost.id = 'local-discovery-results';
+    resultsHost.style.marginTop = '6px';
+    providerTab.insertBefore(resultsHost, providerTab.firstChild);
+    providerTab.insertBefore(scanRow, resultsHost);
+    document.getElementById('btn-discover-local-models')?.addEventListener('click', () => runLocalDiscovery(resultsHost));
+  }
+
+  const editorTab = document.getElementById('tab-editor');
+  if (!editorTab || document.getElementById('voidcode-autocomplete-well')) return;
 
   const well = document.createElement('div');
   well.id = 'voidcode-autocomplete-well';
-  well.style.cssText = 'margin-top:14px;padding:12px;border-radius:10px;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));background:var(--surface-1,rgba(255,255,255,0.02));';
+  well.style.cssText = 'margin-top:12px;padding:12px;border-radius:10px;border:1px solid var(--border-subtle,rgba(255,255,255,0.1));background:var(--surface-1,rgba(255,255,255,0.02));';
 
   setHtml(well, html`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-      <div>
-        <div style="font-size:13px;font-weight:600;">Tab Autocomplete (FIM Ghost Text) &amp; Local AI Discovery</div>
-        <div style="font-size:11px;opacity:0.7;">Use a dedicated fast/local model (e.g. Ollama qwen2.5-coder:3b, Groq, Gemini Flash) or leave blank to reuse your main model.</div>
-      </div>
-      <button type="button" class="btn btn--quiet btn--xs" id="btn-discover-local-models">Scan Local AI</button>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:600;">AI Tab Autocomplete (FIM Ghost Text)</div>
+      <div style="font-size:11px;opacity:0.7;">Use a dedicated fast/local model (Ollama qwen2.5-coder:3b, Groq, Gemini Flash) or leave blank to reuse your main model.</div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <input type="checkbox" id="settings-autocomplete-enabled" checked />
-      <label for="settings-autocomplete-enabled" style="font-size:12px;cursor:pointer;">Enable real-time Tab ghost-text autocomplete in editor</label>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px;min-height:28px;cursor:pointer;">
+      <input type="checkbox" id="settings-autocomplete-enabled" checked style="width:24px;height:24px;margin:0;cursor:pointer;" />
+      <span style="font-size:12px;">Enable real-time Tab ghost-text autocomplete in editor</span>
+    </label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <input type="text" class="text-input" id="settings-autocomplete-url" placeholder="Optional fast endpoint (e.g. http://localhost:11434/v1)" />
       <input type="text" class="text-input" id="settings-autocomplete-model" placeholder="Optional fast model (e.g. qwen2.5-coder:3b)" />
     </div>
-    <div id="local-discovery-results"></div>
   `);
 
-  providerTab.appendChild(well);
-
-  const btnScan = document.getElementById('btn-discover-local-models');
-  const resultsHost = document.getElementById('local-discovery-results');
-  btnScan?.addEventListener('click', () => runLocalDiscovery(resultsHost));
+  editorTab.appendChild(well);
   syncSettingsFields(getSettings());
 }
 
