@@ -1,15 +1,22 @@
 using System;
+using System.Threading;
 using VoidCode.Services;
 
 namespace VoidCode.Agent.Providers;
 
 /// <summary>
-/// Selects the concrete chat provider from AppSettings (with an internal test seam
-/// So unit tests can inject a fake provider without touching the network).
+/// Selects the concrete chat provider from AppSettings (with an AsyncLocal test seam
+/// so parallel xUnit tests can inject a fake provider without racing each other).
 /// </summary>
 internal static class ProviderFactory
 {
-    internal static Func<AppSettings, IChatProvider>? OverrideForTests { get; set; }
+    private static readonly AsyncLocal<Func<AppSettings, IChatProvider>?> OverrideSlot = new();
+
+    internal static Func<AppSettings, IChatProvider>? OverrideForTests
+    {
+        get => OverrideSlot.Value;
+        set => OverrideSlot.Value = value;
+    }
 
     internal static bool IsAnthropic(AppSettings settings)
     {

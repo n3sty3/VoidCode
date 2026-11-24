@@ -47,14 +47,14 @@ test('agent stream renders reasoning, content, and grouped tool cards', async ({
 
   await expect(page.locator('.tool-run-group')).toHaveCount(1);
   await expect(page.locator('.tool-card')).toHaveCount(2);
-  await expect(page.locator('.tool-run-label')).toHaveText('Ran 2 tools');
+  await expect(page.locator('.tool-run-label')).toContainText('read 1, 1 edit');
   await expect(page.locator('#tool-card-t1 .tool-verb')).toHaveText('Read');
   await expect(page.locator('#tool-card-t1 .tool-target')).toHaveText('src/Program.cs');
 
   // Approval prompt: Approve resolves back to the host
   await page.evaluate(() => window.__host('agent_tool_approval_needed', { id: 't2' }));
   await page.waitForTimeout(200);
-  const approve = page.locator('#tool-card-t2 .tool-actions-right button', { hasText: 'Approve' });
+  const approve = page.locator('#tool-card-t2 .approval-v2-bar button', { hasText: /^Approve$/ });
   await expect(approve).toBeVisible();
   await page.evaluate(() => { window.__sent.length = 0; });
   await approve.click();
