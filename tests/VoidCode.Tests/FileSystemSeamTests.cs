@@ -18,7 +18,8 @@ namespace VoidCode.Tests;
 // Disk: the workspace path is fake and every call is answered by the fake below.
 public class FileSystemSeamTests
 {
-    private const string Workspace = @"C:\fake\workspace";
+    private static readonly string Workspace = Path.Combine(Path.GetTempPath(), "fake-workspace");
+    private static string WsFile(string name) => Path.Combine(Workspace, name);
     private readonly Recorder _recorder = new();
     private readonly FakeFileSystem _files = new();
     private readonly BridgeRouter _router = new();
@@ -39,7 +40,7 @@ public class FileSystemSeamTests
         _files.Text = "same content";
         _files.WriteThrows = new IOException("The process cannot access the file.");
 
-        await Dispatch(FileSystemRoutes.SaveFile, "req_1", new { path = @"C:\fake\workspace\a.cs", content = "same content" });
+        await Dispatch(FileSystemRoutes.SaveFile, "req_1", new { path = WsFile("a.cs"), content = "same content" });
 
         var reply = await _recorder.WaitForAsync("save_file_response");
         Assert.Contains("cannot access the file", reply.GetProperty("error").GetString());
@@ -53,7 +54,7 @@ public class FileSystemSeamTests
         _files.Exists = true;
         _files.Text = "old";
 
-        await Dispatch(FileSystemRoutes.SaveFile, "req_2", new { path = @"C:\fake\workspace\a.cs", content = "new" });
+        await Dispatch(FileSystemRoutes.SaveFile, "req_2", new { path = WsFile("a.cs"), content = "new" });
 
         var reply = await _recorder.WaitForAsync("save_file_response");
         Assert.True(reply.GetProperty("success").GetBoolean());
@@ -67,7 +68,7 @@ public class FileSystemSeamTests
         _files.RenameThrows = new IOException("Cannot create a file when that file already exists.");
 
         await Dispatch(FileSystemRoutes.RenameEntry, "req_3",
-            new { path = @"C:\fake\workspace\a.cs", newName = "b.cs" });
+            new { path = WsFile("a.cs"), newName = "b.cs" });
 
         var toast = await _recorder.WaitForAsync("toast");
         Assert.Equal("error", toast.GetProperty("type").GetString());
@@ -80,7 +81,7 @@ public class FileSystemSeamTests
     {
         _files.Tree = new FileNode { Name = "workspace", Path = Workspace, IsDirectory = true };
 
-        await Dispatch(FileSystemRoutes.CreateEntry, "req_4", new { path = @"C:\fake\workspace\b.cs" });
+        await Dispatch(FileSystemRoutes.CreateEntry, "req_4", new { path = WsFile("b.cs") });
 
         var tree = await _recorder.WaitForAsync("tree_refreshed");
         Assert.Equal("workspace", tree.GetProperty("tree").GetProperty("name").GetString());
@@ -96,7 +97,7 @@ public class FileSystemSeamTests
         _files.DataUri = "data:image/png;base64,AAAA";
         _files.ImageBytes = 4;
 
-        await Dispatch(FileSystemRoutes.ReadFile, "req_5", new { path = @"C:\fake\workspace\logo.png" });
+        await Dispatch(FileSystemRoutes.ReadFile, "req_5", new { path = WsFile("logo.png") });
 
         var reply = await _recorder.WaitForAsync("image_preview_response");
         Assert.Equal("data:image/png;base64,AAAA", reply.GetProperty("dataUri").GetString());
@@ -109,7 +110,7 @@ public class FileSystemSeamTests
     {
         _files.ReadThrows = new UnauthorizedAccessException("Access to the path is denied.");
 
-        await Dispatch(FileSystemRoutes.ReadFile, "req_6", new { path = @"C:\fake\workspace\secret.txt" });
+        await Dispatch(FileSystemRoutes.ReadFile, "req_6", new { path = WsFile("secret.txt") });
 
         var reply = await _recorder.WaitForAsync("read_file_response");
         Assert.Contains("denied", reply.GetProperty("error").GetString());

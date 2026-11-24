@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -16,7 +17,8 @@ namespace VoidCode.Tests;
 // That needed a disk (and %APPDATA%, via FileSystemService's checkpoint persistence).
 public class SessionCheckpointSeamTests
 {
-    private const string Workspace = @"C:\fake\workspace";
+    private static readonly string Workspace = Path.Combine(Path.GetTempPath(), "fake-workspace");
+    private static string WsFile(string name) => Path.Combine(Workspace, name);
     private readonly Recorder _recorder = new();
     private readonly FakeFileSystem _files = new();
     private readonly BridgeRouter _router = new();
@@ -107,11 +109,12 @@ public class SessionCheckpointSeamTests
     [Fact]
     public async Task InspectFile_UsesTheSeamForTheBinaryReport()
     {
-        await Dispatch(SessionWindowRoutes.InspectFile, "req_5", new { path = @"C:\fake\workspace\app.exe" });
+        var appExe = WsFile("app.exe");
+        await Dispatch(SessionWindowRoutes.InspectFile, "req_5", new { path = appExe });
 
         var reply = await _recorder.WaitForAsync("inspect_file_response");
         Assert.Equal("binary report", reply.GetProperty("report").GetString());
-        Assert.Equal(@"C:\fake\workspace\app.exe", reply.GetProperty("path").GetString());
+        Assert.Equal(appExe, reply.GetProperty("path").GetString());
     }
 
     /// <summary>Collects what the domain sent, same shape as the other handler tests.</summary>
