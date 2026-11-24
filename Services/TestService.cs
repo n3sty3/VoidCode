@@ -108,7 +108,9 @@ public static class TestService
                     testScript.ValueKind == JsonValueKind.String &&
                     !string.IsNullOrWhiteSpace(testScript.GetString()))
                 {
-                    return ("npm test", "cmd.exe", "/c npm test");
+                    return OperatingSystem.IsWindows()
+                        ? ("npm test", "cmd.exe", "/c npm test")
+                        : ("npm test", "/bin/sh", "-c \"npm test\"");
                 }
             }
             catch (Exception ex) { LoggingService.Swallowed(ex, "TestService.DetectNpmTestScript"); }

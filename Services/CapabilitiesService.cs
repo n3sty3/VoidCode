@@ -134,23 +134,25 @@ public static class CapabilitiesService
         var nodePath = FindAny("node.exe", "node");
         var npmPath = FindAny("npm.cmd", "npm.exe", "npm");
         var dotnetPath = FindAny("dotnet.exe", "dotnet");
-        var pythonPath = FindAny("python.exe", "python3.exe", "python");
+        var pythonPath = FindAny("python.exe", "python3.exe", "python3", "python");
         var goPath = FindAny("go.exe", "go");
         var rustcPath = FindAny("rustc.exe", "rustc");
         var rustupPath = FindAny("rustup.exe", "rustup");
         var wingetPath = FindAny("winget.exe", "winget");
+        var brewPath = FindAny("brew");
         var gitPath = FindAny("git.exe", "git");
         var rgPath = findExe != null
             ? FindAny("rg.exe", "rg")
             : RipgrepSearchService.FindExecutable();
 
+        bool isMac = OperatingSystem.IsMacOS();
         var runtimes = new List<BinaryCapability>
         {
-            new() { Name = "Node.js", Found = nodePath != null, Path = nodePath, InstallHint = "winget install OpenJS.NodeJS.LTS" },
+            new() { Name = "Node.js", Found = nodePath != null, Path = nodePath, InstallHint = isMac ? "brew install node" : "winget install OpenJS.NodeJS.LTS" },
             new() { Name = "npm", Found = npmPath != null, Path = npmPath, InstallHint = "Included with Node.js" },
-            new() { Name = ".NET SDK", Found = dotnetPath != null, Path = dotnetPath, InstallHint = "winget install Microsoft.DotNet.SDK.10" },
-            new() { Name = "Python", Found = pythonPath != null, Path = pythonPath, InstallHint = "winget install Python.Python.3.12" },
-            new() { Name = "Go", Found = goPath != null, Path = goPath, InstallHint = "winget install GoLang.Go" },
+            new() { Name = ".NET SDK", Found = dotnetPath != null, Path = dotnetPath, InstallHint = isMac ? "brew install --cask dotnet-sdk" : "winget install Microsoft.DotNet.SDK.10" },
+            new() { Name = "Python", Found = pythonPath != null, Path = pythonPath, InstallHint = isMac ? "brew install python" : "winget install Python.Python.3.12" },
+            new() { Name = "Go", Found = goPath != null, Path = goPath, InstallHint = isMac ? "brew install go" : "winget install GoLang.Go" },
             new() { Name = "Rust (rustc)", Found = rustcPath != null, Path = rustcPath, InstallHint = "https://rustup.rs" }
         };
 
@@ -158,8 +160,13 @@ public static class CapabilitiesService
         {
             foreach (var venvDir in new[] { ".venv", "venv" })
             {
-                var venvPy = Path.Combine(workspacePath, venvDir, "Scripts", "python.exe");
-                if (File.Exists(venvPy))
+                var winVenvPy = Path.Combine(workspacePath, venvDir, "Scripts", "python.exe");
+                var unixVenvPy3 = Path.Combine(workspacePath, venvDir, "bin", "python3");
+                var unixVenvPy = Path.Combine(workspacePath, venvDir, "bin", "python");
+                var venvPy = File.Exists(winVenvPy) ? winVenvPy
+                    : File.Exists(unixVenvPy3) ? unixVenvPy3
+                    : File.Exists(unixVenvPy) ? unixVenvPy : null;
+                if (venvPy != null)
                 {
                     runtimes.Insert(0, new BinaryCapability { Name = $"Python ({venvDir})", Found = true, Path = venvPy });
                     break;
@@ -167,12 +174,19 @@ public static class CapabilitiesService
             }
         }
 
-        var shells = new List<BinaryCapability>
-        {
-            new() { Name = "PowerShell 7 (pwsh)", Found = FindAny("pwsh.exe", "pwsh") != null, Path = FindAny("pwsh.exe", "pwsh"), InstallHint = "winget install Microsoft.PowerShell" },
-            new() { Name = "Windows PowerShell", Found = FindAny("powershell.exe") != null, Path = FindAny("powershell.exe") },
-            new() { Name = "Command Prompt (cmd)", Found = FindAny("cmd.exe") != null, Path = FindAny("cmd.exe") }
-        };
+        var shells = isMac
+            ? new List<BinaryCapability>
+            {
+                new() { Name = "Zsh (macOS Default)", Found = File.Exists("/bin/zsh") || FindAny("zsh") != null, Path = File.Exists("/bin/zsh") ? "/bin/zsh" : FindAny("zsh") },
+                new() { Name = "Bash", Found = File.Exists("/bin/bash") || FindAny("bash") != null, Path = File.Exists("/bin/bash") ? "/bin/bash" : FindAny("bash") },
+                new() { Name = "PowerShell 7 (pwsh)", Found = FindAny("pwsh") != null, Path = FindAny("pwsh"), InstallHint = "brew install --cask powershell" }
+            }
+            : new List<BinaryCapability>
+            {
+                new() { Name = "PowerShell 7 (pwsh)", Found = FindAny("pwsh.exe", "pwsh") != null, Path = FindAny("pwsh.exe", "pwsh"), InstallHint = "winget install Microsoft.PowerShell" },
+                new() { Name = "Windows PowerShell", Found = FindAny("powershell.exe") != null, Path = FindAny("powershell.exe") },
+                new() { Name = "Command Prompt (cmd)", Found = FindAny("cmd.exe") != null, Path = FindAny("cmd.exe") }
+            };
 
         bool PrereqAvailable(string prereq) => prereq switch
         {
@@ -181,6 +195,7 @@ public static class CapabilitiesService
             "go" => goPath != null,
             "rustup" => rustupPath != null,
             "winget" => wingetPath != null,
+            "brew" => brewPath != null,
             _ => FindAny(prereq + ".exe", prereq) != null
         };
 
@@ -239,14 +254,14 @@ public static class CapabilitiesService
                 Name = "Git",
                 Found = gitPath != null,
                 Path = gitPath,
-                InstallHint = "winget install Git.Git"
+                InstallHint = isMac ? "xcode-select --install" : "winget install Git.Git"
             },
             Ripgrep = new BinaryCapability
             {
                 Name = "ripgrep (rg)",
                 Found = rgPath != null,
                 Path = rgPath,
-                InstallHint = "winget install BurntSushi.ripgrep.MSVC"
+                InstallHint = isMac ? "brew install ripgrep" : "winget install BurntSushi.ripgrep.MSVC"
             },
             Runtimes = runtimes,
             Shells = shells,

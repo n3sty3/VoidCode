@@ -33,10 +33,17 @@ public static class BridgeProtocol
     /// (even something like http://app.local.evil.example/) fails, which is what stops a
     /// Hostile frame from talking to the host.
     /// </summary>
-    public static bool IsTrustedSource(string? rawUri)
+    public static bool IsTrustedSource(string? rawUri, Uri? allowedDocumentUri = null)
     {
         if (string.IsNullOrWhiteSpace(rawUri)) return false;
         if (!Uri.TryCreate(rawUri, UriKind.Absolute, out var uri)) return false;
+        if (allowedDocumentUri != null)
+        {
+            return string.Equals(uri.Scheme, allowedDocumentUri.Scheme, StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(uri.Host, allowedDocumentUri.Host, StringComparison.OrdinalIgnoreCase)
+                   && uri.Port == allowedDocumentUri.Port
+                   && string.Equals(uri.AbsolutePath, allowedDocumentUri.AbsolutePath, StringComparison.OrdinalIgnoreCase);
+        }
         return uri.Scheme == Uri.UriSchemeHttp
                && string.Equals(uri.Host, "app.local", StringComparison.OrdinalIgnoreCase)
                && uri.Port == 80
@@ -53,11 +60,12 @@ public static class BridgeProtocol
         string? rawJson,
         string? expectedNonce,
         [NotNullWhen(true)] out JsonObject? message,
-        [NotNullWhen(false)] out string? reason)
+        [NotNullWhen(false)] out string? reason,
+        Uri? allowedDocumentUri = null)
     {
         message = null;
 
-        if (!IsTrustedSource(sourceUri))
+        if (!IsTrustedSource(sourceUri, allowedDocumentUri))
         {
             reason = $"untrusted source '{sourceUri}'";
             return false;

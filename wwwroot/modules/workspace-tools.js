@@ -437,8 +437,11 @@ export function renderLivePreviewFromActiveTab() {
       parts.pop();
       relDir = parts.length > 0 ? parts.join('/') + '/' : '';
     }
-    const previewPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src http://workspace.local data: blob:; script-src 'unsafe-inline' 'unsafe-eval' http://workspace.local; style-src 'unsafe-inline' http://workspace.local; img-src data: blob: http://workspace.local; font-src data: http://workspace.local; connect-src http://workspace.local; object-src 'none'; form-action 'none'">`;
-    const baseTag = `<base href="http://workspace.local/${relDir}">`;
+    const isLoopbackHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+    const previewOrigin = isLoopbackHost ? window.location.origin : 'http://workspace.local';
+    const previewBasePrefix = isLoopbackHost ? `${window.location.origin}/__workspace__/` : 'http://workspace.local/';
+    const previewPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src ${previewOrigin} data: blob:; script-src 'unsafe-inline' 'unsafe-eval' ${previewOrigin}; style-src 'unsafe-inline' ${previewOrigin}; img-src data: blob: ${previewOrigin}; font-src data: ${previewOrigin}; connect-src ${previewOrigin}; object-src 'none'; form-action 'none'">`;
+    const baseTag = `<base href="${previewBasePrefix}${relDir}">`;
     const previewHead = `${previewPolicy}${baseTag}`;
     let docHtml;
     if (ext === 'svg') {

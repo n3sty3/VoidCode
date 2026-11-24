@@ -86,29 +86,62 @@ public static class TerminalService
             ? GetEffectiveWorkingDir(workingDir)
             : (!string.IsNullOrEmpty(workingDir) && Directory.Exists(workingDir) ? workingDir : Environment.CurrentDirectory);
 
-        // Wrap script in UTF-8 output encoding + optional working directory tracker
-        var scriptBuilder = new StringBuilder();
-        scriptBuilder.AppendLine("[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;");
-        scriptBuilder.AppendLine(command);
-        if (trackWorkingDir)
+        ProcessStartInfo psi;
+        if (OperatingSystem.IsWindows())
         {
-            scriptBuilder.AppendLine($"$__vcExit = $LASTEXITCODE; Write-Output (\"{CwdMarker}\" + (Get-Location).Path); if ($__vcExit -ne $null) {{ exit $__vcExit }}");
+            // Wrap script in UTF-8 output encoding + optional working directory tracker
+            var scriptBuilder = new StringBuilder();
+            scriptBuilder.AppendLine("[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;");
+            scriptBuilder.AppendLine(command);
+            if (trackWorkingDir)
+            {
+                scriptBuilder.AppendLine($"$__vcExit = $LASTEXITCODE; Write-Output (\"{CwdMarker}\" + (Get-Location).Path); if ($__vcExit -ne $null) {{ exit $__vcExit }}");
+            }
+
+            var encodedCommand = Convert.ToBase64String(Encoding.Unicode.GetBytes(scriptBuilder.ToString()));
+
+            psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encodedCommand}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                WorkingDirectory = effectiveDir
+            };
         }
-
-        var encodedCommand = Convert.ToBase64String(Encoding.Unicode.GetBytes(scriptBuilder.ToString()));
-
-        var psi = new ProcessStartInfo
+        else
         {
-            FileName = "powershell.exe",
-            Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encodedCommand}",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = effectiveDir
-        };
+            var shell = Environment.GetEnvironmentVariable("SHELL");
+            if (string.IsNullOrWhiteSpace(shell) || !File.Exists(shell))
+            {
+                shell = File.Exists("/bin/zsh") ? "/bin/zsh" : (File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh");
+            }
+
+            var unixScript = new StringBuilder();
+            unixScript.AppendLine(command);
+            if (trackWorkingDir)
+            {
+                unixScript.AppendLine($"__vcExit=$?; printf '\\n{CwdMarker}%s\\n' \"$PWD\"; exit $__vcExit");
+            }
+
+            psi = new ProcessStartInfo
+            {
+                FileName = shell,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                WorkingDirectory = effectiveDir
+            };
+            psi.ArgumentList.Add("-lc");
+            psi.ArgumentList.Add(unixScript.ToString());
+        }
 
         using var process = new Process { StartInfo = psi };
         _activeProcess = process;

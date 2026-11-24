@@ -205,13 +205,21 @@ internal static class ToolCatalog
                 ["function"] = new JsonObject
                 {
                     ["name"] = "run_command",
-                    ["description"] = "Execute a PowerShell command in the workspace and stream output.",
+                    ["description"] = OperatingSystem.IsWindows()
+                        ? "Execute a PowerShell command in the workspace and stream output."
+                        : "Execute a shell command (zsh/bash) in the workspace and stream output.",
                     ["parameters"] = new JsonObject
                     {
                         ["type"] = "object",
                         ["properties"] = new JsonObject
                         {
-                            ["command"] = new JsonObject { ["type"] = "string", ["description"] = "PowerShell command line to execute." }
+                            ["command"] = new JsonObject
+                            {
+                                ["type"] = "string",
+                                ["description"] = OperatingSystem.IsWindows()
+                                    ? "PowerShell command line to execute."
+                                    : "Shell command line to execute."
+                            }
                         },
                         ["required"] = new JsonArray { "command" }
                     }
@@ -254,7 +262,7 @@ internal static class ToolCatalog
                 ["function"] = new JsonObject
                 {
                     ["name"] = "inspect_binary",
-                    ["description"] = "Inspect a binary/executable file (.exe, .dll, .bin): extracts PE32/PE32+ headers, sections, Shannon entropy, SHA-256/MD5 hashes, header hex dump, and ASCII + UTF-16LE strings.",
+                    ["description"] = "Inspect a binary/executable file (.exe, .dll, .dylib, .bin, Mach-O, ELF): extracts PE32/PE32+ or Mach-O headers, sections, Shannon entropy, SHA-256/MD5 hashes, header hex dump, and ASCII + UTF-16LE strings.",
                     ["parameters"] = new JsonObject
                     {
                         ["type"] = "object",

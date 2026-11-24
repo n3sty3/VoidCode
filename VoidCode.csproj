@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <ProjectReference Include="VoidCode.Core\VoidCode.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +32,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Agent\**\*.cs" />
+    <Compile Remove="Bridge\**\*.cs" />
+    <Compile Remove="Dap\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+    <Compile Remove="VoidCode.Core\**\*.cs" />
+    <Compile Remove="VoidCode.Mac\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Compile Remove="scripts\**\*.cs" />
   </ItemGroup>

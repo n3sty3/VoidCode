@@ -2,5 +2,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/VoidCode.Tests/VoidCode.Tests.csproj" />
   </Folder>
+  <Project Path="VoidCode.Core/VoidCode.Core.csproj" />
+  <Project Path="VoidCode.Mac/VoidCode.Mac.csproj" />
   <Project Path="VoidCode.csproj" />
 </Solution>

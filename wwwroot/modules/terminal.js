@@ -276,7 +276,11 @@ export function restartActiveTerminal() {
   });
 }
 
-export function createXtermSession(id, name, shellType = 'powershell') {
+const DEFAULT_SHELL_TYPE = (typeof navigator !== 'undefined' && /mac/i.test(navigator.platform || navigator.userAgent || ''))
+  ? 'zsh'
+  : 'powershell';
+
+export function createXtermSession(id, name, shellType = DEFAULT_SHELL_TYPE) {
   const host = document.getElementById('terminal-host');
   const TermClass = typeof window.Terminal === 'function' ? window.Terminal : window.Terminal?.Terminal;
   const FitClass = typeof window.FitAddon === 'function' ? window.FitAddon : window.FitAddon?.FitAddon;
@@ -395,7 +399,7 @@ export function focusActiveTerminal() {
 }
 
 export function setupTerminalTabs() {
-  document.getElementById('btn-add-terminal-tab')?.addEventListener('click', () => addTerminalTab('powershell'));
+  document.getElementById('btn-add-terminal-tab')?.addEventListener('click', () => addTerminalTab(DEFAULT_SHELL_TYPE));
 
   const btnShellMenu = document.getElementById('btn-terminal-shell-menu');
   const shellMenu = document.getElementById('terminal-profile-menu');
@@ -532,11 +536,12 @@ export function switchTerminalTab(termId) {
   renderTerminalTabs();
 }
 
-export function addTerminalTab(shellType = 'powershell') {
+export function addTerminalTab(shellType = DEFAULT_SHELL_TYPE) {
   termSessionCounter++;
   const newId = `term-${termSessionCounter}`;
   let prefix = 'PowerShell ';
-  if (shellType === 'cmd') prefix = 'CMD ';
+  if (shellType === 'zsh') prefix = 'Zsh ';
+  else if (shellType === 'cmd') prefix = 'CMD ';
   else if (shellType === 'bash') prefix = 'Bash ';
   else if (shellType === 'wsl') prefix = 'WSL ';
   const name = prefix + termSessionCounter;
@@ -558,7 +563,7 @@ export function closeTerminalTab(termId) {
   if (activeTerminalSessionId === termId) {
     const next = terminalSessions[Math.max(0, idx - 1)] || terminalSessions[0];
     if (next) switchTerminalTab(next.id);
-    else addTerminalTab('powershell');
+    else addTerminalTab(DEFAULT_SHELL_TYPE);
   } else {
     renderTerminalTabs();
   }

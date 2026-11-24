@@ -97,7 +97,7 @@ export function setupInlineAiAssist() {
         } else {
           closeInlineAiAssist();
         }
-      } else if (e.ctrlKey && e.key === 'Enter') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         if (inlineAiProposedCode) {
           acceptInlineAiAssist();

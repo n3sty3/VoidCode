@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>VoidCode</RootNamespace>
+    <AssemblyName>VoidCode.Core</AssemblyName>
+    <Version>1.0.0</Version>
+    <Product>VoidCode Core</Product>
+    <Company>VoidCode</Company>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Agent\**\*.cs" Link="Agent\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Bridge\**\*.cs" Link="Bridge\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Dap\**\*.cs" Link="Dap\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VoidCode" />
+    <InternalsVisibleTo Include="VoidCode.Mac" />
+    <InternalsVisibleTo Include="VoidCode.Tests" />
+  </ItemGroup>
+
+</Project>

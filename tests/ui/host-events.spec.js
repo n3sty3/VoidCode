@@ -25,8 +25,8 @@ test('host events: registry answers, unknown actions reported once, request_clos
     known: ['init_state_response', 'tree_refreshed', 'pty_output', 'agent_done', 'toast', 'inline_assist_cancelled', 'shell_spawn_response']
       .filter((action) => window.VoidHostEvents.has(action)).length
   }));
-  // 85 original app.js cases + 12 new handlers added in Blocks 2-4 (turn-review 5, context-inspector 1, health 3, workflow-tools 3)
-  expect(registry.count).toBe(97);
+  // 85 original app.js cases + 14 handlers added through v1.0.0
+  expect(registry.count).toBe(99);
   expect(registry.allHandled).toBe(true);
   expect(registry.known).toBe(7);
 

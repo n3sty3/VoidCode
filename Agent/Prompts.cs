@@ -20,7 +20,10 @@ internal static class Prompts
         var systemPrompt = new StringBuilder();
         systemPrompt.Append(settings.SystemPrompt);
         systemPrompt.Append($"\n\nActive Workspace: {workspacePath}");
-        systemPrompt.Append("\nOS: Windows (PowerShell)");
+        var osLabel = OperatingSystem.IsMacOS() ? "macOS (zsh)"
+            : OperatingSystem.IsLinux() ? "Linux (bash)"
+            : "Windows (PowerShell)";
+        systemPrompt.Append($"\nOS: {osLabel}");
         systemPrompt.Append("\nAvailable Tools: read_file, view_image, write_file, patch_file, delete_file, move_file, list_dir, search_code, search_codebase, run_command, git_status_diff, get_diagnostics, inspect_binary, web_fetch");
 
         if (isPlanMode)

@@ -21,10 +21,25 @@ export function installBridge(global = globalThis) {
     return `req_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
   }
 
+  function getTransport() {
+    if (global.chrome?.webview) return 'webview2';
+    const ext = /** @type {any} */ (global).external;
+    if (ext && typeof ext.sendMessage === 'function' && typeof ext.receiveMessage === 'function') {
+      return 'photino';
+    }
+    return null;
+  }
+
   function post(action, data) {
-    if (!global.chrome?.webview) return;
+    const transport = getTransport();
+    if (!transport) return;
     if (!nonce) { queued.push([action, data]); return; }
-    global.chrome.webview.postMessage(JSON.stringify({ action, id: data.id, ...data, bridgeNonce: nonce }));
+    const serialized = JSON.stringify({ action, id: data.id, ...data, bridgeNonce: nonce });
+    if (transport === 'webview2') {
+      global.chrome.webview.postMessage(serialized);
+    } else {
+      /** @type {any} */ (global).external.sendMessage(serialized);
+    }
   }
 
   function flush() {
@@ -82,6 +97,18 @@ export function installBridge(global = globalThis) {
   const subscribers = new Set();
   const earlyMessages = [];
 
+  function dispatchParsedHostMessage(rawData) {
+    const message = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    if (!message || typeof message.action !== 'string') return;
+    // The handshake is consumed here and never dispatched to the app.
+    if (message.action === 'bridge_handshake') { adoptNonce(message.payload); return; }
+    if (subscribers.size === 0) {
+      earlyMessages.push([message.action, message.payload]);
+      return;
+    }
+    subscribers.forEach((handler) => handler(message.action, message.payload));
+  }
+
   function onWebViewMessage(event) {
     try {
       // Only the WebView2 host drives the page. In Microsoft Edge WebView2,
@@ -89,15 +116,7 @@ export function installBridge(global = globalThis) {
       // Reject any foreign Window source while accepting host-originated messages.
       const src = event?.source;
       if (src && src !== global && src !== global.chrome?.webview) return;
-      const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-      if (!message || typeof message.action !== 'string') return;
-      // The handshake is consumed here and never dispatched to the app.
-      if (message.action === 'bridge_handshake') { adoptNonce(message.payload); return; }
-      if (subscribers.size === 0) {
-        earlyMessages.push([message.action, message.payload]);
-        return;
-      }
-      subscribers.forEach((handler) => handler(message.action, message.payload));
+      dispatchParsedHostMessage(event.data);
     } catch (error) {
       console.error('[VoidCode Bridge] Invalid host message', error);
     }
@@ -105,12 +124,27 @@ export function installBridge(global = globalThis) {
 
   // Attach immediately during installBridge() so an early NavigationCompleted handshake
   // Posted before app.js finishes loading is never missed.
-  if (global.chrome?.webview) {
+  const initialTransport = getTransport();
+  if (initialTransport === 'webview2') {
     global.chrome.webview.addEventListener('message', onWebViewMessage);
+  } else if (initialTransport === 'photino') {
+    const ext = /** @type {any} */ (global).external;
+    ext.receiveMessage((raw) => {
+      try {
+        dispatchParsedHostMessage(raw);
+      } catch (error) {
+        console.error('[VoidCode Bridge] Invalid host message', error);
+      }
+    });
+    try {
+      ext.sendMessage(JSON.stringify({ action: 'bridge_ready' }));
+    } catch (error) {
+      console.error('[VoidCode Bridge] Failed to announce bridge_ready', error);
+    }
   }
 
   function subscribe(handler) {
-    if (!global.chrome?.webview || typeof handler !== 'function') return;
+    if (!getTransport() || typeof handler !== 'function') return;
     subscribers.add(handler);
     if (earlyMessages.length > 0) {
       const backlog = earlyMessages.splice(0, earlyMessages.length);

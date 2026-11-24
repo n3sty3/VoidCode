@@ -219,6 +219,7 @@ public class ServiceTests : IDisposable
     [Fact]
     public void WindowsDpapi_RoundTripsForCurrentUser()
     {
+        if (!OperatingSystem.IsWindows()) return;
         var plain = Encoding.UTF8.GetBytes("voidcode-dpapi-test");
         var entropy = Encoding.UTF8.GetBytes("VoidCode.Provider.ApiKey.v1");
 

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VoidCode.Mac</RootNamespace>
+    <AssemblyName>VoidCode</AssemblyName>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>VoidCode IDE</Product>
+    <Company>VoidCode</Company>
+    <Authors>VoidCode Contributors</Authors>
+    <Description>VoidCode — AI-Native macOS &amp; Cross-Platform Desktop IDE powered by VoidAgent Core</Description>
+    <Copyright>Copyright (c) 2026 VoidCode</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
+    <ProjectReference Include="..\VoidCode.Core\VoidCode.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\wwwroot\**" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

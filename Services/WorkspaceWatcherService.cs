@@ -64,7 +64,7 @@ public sealed class WorkspaceWatcherService : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        LoggingService.LogWarning($"Could not update the code index for {ev.Name}: {ex.Message}", nameof(MainWindow));
+                        LoggingService.LogWarning($"Could not update the code index for {ev.Name}: {ex.Message}", nameof(WorkspaceWatcherService));
                     }
                 });
             };
@@ -99,7 +99,7 @@ public sealed class WorkspaceWatcherService : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        LoggingService.LogWarning($"Could not update the renamed code-index entry: {ex.Message}", nameof(MainWindow));
+                        LoggingService.LogWarning($"Could not update the renamed code-index entry: {ex.Message}", nameof(WorkspaceWatcherService));
                     }
                 });
             };

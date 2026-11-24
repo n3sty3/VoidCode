@@ -7,7 +7,7 @@
   "scripts": {
     "serve": "http-server wwwroot -p 8765 -c-1",
     "test:ui": "playwright test",
-    "test:unit": "node tests/bridge-timeout.test.js && node tests/log-swallowed.test.js && node tests/html-template.test.js && node tests/state.test.js && node tests/host-events.test.js",
+    "test:unit": "node tests/bridge-timeout.test.js && node tests/bridge-photino.test.js && node tests/log-swallowed.test.js && node tests/html-template.test.js && node tests/state.test.js && node tests/host-events.test.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "audit:payloads": "node tools/payload-audit.mjs"

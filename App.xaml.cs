@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using VoidCode.Agent.Mcp;
+using VoidCode.Native;
 using VoidCode.Services;
 
 namespace VoidCode;
@@ -16,6 +17,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        WindowsPlatformServices.Register();
 
         LoggingService.LogInfo("VoidCode application starting up.");
         CliLaunchService.PendingTarget = CliLaunchService.ParseArgs(e.Args);

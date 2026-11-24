@@ -131,7 +131,7 @@ public sealed class TerminalHandlers
         var termId = string.IsNullOrEmpty(request.Id) ? "term-1" : request.Id;
         var cols = request.Cols > 0 ? request.Cols : 80;
         var rows = request.Rows > 0 ? request.Rows : 24;
-        var shellType = string.IsNullOrEmpty(request.ShellType) ? "powershell" : request.ShellType;
+        var shellType = string.IsNullOrEmpty(request.ShellType) ? PlatformServices.DefaultShellType : request.ShellType;
 
         var session = PtyManager.GetOrCreate(
             termId!,
@@ -203,7 +203,8 @@ public sealed class TerminalHandlers
         }
 
         var cwd = TerminalService.GetEffectiveWorkingDir(workspace);
-        _send("pty_output", new { id = termId, data = $"\r\nPS {cwd}> {resolvedCmd}\r\n" });
+        var promptPrefix = OperatingSystem.IsWindows() ? $"PS {cwd}>" : $"$ {cwd}>";
+        _send("pty_output", new { id = termId, data = $"\r\n{promptPrefix} {resolvedCmd}\r\n" });
         _ = Task.Run(async () =>
         {
             var result = await TerminalService.ExecuteCommandAsync(

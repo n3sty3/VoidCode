@@ -112,9 +112,7 @@ public static class StorageService
                 }
             }
 
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "VoidCode");
+            return PlatformServices.GetDefaultAppDataRoot();
         }
     }
 

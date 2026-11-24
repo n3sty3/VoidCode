@@ -328,7 +328,10 @@ namespace VoidCode.Services
 
         private static async Task StartPythonDebuggerAsync(string filePath, string workspaceRoot, bool stopOnEntry, string? args, CancellationToken ct)
         {
-            var pythonExe = LspService.FindInPath("python.exe") ?? LspService.FindInPath("python3.exe") ?? LspService.FindInPath("python");
+            var pythonExe = LspService.FindInPath("python.exe")
+                ?? LspService.FindInPath("python3.exe")
+                ?? LspService.FindInPath("python3")
+                ?? LspService.FindInPath("python");
             if ((pythonExe == null || !IsPythonDebugpyInstalled(pythonExe)) && DapFactoryOverrideForTests == null)
             {
                 EmitDebugUnsupported("python", "Python debugger (debugpy) is not installed. Run: python -m pip install debugpy");

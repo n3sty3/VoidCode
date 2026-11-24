@@ -19,7 +19,22 @@ public static class UriLauncher
                 return false;
             }
 
-            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            if (OperatingSystem.IsMacOS())
+            {
+                var psi = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+                psi.ArgumentList.Add(uri.AbsoluteUri);
+                Process.Start(psi);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+                psi.ArgumentList.Add(uri.AbsoluteUri);
+                Process.Start(psi);
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            }
             return true;
         }
         catch (Exception ex)

@@ -25,12 +25,13 @@ public static class RipgrepSearchService
         if (ExecutableOverrideForTests != null)
             return ExecutableOverrideForTests();
 
+        var rgBin = OperatingSystem.IsWindows() ? "rg.exe" : "rg";
         var candidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "tools", "rg.exe"),
-            Path.Combine(AppContext.BaseDirectory, "rg.exe"),
-            Path.Combine(StorageService.Root, "tools", "bin", "rg.exe"),
-            Path.Combine(StorageService.Root, "tools", "rg.exe")
+            Path.Combine(AppContext.BaseDirectory, "tools", rgBin),
+            Path.Combine(AppContext.BaseDirectory, rgBin),
+            Path.Combine(StorageService.Root, "tools", "bin", rgBin),
+            Path.Combine(StorageService.Root, "tools", rgBin)
         };
 
         foreach (var path in candidates)

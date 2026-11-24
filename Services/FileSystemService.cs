@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Microsoft.Win32;
 
 namespace VoidCode.Services;
 
@@ -1141,6 +1140,44 @@ public static class FileSystemService
         {
             sb.AppendLine("\nFormat: ELF Binary (Linux / System V)");
         }
+        else if (bytes.Length >= 28 &&
+                 ((bytes[0] == 0xCF && bytes[1] == 0xFA && bytes[2] == 0xED && bytes[3] == 0xFE) ||
+                  (bytes[0] == 0xCE && bytes[1] == 0xFA && bytes[2] == 0xED && bytes[3] == 0xFE)))
+        {
+            bool is64 = bytes[0] == 0xCF;
+            uint cpuType = BitConverter.ToUInt32(bytes, 4);
+            uint fileType = BitConverter.ToUInt32(bytes, 12);
+            uint ncmds = BitConverter.ToUInt32(bytes, 16);
+            uint flags = BitConverter.ToUInt32(bytes, 24);
+            string cpuName = cpuType switch
+            {
+                0x0100000C => "ARM64 (Apple Silicon)",
+                0x01000007 => "x86_64 (Intel Mac)",
+                0x00000007 => "x86 (32-bit)",
+                _ => $"0x{cpuType:X8}"
+            };
+            string typeName = fileType switch
+            {
+                1 => "MH_OBJECT",
+                2 => "MH_EXECUTE (Executable)",
+                6 => "MH_DYLIB (Dynamic Library)",
+                8 => "MH_BUNDLE",
+                _ => $"0x{fileType:X}"
+            };
+            sb.AppendLine("\n--- MACH-O HEADER (macOS) ---");
+            sb.AppendLine($"Format:        {(is64 ? "Mach-O 64-bit" : "Mach-O 32-bit")}");
+            sb.AppendLine($"Target Arch:   {cpuName}");
+            sb.AppendLine($"File Type:     {typeName}");
+            sb.AppendLine($"Load Commands: {ncmds}");
+            sb.AppendLine($"Flags:         0x{flags:X8}");
+        }
+        else if (bytes.Length >= 8 && bytes[0] == 0xCA && bytes[1] == 0xFE && bytes[2] == 0xBA && bytes[3] == 0xBE)
+        {
+            uint nfat = (uint)((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]);
+            sb.AppendLine(nfat <= 16
+                ? $"\nFormat: Mach-O Universal / Fat Binary ({nfat} architecture slice(s))"
+                : "\nFormat: Java Class / Mach-O Fat Magic (0xCAFEBABE)");
+        }
         else if (bytes.Length >= 4 && bytes[0] == 'P' && bytes[1] == 'K' && bytes[2] == 3 && bytes[3] == 4)
         {
             sb.AppendLine("\nFormat: ZIP Archive / Package (PK\\x03\\x04)");
@@ -1232,31 +1269,8 @@ public static class FileSystemService
         return entropy;
     }
 
-    public static string? PromptOpenFolder()
-    {
-        var dialog = new OpenFolderDialog
-        {
-            Title = "Select Project Folder",
-            Multiselect = false
-        };
+    public static string? PromptOpenFolder() => PlatformServices.PromptOpenFolder();
 
-        return dialog.ShowDialog() == true ? dialog.FolderName : null;
-    }
-
-    public static string[] PromptOpenFiles(string? initialDirectory = null)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Select Files to Attach",
-            Multiselect = true,
-            Filter = "All Files (*.*)|*.*"
-        };
-
-        if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory))
-        {
-            dialog.InitialDirectory = initialDirectory;
-        }
-
-        return dialog.ShowDialog() == true ? dialog.FileNames : Array.Empty<string>();
-    }
+    public static string[] PromptOpenFiles(string? initialDirectory = null) =>
+        PlatformServices.PromptOpenFiles(initialDirectory);
 }

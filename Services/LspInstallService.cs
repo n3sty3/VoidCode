@@ -89,6 +89,7 @@ public static class LspInstallService
         var toolsRoot = ToolsRoot;
         var binDir = Path.Combine(toolsRoot, "bin");
 
+        var npmBin = OperatingSystem.IsWindows() ? "npm.cmd" : "npm";
         return lang switch
         {
             "typescript" or "javascript" => new LspInstallPlan
@@ -96,7 +97,7 @@ public static class LspInstallService
                 Language = "typescript",
                 ServerName = "typescript-language-server",
                 Prerequisite = "npm",
-                FileName = "npm.cmd",
+                FileName = npmBin,
                 Arguments = $"install --prefix \"{toolsRoot}\" --no-audit --no-fund typescript typescript-language-server",
                 DisplayCommand = $"npm install --prefix \"{toolsRoot}\" typescript typescript-language-server"
             },
@@ -105,7 +106,7 @@ public static class LspInstallService
                 Language = "python",
                 ServerName = "pyright",
                 Prerequisite = "npm",
-                FileName = "npm.cmd",
+                FileName = npmBin,
                 Arguments = $"install --prefix \"{toolsRoot}\" --no-audit --no-fund pyright",
                 DisplayCommand = $"npm install --prefix \"{toolsRoot}\" pyright"
             },
@@ -137,15 +138,25 @@ public static class LspInstallService
                 Arguments = "component add rust-analyzer",
                 DisplayCommand = "rustup component add rust-analyzer"
             },
-            "cpp" => new LspInstallPlan
-            {
-                Language = "cpp",
-                ServerName = "clangd",
-                Prerequisite = "winget",
-                FileName = "winget",
-                Arguments = "install --id LLVM.LLVM -e --accept-source-agreements --accept-package-agreements",
-                DisplayCommand = "winget install --id LLVM.LLVM -e"
-            },
+            "cpp" => OperatingSystem.IsMacOS()
+                ? new LspInstallPlan
+                {
+                    Language = "cpp",
+                    ServerName = "clangd",
+                    Prerequisite = "brew",
+                    FileName = "brew",
+                    Arguments = "install llvm",
+                    DisplayCommand = "brew install llvm"
+                }
+                : new LspInstallPlan
+                {
+                    Language = "cpp",
+                    ServerName = "clangd",
+                    Prerequisite = "winget",
+                    FileName = "winget",
+                    Arguments = "install --id LLVM.LLVM -e --accept-source-agreements --accept-package-agreements",
+                    DisplayCommand = "winget install --id LLVM.LLVM -e"
+                },
             _ => null
         };
     }
@@ -312,9 +323,17 @@ public static class LspInstallService
         Action<string>? onProgress,
         CancellationToken cancellationToken)
     {
-        const string url = "https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-pc-windows-msvc.gz";
-        var destPath = Path.Combine(ToolsRoot, "bin", "rust-analyzer.exe");
-        onProgress?.Invoke($"rustup not found on PATH — downloading standalone rust-analyzer binary from GitHub Releases...");
+        var (assetName, destFileName) = OperatingSystem.IsMacOS()
+            ? (System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64
+                ? ("rust-analyzer-aarch64-apple-darwin.gz", "rust-analyzer")
+                : ("rust-analyzer-x86_64-apple-darwin.gz", "rust-analyzer"))
+            : OperatingSystem.IsLinux()
+                ? ("rust-analyzer-x86_64-unknown-linux-gnu.gz", "rust-analyzer")
+                : ("rust-analyzer-x86_64-pc-windows-msvc.gz", "rust-analyzer.exe");
+
+        var url = $"https://github.com/rust-lang/rust-analyzer/releases/latest/download/{assetName}";
+        var destPath = Path.Combine(ToolsRoot, "bin", destFileName);
+        onProgress?.Invoke($"rustup not found on PATH — downloading standalone {destFileName} binary from GitHub Releases...");
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
@@ -332,7 +351,18 @@ public static class LspInstallService
             {
                 await gz.CopyToAsync(outFile, cancellationToken);
             }
-            onProgress?.Invoke($"Saved rust-analyzer.exe to {destPath}");
+            if (!OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    File.SetUnixFileMode(destPath,
+                        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                        UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                        UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+                }
+                catch (Exception) { /* best-effort executable bit */ }
+            }
+            onProgress?.Invoke($"Saved {destFileName} to {destPath}");
             return (0, $"Downloaded rust-analyzer to {destPath}");
         }
         catch (Exception ex)

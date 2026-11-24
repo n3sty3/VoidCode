@@ -205,14 +205,27 @@ function normalizeKeyboardEventKey(event) {
   return codeAliases[event.code] || normalizeShortcutKey(event.key);
 }
 
+function isMacPlatform() {
+  return typeof navigator !== 'undefined' && /mac/i.test(navigator.platform || navigator.userAgent || '');
+}
+
+function formatShortcutDisplay(shortcut) {
+  if (!shortcut || !isMacPlatform()) return shortcut;
+  return String(shortcut).replace(/\bCtrl\+/gi, '⌘').replace(/\bAlt\+/gi, '⌥').replace(/\bShift\+/gi, '⇧');
+}
+
 function shortcutMatchesEvent(shortcut, event) {
   if (!shortcut) return false;
   const parsed = parseShortcut(shortcut);
   if (!parsed.key) return false;
-  if (parsed.modifiers.has('ctrl') !== event.ctrlKey) return false;
+  if (isMacPlatform() && parsed.modifiers.has('ctrl') && !parsed.modifiers.has('meta')) {
+    if (!event.metaKey && !event.ctrlKey) return false;
+  } else {
+    if (parsed.modifiers.has('ctrl') !== event.ctrlKey) return false;
+    if (parsed.modifiers.has('meta') !== event.metaKey) return false;
+  }
   if (parsed.modifiers.has('shift') !== event.shiftKey) return false;
   if (parsed.modifiers.has('alt') !== event.altKey) return false;
-  if (parsed.modifiers.has('meta') !== event.metaKey) return false;
   return normalizeKeyboardEventKey(event) === parsed.key;
 }
 
@@ -310,7 +323,7 @@ function renderQuickOpenList(query) {
           <span class="cmd-category-tag">${cmd.category}</span>
           <span class="cmd-title">${cmd.title}</span>
         </div>
-        ${keys ? raw(`<kbd class="cmd-shortcut">${escapeHtml(keys)}</kbd>`) : ''}
+        ${keys ? raw(`<kbd class="cmd-shortcut">${escapeHtml(formatShortcutDisplay(keys))}</kbd>`) : ''}
       `);
       item.addEventListener('click', () => {
         control('quick-open-modal').style.display = 'none';
@@ -385,7 +398,7 @@ function renderQuickOpenList(query) {
           <span class="cmd-category-tag">${cmd.category}</span>
           <span class="cmd-title">${raw(highlightMatch(cmd.title, cleanQ))}</span>
         </div>
-        ${keys ? raw(`<kbd class="cmd-shortcut">${escapeHtml(keys)}</kbd>`) : ''}
+        ${keys ? raw(`<kbd class="cmd-shortcut">${escapeHtml(formatShortcutDisplay(keys))}</kbd>`) : ''}
       `);
       item.addEventListener('click', () => {
         control('quick-open-modal').style.display = 'none';
@@ -512,7 +525,7 @@ function renderKeybindingsTable(filterQuery = '') {
       <span class="keybinding-title">${cmd.title}</span>
       <span class="keybinding-cat">${cmd.category}</span>
       <div class="keybinding-actions">
-        ${key ? raw(`<kbd class="cmd-shortcut">${escapeHtml(key)}</kbd>`) : raw('<span class="keybinding-unset">Unassigned</span>')}
+        ${key ? raw(`<kbd class="cmd-shortcut">${escapeHtml(formatShortcutDisplay(key))}</kbd>`) : raw('<span class="keybinding-unset">Unassigned</span>')}
       </div>
     `);
 

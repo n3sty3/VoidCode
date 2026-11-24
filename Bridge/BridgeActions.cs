@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Windows;
 using VoidCode.Services;
 
 namespace VoidCode.Bridge;
@@ -10,15 +9,7 @@ namespace VoidCode.Bridge;
 /// The first five actions that moved off the MainWindow switch.
 ///
 /// Three are page diagnostics (<c>js_log</c>, <c>js_error</c>, <c>open_external_url</c>) and two are
-/// Window-state notifications (<c>window_minimize</c>, <c>window_maximize</c>). All five are
-/// Notifications - the page sends no id and waits for nothing - which is why migrating them changes no
-/// JavaScript: the router answers <see cref="BridgeOutcome.Skipped"/> for everything it does not own, so
-/// The legacy switch keeps serving the remaining actions.
-///
-/// Everything lives here, not in the window, so the file count is the only thing the migration adds to
-/// MainWindow.xaml.cs (its line count is ratcheted): the window passes itself in for the two actions that
-/// Need <see cref="WindowState"/>, and <c>Register(router)</c> alone - as the unit tests call it - wires
-/// The three diagnostics.
+/// Window-state notifications (<c>window_minimize</c>, <c>window_maximize</c>).
 /// </summary>
 public static class BridgeActions
 {
@@ -45,7 +36,7 @@ public static class BridgeActions
     {
     }
 
-    public static void Register(BridgeRouter router, Window? window = null)
+    public static void Register(BridgeRouter router, Action? onMinimize = null, Action? onMaximize = null)
     {
         router.RegisterNotification<ClientLog>("js_log", (request, _) =>
         {
@@ -70,18 +61,22 @@ public static class BridgeActions
             return Task.CompletedTask;
         });
 
-        if (window == null) return;
-
-        router.RegisterNotification<NoPayload>("window_minimize", (_, _) =>
+        if (onMinimize != null)
         {
-            window.WindowState = WindowState.Minimized;
-            return Task.CompletedTask;
-        });
+            router.RegisterNotification<NoPayload>("window_minimize", (_, _) =>
+            {
+                onMinimize();
+                return Task.CompletedTask;
+            });
+        }
 
-        router.RegisterNotification<NoPayload>("window_maximize", (_, _) =>
+        if (onMaximize != null)
         {
-            window.WindowState = window.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-            return Task.CompletedTask;
-        });
+            router.RegisterNotification<NoPayload>("window_maximize", (_, _) =>
+            {
+                onMaximize();
+                return Task.CompletedTask;
+            });
+        }
     }
 }

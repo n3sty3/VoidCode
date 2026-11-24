@@ -133,6 +133,7 @@ public sealed class PtySession : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _readLoopTask;
     private Task? _waitExitTask;
+    private UnixPtyBackend? _unixBackend;
 
     public event Action<string, string>? OnOutput;
     public event Action<string, int>? OnExit;
@@ -148,6 +149,19 @@ public sealed class PtySession : IDisposable
     {
         if (cols < 1) cols = 80;
         if (rows < 1) rows = 24;
+
+        if (!OperatingSystem.IsWindows())
+        {
+            _unixBackend = new UnixPtyBackend();
+            _unixBackend.OnOutput += text => OnOutput?.Invoke(Id, text);
+            _unixBackend.OnExit += code =>
+            {
+                IsAlive = false;
+                OnExit?.Invoke(Id, code);
+            };
+            IsAlive = _unixBackend.Start(ShellType, workingDir, cols, rows);
+            return IsAlive;
+        }
 
         // 1. Create Pipes
         if (!NativeConPty.CreatePipe(out var hPipePtyIn, out _pipeInWrite, IntPtr.Zero, 0))
@@ -318,6 +332,7 @@ public sealed class PtySession : IDisposable
 
     public bool Write(string data)
     {
+        if (_unixBackend != null) return _unixBackend.Write(data);
         if (!IsAlive || _inStream == null) return false;
         try
         {
@@ -331,6 +346,11 @@ public sealed class PtySession : IDisposable
 
     public void Resize(int cols, int rows)
     {
+        if (_unixBackend != null)
+        {
+            _unixBackend.Resize(cols, rows);
+            return;
+        }
         if (_hPC == IntPtr.Zero) return;
         if (cols < 1) cols = 80;
         if (rows < 1) rows = 24;
@@ -345,6 +365,12 @@ public sealed class PtySession : IDisposable
 
     public void Kill()
     {
+        if (_unixBackend != null)
+        {
+            _unixBackend.Kill();
+            IsAlive = false;
+            return;
+        }
         try
         {
             if (_procInfo.hProcess != IntPtr.Zero)
@@ -368,6 +394,11 @@ public sealed class PtySession : IDisposable
     public void Dispose()
     {
         IsAlive = false;
+        if (_unixBackend != null)
+        {
+            _unixBackend.Dispose();
+            _unixBackend = null;
+        }
         try { _cts.Cancel(); } catch (Exception) { /* CTS already cancelled or disposed */ }
 
         try { _inStream?.Dispose(); } catch (Exception) { /* stdin stream already disposed */ }

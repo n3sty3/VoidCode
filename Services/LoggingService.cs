@@ -112,11 +112,7 @@ namespace VoidCode.Services
                 {
                     Directory.CreateDirectory(directory);
                 }
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = directory,
-                    UseShellExecute = true
-                });
+                PlatformServices.RevealInFileManager(directory, out _);
             }
             catch (Exception) { /* could not open the log folder in Explorer */ }
         }

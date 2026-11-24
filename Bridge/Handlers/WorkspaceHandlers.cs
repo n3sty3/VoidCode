@@ -200,20 +200,9 @@ public sealed class WorkspaceHandlers
         var path = request.Path;
         if (!string.IsNullOrEmpty(path))
         {
-            try
+            if (!PlatformServices.RevealInFileManager(path, out var error) && !string.IsNullOrEmpty(error))
             {
-                if (File.Exists(path))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
-                }
-                else if (Directory.Exists(path))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
-                }
-            }
-            catch (Exception ex)
-            {
-                _send("toast", new { type = "error", message = $"Failed to open explorer: {ex.Message}" });
+                _send("toast", new { type = "error", message = $"Failed to open file manager: {error}" });
             }
         }
 

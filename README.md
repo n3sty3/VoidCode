@@ -1,10 +1,10 @@
 # VoidCode
 
-**The Windows-First, Local-First AI-Native IDE — Powered by VoidAgent Core.**
+**The Native, Local-First AI-Native IDE for Windows & macOS — Powered by VoidAgent Core.**
 
 [![Release](https://img.shields.io/badge/release-v1.0.0-38bdf8?style=flat-square)](../../releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20(x64%20%7C%20ARM64)-0ea5e9?style=flat-square)](#quick-start-install-in-10-seconds)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0%20WPF%20%2B%20WebView2-512bd4?style=flat-square)](#build-test-and-package-from-source)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS%2012%2B%20(Apple%20Silicon%20%26%20Intel)-0ea5e9?style=flat-square)](#quick-start-install-in-10-seconds)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0%20WPF%2FWebView2%20%2B%20WKWebView-512bd4?style=flat-square)](#build-test-and-package-from-source)
 [![Tests](https://img.shields.io/badge/tests-290%20.NET%20%2B%2094%20Playwright%20UI-10b981?style=flat-square)](#build-test-and-package-from-source)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square)](LICENSE)
 
@@ -25,8 +25,16 @@
    - Registers in **Windows Settings -> Installed Apps** for one-click uninstall
 3. Connect any AI provider in **Settings (`Ctrl+,`) -> Model endpoint** (or export `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `XAI_API_KEY` in your environment for zero-config startup — or select **Ollama (Local)** with no API key required).
 
-### Option B: Portable Archive
+### Option B: Portable Windows Archive
 Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`** (or run `Install-VoidCode.cmd` inside the folder).
+
+### Option C: macOS Installer (Apple Silicon & Intel)
+1. Download **`VoidCode-1.0.0-osx-arm64.dmg`** (Apple Silicon M1–M4) or **`VoidCode-1.0.0-osx-x64.dmg`** (Intel Mac) from [**Releases**](../../releases).
+2. Drag **`VoidCode.app`** into **Applications** and open it (uses native macOS **WKWebView**, **Keychain** credential storage, **Zsh/Bash POSIX PTY** with OSC 133 command blocks, **⌘** shortcuts, and **Mach-O** binary inspection).
+3. *(Optional)* Enable the `voidcode` CLI in Terminal:
+   ```bash
+   sudo ln -sf /Applications/VoidCode.app/Contents/Resources/bin/voidcode /usr/local/bin/voidcode
+   ```
 
 ---
 
@@ -132,6 +140,17 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package.ps1
 Produces:
 - **`dist\VoidCode-Setup-1.0.0-win-x64.exe`** (+ `.sha256`) — Standalone Windows GUI Setup Wizard (also supports silent install via `/S`)
 - **`dist\VoidCode-win-x64.zip`** (+ `.sha256`) — Self-contained portable release archive
+
+### Build the macOS `.app` Bundle & `.dmg` Installer
+
+```bash
+chmod +x ./scripts/package-mac.sh
+./scripts/package-mac.sh osx-arm64   # Apple Silicon (or osx-x64 for Intel)
+```
+
+Produces:
+- **`dist/VoidCode-1.0.0-osx-arm64.dmg`** (+ `.sha256`) — macOS drag-to-Applications disk image
+- **`dist/VoidCode-osx-arm64.zip`** (+ `.sha256`) — Portable `VoidCode.app` archive
 
 ---
 
