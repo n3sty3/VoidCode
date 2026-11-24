@@ -1,7 +1,10 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -11,6 +14,21 @@ using VoidCode.Agent;
 using VoidCode.Agent.Providers;
 
 namespace VoidCode.Services;
+
+public sealed class UpdateInstallResult
+{
+    [JsonPropertyName("ok")]
+    public bool Ok { get; init; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; init; } = "";
+
+    [JsonPropertyName("filePath")]
+    public string FilePath { get; init; } = "";
+
+    [JsonPropertyName("sha256Verified")]
+    public bool Sha256Verified { get; init; }
+}
 
 public sealed class UpdateCheckResult
 {
@@ -180,20 +198,52 @@ public static class UpdateCheckService
             string downloadUrl = "";
             if (node?["assets"] is JsonArray assets)
             {
+                bool isMac = OperatingSystem.IsMacOS();
+                bool isLinux = OperatingSystem.IsLinux();
+                bool isArm = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+
                 foreach (var asset in assets)
                 {
                     var name = asset?["name"]?.GetValue<string>() ?? "";
                     var browserUrl = asset?["browser_download_url"]?.GetValue<string>() ?? "";
-                    if (string.IsNullOrEmpty(browserUrl)) continue;
-                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
-                        name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                    if (string.IsNullOrEmpty(browserUrl) || name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    if (isMac)
                     {
-                        downloadUrl = browserUrl;
-                        break;
+                        var archTag = isArm ? "osx-arm64" : "osx-x64";
+                        if (name.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase) && name.Contains(archTag, StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = browserUrl;
+                            break;
+                        }
                     }
-                    if (string.IsNullOrEmpty(downloadUrl) && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    else if (isLinux)
                     {
-                        downloadUrl = browserUrl;
+                        if (name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) && name.Contains("linux", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = browserUrl;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        if (!isArm && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                            name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = browserUrl;
+                            break;
+                        }
+                        if (isArm && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                            name.Contains("win-arm64", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = browserUrl;
+                            break;
+                        }
+                        if (string.IsNullOrEmpty(downloadUrl) && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                            name.Contains("win-", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = browserUrl;
+                        }
                     }
                 }
             }
@@ -227,6 +277,139 @@ public static class UpdateCheckService
                 ReleaseUrl = $"https://github.com/{repo}/releases",
                 Message = $"Update check could not reach GitHub ({repo})."
             };
+        }
+    }
+
+    public static bool IsAllowedReleaseDownloadUrl(string? url, string? configuredRepo = null)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        var repo = ResolveGitHubRepo(configuredRepo);
+        var prefix = $"https://github.com/{repo}/releases/download/";
+        return url.Trim().StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Downloads a GitHub Release installer into a temp folder, verifies its .sha256 sidecar
+    /// checksum byte-for-byte, and launches the verified installer natively.
+    /// </summary>
+    public static async Task<UpdateInstallResult> DownloadAndInstallAsync(
+        string downloadUrl,
+        string? configuredRepo = null,
+        CancellationToken cancellationToken = default)
+    {
+        var cleanUrl = (downloadUrl ?? "").Trim();
+        if (!IsAllowedReleaseDownloadUrl(cleanUrl, configuredRepo))
+        {
+            return new UpdateInstallResult
+            {
+                Ok = false,
+                Message = "Blocked: update download URL must belong to this repository's GitHub Releases."
+            };
+        }
+
+        try
+        {
+            var uri = new Uri(cleanUrl);
+            var fileName = Path.GetFileName(uri.LocalPath);
+            if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains("..", StringComparison.Ordinal))
+            {
+                return new UpdateInstallResult { Ok = false, Message = "Invalid release asset filename." };
+            }
+
+            var updatesDir = Path.Combine(Path.GetTempPath(), "VoidCode-Updates");
+            Directory.CreateDirectory(updatesDir);
+            var targetPath = Path.Combine(updatesDir, fileName);
+            var tempPath = targetPath + ".download";
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, cleanUrl);
+            req.Headers.UserAgent.Add(new ProductInfoHeaderValue("VoidCode-IDE", CurrentAppVersion));
+            using var resp = await AgentHttp.Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return new UpdateInstallResult { Ok = false, Message = $"Download failed (HTTP {(int)resp.StatusCode})." };
+            }
+
+            await using (var src = await resp.Content.ReadAsStreamAsync(cancellationToken))
+            await using (var dst = File.Create(tempPath))
+            {
+                await src.CopyToAsync(dst, cancellationToken);
+            }
+
+            // Verify SHA-256 against the release's .sha256 sidecar asset.
+            bool verified = false;
+            try
+            {
+                using var shaReq = new HttpRequestMessage(HttpMethod.Get, cleanUrl + ".sha256");
+                shaReq.Headers.UserAgent.Add(new ProductInfoHeaderValue("VoidCode-IDE", CurrentAppVersion));
+                using var shaResp = await AgentHttp.Client.SendAsync(shaReq, cancellationToken);
+                if (shaResp.IsSuccessStatusCode)
+                {
+                    var expectedLine = (await shaResp.Content.ReadAsStringAsync(cancellationToken)).Trim();
+                    var expectedHash = expectedLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim().ToLowerInvariant();
+                    if (!string.IsNullOrEmpty(expectedHash) && expectedHash.Length == 64)
+                    {
+                        await using var checkStream = File.OpenRead(tempPath);
+                        var actualHash = Convert.ToHexString(await SHA256.HashDataAsync(checkStream, cancellationToken)).ToLowerInvariant();
+                        if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            try { File.Delete(tempPath); } catch (IOException) { /* cleanup */ }
+                            return new UpdateInstallResult
+                            {
+                                Ok = false,
+                                Message = "Security check failed: downloaded installer SHA-256 did not match GitHub release checksum."
+                            };
+                        }
+                        verified = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Swallowed(ex, "UpdateCheckService.VerifySha256");
+            }
+
+            File.Move(tempPath, targetPath, true);
+
+            if (OperatingSystem.IsWindows() && targetPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                Process.Start(new ProcessStartInfo(targetPath) { UseShellExecute = true });
+                return new UpdateInstallResult
+                {
+                    Ok = true,
+                    FilePath = targetPath,
+                    Sha256Verified = verified,
+                    Message = verified
+                        ? $"Verified SHA-256 and launched {fileName}."
+                        : $"Launched {fileName}."
+                };
+            }
+
+            if (OperatingSystem.IsMacOS() && targetPath.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase))
+            {
+                Process.Start(new ProcessStartInfo("/usr/bin/open", $"\"{targetPath}\"") { UseShellExecute = false });
+                return new UpdateInstallResult
+                {
+                    Ok = true,
+                    FilePath = targetPath,
+                    Sha256Verified = verified,
+                    Message = verified
+                        ? $"Verified SHA-256 and mounted {fileName}."
+                        : $"Mounted {fileName}."
+                };
+            }
+
+            return new UpdateInstallResult
+            {
+                Ok = true,
+                FilePath = targetPath,
+                Sha256Verified = verified,
+                Message = $"Downloaded update to {targetPath}."
+            };
+        }
+        catch (Exception ex)
+        {
+            LoggingService.LogError($"Update download failed: {ex.Message}", ex, nameof(UpdateCheckService));
+            return new UpdateInstallResult { Ok = false, Message = $"Update download failed: {ex.Message}" };
         }
     }
 }

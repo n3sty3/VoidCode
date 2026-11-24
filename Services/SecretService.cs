@@ -20,6 +20,138 @@ public static class SecretService
 
     public static bool HasApiKey => File.Exists(ApiKeyFile) || File.Exists(KeychainMarkerFile);
 
+    private static string SanitizeProviderSlug(string? provider)
+    {
+        var raw = (provider ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(raw)) return "default";
+        var sb = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '-' || ch == '_') sb.Append(ch);
+        }
+        return sb.Length > 0 ? sb.ToString() : "default";
+    }
+
+    private static string ProviderKeyFile(string provider)
+        => Path.Combine(SecretDirectory, $"provider-{SanitizeProviderSlug(provider)}.dat");
+
+    public static bool HasProviderApiKey(string? provider)
+    {
+        var slug = SanitizeProviderSlug(provider);
+        return File.Exists(ProviderKeyFile(slug));
+    }
+
+    public static System.Collections.Generic.List<string> ListConfiguredProviders()
+    {
+        var list = new System.Collections.Generic.List<string>();
+        try
+        {
+            if (!Directory.Exists(SecretDirectory)) return list;
+            foreach (var file in Directory.EnumerateFiles(SecretDirectory, "provider-*.dat"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (name.StartsWith("provider-", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(name, "provider-key", StringComparison.OrdinalIgnoreCase))
+                {
+                    var slug = name["provider-".Length..];
+                    if (!string.IsNullOrWhiteSpace(slug)) list.Add(slug);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggingService.Swallowed(ex, "SecretService.ListConfiguredProviders");
+        }
+        list.Sort(StringComparer.OrdinalIgnoreCase);
+        return list;
+    }
+
+    public static bool SaveProviderApiKey(string? provider, string apiKey)
+    {
+        var slug = SanitizeProviderSlug(provider);
+        var path = ProviderKeyFile(slug);
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            ClearProviderApiKey(slug);
+            return true;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(SecretDirectory);
+            if (OperatingSystem.IsWindows())
+            {
+                var plainBytes = Encoding.UTF8.GetBytes(apiKey);
+                try
+                {
+                    var protectedBytes = ProtectedData.Protect(plainBytes, Entropy, DataProtectionScope.CurrentUser);
+                    WriteAtomicBytes(path, protectedBytes);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(plainBytes);
+                }
+            }
+            else
+            {
+                SaveAesGcmFallbackToPath(apiKey, path);
+            }
+            LoggingService.RegisterSecret(apiKey);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LoggingService.LogError($"Could not protect API key for provider '{slug}'.", ex, nameof(SecretService));
+            return false;
+        }
+    }
+
+    public static string LoadProviderApiKey(string? provider)
+    {
+        var slug = SanitizeProviderSlug(provider);
+        var path = ProviderKeyFile(slug);
+        if (!File.Exists(path)) return "";
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var protectedBytes = File.ReadAllBytes(path);
+                var plainBytes = ProtectedData.Unprotect(protectedBytes, Entropy, DataProtectionScope.CurrentUser);
+                try
+                {
+                    var key = Encoding.UTF8.GetString(plainBytes);
+                    if (!string.IsNullOrEmpty(key)) LoggingService.RegisterSecret(key);
+                    return key;
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(plainBytes);
+                }
+            }
+            var decoded = LoadAesGcmFallbackFromPath(path);
+            if (!string.IsNullOrEmpty(decoded)) LoggingService.RegisterSecret(decoded);
+            return decoded;
+        }
+        catch (Exception ex)
+        {
+            LoggingService.LogError($"Could not read protected API key for provider '{slug}'.", ex, nameof(SecretService));
+            return "";
+        }
+    }
+
+    public static void ClearProviderApiKey(string? provider)
+    {
+        try
+        {
+            var path = ProviderKeyFile(SanitizeProviderSlug(provider));
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            LoggingService.LogError("Could not remove per-provider API key.", ex, nameof(SecretService));
+        }
+    }
+
     private static string MacKeychainServiceName()
     {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StorageService.Root))).Substring(0, 12);
@@ -227,7 +359,9 @@ public static class SecretService
         return SHA256.HashData(Encoding.UTF8.GetBytes(material));
     }
 
-    private static void SaveAesGcmFallback(string apiKey)
+    private static void SaveAesGcmFallback(string apiKey) => SaveAesGcmFallbackToPath(apiKey, ApiKeyFile);
+
+    private static void SaveAesGcmFallbackToPath(string apiKey, string destinationPath)
     {
         var key = DeriveLocalKey();
         var plain = Encoding.UTF8.GetBytes(apiKey);
@@ -243,7 +377,7 @@ public static class SecretService
             Buffer.BlockCopy(nonce, 0, blob, 4, nonce.Length);
             Buffer.BlockCopy(tag, 0, blob, 4 + nonce.Length, tag.Length);
             Buffer.BlockCopy(cipher, 0, blob, 4 + nonce.Length + tag.Length, cipher.Length);
-            WriteAtomicBytes(ApiKeyFile, blob);
+            WriteAtomicBytes(destinationPath, blob);
         }
         finally
         {
@@ -252,9 +386,11 @@ public static class SecretService
         }
     }
 
-    private static string LoadAesGcmFallback()
+    private static string LoadAesGcmFallback() => LoadAesGcmFallbackFromPath(ApiKeyFile);
+
+    private static string LoadAesGcmFallbackFromPath(string sourcePath)
     {
-        var blob = File.ReadAllBytes(ApiKeyFile);
+        var blob = File.ReadAllBytes(sourcePath);
         if (blob.Length < 4 + 12 + 16 || blob[0] != 'V' || blob[1] != 'C' || blob[2] != 'G' || blob[3] != '1')
         {
             return "";

@@ -275,15 +275,28 @@ public sealed class SettingsAgentHandlers
 
         var current = _settings();
         var submittedApiKey = request.ApiKey ?? "";
+        var switchedProvider = !string.Equals(updated.Provider, current.Provider, StringComparison.OrdinalIgnoreCase);
         if (request.ClearApiKey)
         {
-            SecretService.ClearApiKey();
+            SecretService.ClearProviderApiKey(updated.Provider);
+            if (!switchedProvider) SecretService.ClearApiKey();
             updated.ApiKey = "";
+        }
+        else if (!string.IsNullOrWhiteSpace(submittedApiKey))
+        {
+            updated.ApiKey = submittedApiKey;
+        }
+        else if (switchedProvider)
+        {
+            // Load the target provider's own encrypted key from the vault instead of leaking the old provider's key!
+            updated.ApiKey = SecretService.LoadProviderApiKey(updated.Provider);
         }
         else
         {
-            updated.ApiKey = !string.IsNullOrWhiteSpace(submittedApiKey) ? submittedApiKey : current.ApiKey;
+            updated.ApiKey = current.ApiKey;
         }
+        updated.ApiKeyConfigured = !string.IsNullOrWhiteSpace(updated.ApiKey) || SecretService.HasProviderApiKey(updated.Provider);
+        updated.ConfiguredProviders = SecretService.ListConfiguredProviders();
 
         // The page does not send these two: the workspace is the host's, and an empty recent list means
         // "unchanged", not "forget them".

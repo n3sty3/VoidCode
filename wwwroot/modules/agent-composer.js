@@ -478,7 +478,11 @@ export function setupAgentComposer() {
       }
     });
     agentInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      const sendKeyMode = (stateGet('settings', {})?.ComposerSendKey || 'enter').toLowerCase();
+      const wantsSend = sendKeyMode === 'ctrl+enter'
+        ? (e.key === 'Enter' && (e.ctrlKey || e.metaKey))
+        : (e.key === 'Enter' && !e.shiftKey);
+      if (wantsSend) {
         const mentionPop = document.getElementById('agent-mention-popover');
         if (mentionPop && mentionPop.style.display !== 'none') return;
         e.preventDefault();

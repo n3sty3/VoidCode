@@ -119,6 +119,14 @@ export function applySettingsToUI(s, settingScopes = null) {
   if (stickyScrollEl) stickyScrollEl.checked = s.EditorStickyScroll !== false;
   const autoVerifyEl = control('settings-agent-auto-verify');
   if (autoVerifyEl) autoVerifyEl.checked = s.AgentAutoVerify !== false;
+  const soundEl = control('settings-agent-sound');
+  if (soundEl) soundEl.checked = s.AgentSoundEnabled !== false;
+  const notifEl = control('settings-agent-notifications');
+  if (notifEl) notifEl.checked = s.AgentDesktopNotifications !== false;
+  const sleepEl = control('settings-prevent-sleep');
+  if (sleepEl) sleepEl.checked = s.PreventSleepWhileRunning !== false;
+  const sendKeyEl = control('settings-send-key');
+  if (sendKeyEl) sendKeyEl.value = s.ComposerSendKey || 'enter';
   syncReasoningEffortPill(s.AgentReasoningEffort || 'medium');
   const autoApp = control('settings-auto-approve');
   const isFullSystem = !!s.AutoApproveTools || s.AuthorityMode === 'full_system';
@@ -202,6 +210,18 @@ export function gatherSettingsFromModal() {
     AutocompleteEnabled: control('settings-autocomplete-enabled') ? control('settings-autocomplete-enabled').checked : (settings.AutocompleteEnabled !== false),
     AutocompleteBaseUrl: control('settings-autocomplete-url') ? control('settings-autocomplete-url').value.trim() : (settings.AutocompleteBaseUrl || ''),
     AutocompleteModel: control('settings-autocomplete-model') ? control('settings-autocomplete-model').value.trim() : (settings.AutocompleteModel || ''),
+    FallbackProvider: settings.FallbackProvider || '',
+    FallbackBaseUrl: settings.FallbackBaseUrl || '',
+    FallbackModel: settings.FallbackModel || '',
+    FastModelProvider: settings.FastModelProvider || '',
+    FastModelBaseUrl: settings.FastModelBaseUrl || '',
+    FastModel: settings.FastModel || '',
+    AgentSoundEnabled: control('settings-agent-sound') ? control('settings-agent-sound').checked : (settings.AgentSoundEnabled !== false),
+    AgentSoundVolume: settings.AgentSoundVolume ?? 65,
+    AgentDesktopNotifications: control('settings-agent-notifications') ? control('settings-agent-notifications').checked : (settings.AgentDesktopNotifications !== false),
+    PreventSleepWhileRunning: control('settings-prevent-sleep') ? control('settings-prevent-sleep').checked : (settings.PreventSleepWhileRunning !== false),
+    ComposerSendKey: control('settings-send-key') ? control('settings-send-key').value : (settings.ComposerSendKey || 'enter'),
+    PreferredWslDistro: settings.PreferredWslDistro || '',
     Theme: settings.Theme || 'harbor',
     GlassBlur: settings.GlassBlur ?? 22,
     FieldOpacity: settings.FieldOpacity ?? 55,

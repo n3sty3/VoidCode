@@ -602,4 +602,98 @@ public class AgentV2Tests
             try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
         }
     }
+
+    [Fact]
+    public void SecretService_StoresAndResolvesIndependentPerProviderKeys()
+    {
+        var dir = CreateTempDir("keyvault");
+        using var scope = StorageService.UseRoot(dir);
+        try
+        {
+            Assert.True(SecretService.SaveProviderApiKey("openrouter", "sk-or-test-111"));
+            Assert.True(SecretService.SaveProviderApiKey("anthropic", "sk-ant-test-222"));
+
+            Assert.Equal("sk-or-test-111", SecretService.LoadProviderApiKey("openrouter"));
+            Assert.Equal("sk-ant-test-222", SecretService.LoadProviderApiKey("anthropic"));
+            Assert.Equal("sk-ant-test-222", SettingsService.ResolveApiKey("", "anthropic", "https://api.anthropic.com/v1"));
+
+            var providers = SecretService.ListConfiguredProviders();
+            Assert.Contains("openrouter", providers);
+            Assert.Contains("anthropic", providers);
+
+            SecretService.ClearProviderApiKey("openrouter");
+            Assert.Equal("", SecretService.LoadProviderApiKey("openrouter"));
+            Assert.Equal("sk-ant-test-222", SecretService.LoadProviderApiKey("anthropic"));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public async Task AgentLoop_AutomaticallyFallsBackOn429RateLimitError()
+    {
+        var ws = CreateTempDir("fallback429");
+        var sessionId = $"sess_fb_{Guid.NewGuid():N}";
+        var previousOverride = ProviderFactory.OverrideForTests;
+        try
+        {
+            var modelsCalled = new List<string>();
+            ProviderFactory.OverrideForTests = cfg =>
+            {
+                modelsCalled.Add(cfg.Model);
+                if (cfg.Model == "primary-free-model")
+                    return new ScriptedChatProvider(new List<ChatEvent> { new ChatErrorEvent("API Error (429 TooManyRequests): Rate limit exceeded", 429) });
+                return new ScriptedChatProvider(new List<ChatEvent> { new ChatContentDelta("Recovered cleanly via fallback model.") });
+            };
+
+            var settings = new AppSettings
+            {
+                Provider = "openrouter",
+                BaseUrl = "https://openrouter.ai/api/v1",
+                Model = "primary-free-model",
+                FallbackProvider = "gemini",
+                FallbackBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai",
+                FallbackModel = "gemini-2.5-flash",
+                PreventSleepWhileRunning = false
+            };
+
+            string? finalMsg = null;
+            bool sawError = false;
+            await AgentLoop.RunAsync(
+                "Say hello",
+                new List<JsonObject>(),
+                ws,
+                settings,
+                (ev, payload) =>
+                {
+                    if (ev == "agent_error") sawError = true;
+                    if (ev == "agent_done") finalMsg = payload?.ToString();
+                },
+                sessionId: sessionId);
+
+            Assert.False(sawError);
+            Assert.NotNull(finalMsg);
+            Assert.Contains("primary-free-model", modelsCalled);
+            Assert.Contains("gemini-2.5-flash", modelsCalled);
+        }
+        finally
+        {
+            ProviderFactory.OverrideForTests = previousOverride;
+            AgentSessionMemory.ClearSession(AgentSessionMemory.ResolveSessionKey(ws, sessionId));
+            try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public void UpdateCheckService_AllowsOnlyMatchingRepoReleaseUrls()
+    {
+        Assert.True(UpdateCheckService.IsAllowedReleaseDownloadUrl(
+            "https://github.com/n3sty3/VoidCode/releases/download/v1.1.0/VoidCode-Setup-1.1.0-win-x64.exe",
+            "n3sty3/VoidCode"));
+        Assert.False(UpdateCheckService.IsAllowedReleaseDownloadUrl(
+            "https://evil.example.com/VoidCode-Setup-1.1.0-win-x64.exe",
+            "n3sty3/VoidCode"));
+    }
 }

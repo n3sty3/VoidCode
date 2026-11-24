@@ -75,9 +75,35 @@ export function openAboutModal() {
     updBtn = document.createElement('button');
     updBtn.type = 'button';
     updBtn.className = upd.updateAvailable ? 'btn btn--primary btn--xs' : 'btn btn--quiet btn--xs';
-    updBtn.textContent = upd.updateAvailable ? `Download v${upd.latestVersion}` : 'Releases ↗';
-    updBtn.addEventListener('click', () => {
-      sendHost('open_external_url', { url: upd.downloadUrl || upd.releaseUrl });
+    const isDirectAsset = upd.updateAvailable && typeof upd.downloadUrl === 'string' && /\/releases\/download\//.test(upd.downloadUrl);
+    updBtn.textContent = isDirectAsset
+      ? `Install v${upd.latestVersion}`
+      : (upd.updateAvailable ? `Download v${upd.latestVersion}` : 'Releases ↗');
+    updBtn.addEventListener('click', async () => {
+      if (isDirectAsset) {
+        updBtn.disabled = true;
+        updBtn.textContent = 'Downloading…';
+        try {
+          const res = await globalThis.VoidBridge?.request?.('update_download_install', { downloadUrl: upd.downloadUrl }, 120000);
+          const data = res?.data || res;
+          if (data?.ok) {
+            updBtn.textContent = data.sha256Verified ? 'Verified & Launched' : 'Launched';
+            globalThis.showToast?.(data.message || 'Installer launched', 'success');
+          } else {
+            updBtn.disabled = false;
+            updBtn.textContent = `Install v${upd.latestVersion}`;
+            globalThis.showToast?.(data?.message || 'Update download failed — opening browser instead', 'error');
+            sendHost('open_external_url', { url: upd.downloadUrl || upd.releaseUrl });
+          }
+        } catch (err) {
+          globalThis.logSwallowed?.(err, 'health.installUpdate');
+          updBtn.disabled = false;
+          updBtn.textContent = `Install v${upd.latestVersion}`;
+          sendHost('open_external_url', { url: upd.downloadUrl || upd.releaseUrl });
+        }
+      } else {
+        sendHost('open_external_url', { url: upd.downloadUrl || upd.releaseUrl });
+      }
     });
   }
   infoSec.appendChild(makeRow(

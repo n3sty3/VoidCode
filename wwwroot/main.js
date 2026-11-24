@@ -38,6 +38,7 @@ import { init as initGitGraph } from './modules/git-graph.js';
 import { init as initOnboarding } from './modules/onboarding.js';
 import { init as initSymbolJump } from './modules/symbol-jump.js';
 import { init as initVimMode } from './modules/vim-mode.js';
+import { init as initAgentSignals } from './modules/agent-signals.js';
 import { init as initGit } from './modules/git.js';
 import { init as initTerminal } from './modules/terminal.js';
 import { init as initShell } from './modules/shell.js';
@@ -122,6 +123,7 @@ initIdeImport(); // 1-Click Import from VS Code / Cursor
 initDbExplorer(); // Built-In SQLite Database Explorer
 initSymbolJump(); // Ctrl+Shift+O SQLite Workspace Symbol Jump
 initVimMode(); // Native Vim Mode for Monaco Editor
+initAgentSignals(); // Agent sound chimes, desktop notifications & compact turn summary strip
 initModelSwitcher(); // 1-Click Quick Model Switcher Popover (Ctrl+Alt+M)
 initGitGraph(); // Visual Git Commit Graph, Stash & Clone Repository
 initOnboarding(); // 15-Second First-Run Onboarding Wizard

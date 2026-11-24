@@ -66,9 +66,12 @@ internal static class AgentLoop
         }
 
         AgentSessionMemory.ClearSteers();
+        using var sleepGuard = PowerSleepService.Acquire(settings.PreventSleepWhileRunning);
 
-        var provider = ProviderFactory.Create(settings);
-        var caps = ProviderCapabilityCache.Shared.Get(settings);
+        var activeSettings = settings;
+        var provider = ProviderFactory.Create(activeSettings);
+        bool usedFallbackModel = false;
+        var caps = ProviderCapabilityCache.Shared.Get(activeSettings);
         var turn = TurnTransactionLedger.BeginTurn(workspacePath);
         var isPlanMode = string.Equals(modeOverride ?? settings.AgentMode, "plan", StringComparison.OrdinalIgnoreCase);
 
@@ -209,12 +212,23 @@ internal static class AgentLoop
 
         Task<string> SummarizeForCompactionAsync(string transcript, CancellationToken ct)
         {
+            var useFast = !string.IsNullOrWhiteSpace(settings.FastModel);
+            var sumProviderName = useFast && !string.IsNullOrWhiteSpace(settings.FastModelProvider) ? settings.FastModelProvider : activeSettings.Provider;
+            var sumBaseUrl = useFast && !string.IsNullOrWhiteSpace(settings.FastModelBaseUrl) ? settings.FastModelBaseUrl : activeSettings.BaseUrl;
+            var sumModel = useFast ? settings.FastModel : activeSettings.Model;
+            var sumKey = useFast
+                ? SettingsService.ResolveApiKey("", sumProviderName, sumBaseUrl)
+                : activeSettings.ApiKey;
+            var sumProvider = useFast
+                ? ProviderFactory.Create(new AppSettings { Provider = sumProviderName, BaseUrl = sumBaseUrl, ApiKey = sumKey, Model = sumModel })
+                : provider;
+
             var req = new ChatRequest
             {
-                Provider = settings.Provider,
-                BaseUrl = settings.BaseUrl,
-                ApiKey = settings.ApiKey,
-                Model = settings.Model,
+                Provider = sumProviderName,
+                BaseUrl = sumBaseUrl,
+                ApiKey = sumKey,
+                Model = sumModel,
                 Temperature = 0.1,
                 MaxTokens = 800,
                 Stream = false,
@@ -232,7 +246,7 @@ internal static class AgentLoop
                     }
                 }
             };
-            return provider.CompleteAsync(req, ct);
+            return sumProvider.CompleteAsync(req, ct);
         }
 
         while (currentTurn < maxTurns && !cancellationToken.IsCancellationRequested)
@@ -285,20 +299,6 @@ internal static class AgentLoop
                 }
             }
 
-            var request = new ChatRequest
-            {
-                Provider = settings.Provider,
-                BaseUrl = settings.BaseUrl,
-                ApiKey = settings.ApiKey,
-                Model = settings.Model,
-                Messages = messages,
-                Tools = toolDefs,
-                Temperature = settings.Temperature,
-                MaxTokens = settings.MaxTokens,
-                Stream = true,
-                ReasoningEffort = settings.AgentReasoningEffort ?? "medium"
-            };
-
             var contentBuilder = new StringBuilder();
             var reasoningBuilder = new StringBuilder();
             var thinkingBlocks = new List<JsonObject>();
@@ -307,81 +307,142 @@ internal static class AgentLoop
             bool startedMessageStream = false;
             bool turnFailed = false;
 
-            await foreach (var evt in provider.StreamAsync(request, cancellationToken))
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                switch (evt)
+                var request = new ChatRequest
                 {
-                    case ChatStatusEvent statusEvt:
-                        emitEvent("agent_status", new { status = statusEvt.Status });
-                        break;
+                    Provider = activeSettings.Provider,
+                    BaseUrl = activeSettings.BaseUrl,
+                    ApiKey = activeSettings.ApiKey,
+                    Model = activeSettings.Model,
+                    Messages = messages,
+                    Tools = toolDefs,
+                    Temperature = activeSettings.Temperature,
+                    MaxTokens = activeSettings.MaxTokens,
+                    Stream = true,
+                    ReasoningEffort = activeSettings.AgentReasoningEffort ?? "medium"
+                };
 
-                    case ChatErrorEvent errEvt:
-                        emitEvent("agent_error", new { message = errEvt.Message });
-                        turnFailed = true;
-                        break;
+                ChatErrorEvent? pendingError = null;
+                await foreach (var evt in provider.StreamAsync(request, cancellationToken))
+                {
+                    switch (evt)
+                    {
+                        case ChatStatusEvent statusEvt:
+                            emitEvent("agent_status", new { status = statusEvt.Status });
+                            break;
 
-                    case ChatUsageEvent usageEvt:
-                        promptTokens += usageEvt.PromptTokens;
-                        completionTokens += usageEvt.CompletionTokens;
-                        cachedInputTokens += usageEvt.CachedInputTokens;
-                        cacheCreationTokens += usageEvt.CacheCreationTokens;
-                        usageReported = true;
-                        break;
+                        case ChatErrorEvent errEvt:
+                            pendingError = errEvt;
+                            break;
 
-                    case ChatReasoningDelta r:
-                        if (!startedMessageStream)
-                        {
-                            startedMessageStream = true;
-                            emitEvent("agent_stream_start", new { });
-                        }
-                        reasoningBuilder.Append(r.Text);
-                        emitEvent("agent_reasoning_delta", new { delta = r.Text });
-                        break;
+                        case ChatUsageEvent usageEvt:
+                            promptTokens += usageEvt.PromptTokens;
+                            completionTokens += usageEvt.CompletionTokens;
+                            cachedInputTokens += usageEvt.CachedInputTokens;
+                            cacheCreationTokens += usageEvt.CacheCreationTokens;
+                            usageReported = true;
+                            break;
 
-                    case ChatThinkingBlockEvent tb:
-                        if (tb.Type == "thinking" && !string.IsNullOrEmpty(tb.Signature))
-                        {
-                            thinkingBlocks.Add(new JsonObject
+                        case ChatReasoningDelta r:
+                            if (!startedMessageStream)
                             {
-                                ["type"] = "thinking",
-                                ["thinking"] = tb.Thinking ?? "",
-                                ["signature"] = tb.Signature
-                            });
-                        }
-                        else if (tb.Type == "redacted_thinking" && !string.IsNullOrEmpty(tb.Data))
-                        {
-                            thinkingBlocks.Add(new JsonObject
+                                startedMessageStream = true;
+                                emitEvent("agent_stream_start", new { });
+                            }
+                            reasoningBuilder.Append(r.Text);
+                            emitEvent("agent_reasoning_delta", new { delta = r.Text });
+                            break;
+
+                        case ChatThinkingBlockEvent tb:
+                            if (tb.Type == "thinking" && !string.IsNullOrEmpty(tb.Signature))
                             {
-                                ["type"] = "redacted_thinking",
-                                ["data"] = tb.Data
-                            });
-                        }
-                        break;
+                                thinkingBlocks.Add(new JsonObject
+                                {
+                                    ["type"] = "thinking",
+                                    ["thinking"] = tb.Thinking ?? "",
+                                    ["signature"] = tb.Signature
+                                });
+                            }
+                            else if (tb.Type == "redacted_thinking" && !string.IsNullOrEmpty(tb.Data))
+                            {
+                                thinkingBlocks.Add(new JsonObject
+                                {
+                                    ["type"] = "redacted_thinking",
+                                    ["data"] = tb.Data
+                                });
+                            }
+                            break;
 
-                    case ChatContentDelta c:
-                        if (!startedMessageStream)
-                        {
-                            startedMessageStream = true;
-                            emitEvent("agent_stream_start", new { });
-                        }
-                        contentBuilder.Append(c.Text);
-                        emitEvent("agent_stream_delta", new { delta = c.Text });
-                        break;
+                        case ChatContentDelta c:
+                            if (!startedMessageStream)
+                            {
+                                startedMessageStream = true;
+                                emitEvent("agent_stream_start", new { });
+                            }
+                            contentBuilder.Append(c.Text);
+                            emitEvent("agent_stream_delta", new { delta = c.Text });
+                            break;
 
-                    case ChatToolCallDelta tc:
-                        if (!toolCallsMap.TryGetValue(tc.Index, out var entry))
-                        {
-                            entry = new StreamedToolCall { Id = $"call_{Guid.NewGuid():N}" };
-                            toolCallsMap[tc.Index] = entry;
-                        }
-                        if (!string.IsNullOrEmpty(tc.Id)) entry.Id = tc.Id;
-                        if (!string.IsNullOrEmpty(tc.Name)) entry.Name += tc.Name;
-                        if (!string.IsNullOrEmpty(tc.ArgumentsDelta)) entry.Arguments.Append(tc.ArgumentsDelta);
-                        if (!string.IsNullOrEmpty(tc.ExtraContentJson)) toolCallExtraContent[tc.Index] = tc.ExtraContentJson;
-                        break;
+                        case ChatToolCallDelta tc:
+                            if (!toolCallsMap.TryGetValue(tc.Index, out var entry))
+                            {
+                                entry = new StreamedToolCall { Id = $"call_{Guid.NewGuid():N}" };
+                                toolCallsMap[tc.Index] = entry;
+                            }
+                            if (!string.IsNullOrEmpty(tc.Id)) entry.Id = tc.Id;
+                            if (!string.IsNullOrEmpty(tc.Name)) entry.Name += tc.Name;
+                            if (!string.IsNullOrEmpty(tc.ArgumentsDelta)) entry.Arguments.Append(tc.ArgumentsDelta);
+                            if (!string.IsNullOrEmpty(tc.ExtraContentJson)) toolCallExtraContent[tc.Index] = tc.ExtraContentJson;
+                            break;
+                    }
+
+                    if (pendingError != null) break;
                 }
 
-                if (turnFailed) break;
+                if (pendingError == null) break;
+
+                // Automatic 429 / 502 / 503 / 529 Fallback: if primary model is rate-limited or overloaded
+                // before emitting any tokens, transparently switch to the configured fallback model!
+                bool isRetryableFallback = !usedFallbackModel
+                    && contentBuilder.Length == 0
+                    && toolCallsMap.Count == 0
+                    && !string.IsNullOrWhiteSpace(settings.FallbackModel)
+                    && (pendingError.StatusCode is 429 or 502 or 503 or 529
+                        || pendingError.Message.Contains("429", StringComparison.OrdinalIgnoreCase)
+                        || pendingError.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+                        || pendingError.Message.Contains("too many requests", StringComparison.OrdinalIgnoreCase)
+                        || pendingError.Message.Contains("overloaded", StringComparison.OrdinalIgnoreCase));
+
+                if (isRetryableFallback)
+                {
+                    usedFallbackModel = true;
+                    var fbProvider = !string.IsNullOrWhiteSpace(settings.FallbackProvider) ? settings.FallbackProvider : settings.Provider;
+                    var fbBaseUrl = !string.IsNullOrWhiteSpace(settings.FallbackBaseUrl) ? settings.FallbackBaseUrl : settings.BaseUrl;
+                    var fbKey = SettingsService.ResolveApiKey("", fbProvider, fbBaseUrl);
+                    activeSettings = new AppSettings
+                    {
+                        Provider = fbProvider,
+                        BaseUrl = fbBaseUrl,
+                        ApiKey = fbKey,
+                        Model = settings.FallbackModel,
+                        Temperature = settings.Temperature,
+                        MaxTokens = settings.MaxTokens,
+                        AgentReasoningEffort = settings.AgentReasoningEffort,
+                        AgentAutoVerify = settings.AgentAutoVerify,
+                        AuthorityMode = settings.AuthorityMode,
+                        AutoApproveTools = settings.AutoApproveTools
+                    };
+                    provider = ProviderFactory.Create(activeSettings);
+                    caps = ProviderCapabilityCache.Shared.Get(activeSettings);
+                    LoggingService.LogWarning($"Primary model '{settings.Model}' hit rate limit/overload; automatically falling back to '{activeSettings.Model}' ({activeSettings.Provider}).", nameof(AgentLoop));
+                    emitEvent("agent_status", new { status = $"Rate-limited on {settings.Model} — falling back to {activeSettings.Model}..." });
+                    continue;
+                }
+
+                emitEvent("agent_error", new { message = pendingError.Message });
+                turnFailed = true;
+                break;
             }
 
             if (turnFailed) return;

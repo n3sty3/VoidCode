@@ -29,7 +29,21 @@ internal static class ResearchSubagent
         if (string.IsNullOrWhiteSpace(question))
             return "Error: 'question' is required for delegate_research.";
 
-        var provider = ProviderFactory.Create(settings);
+        var effective = settings;
+        if (!string.IsNullOrWhiteSpace(settings.FastModel))
+        {
+            var fp = !string.IsNullOrWhiteSpace(settings.FastModelProvider) ? settings.FastModelProvider : settings.Provider;
+            var fb = !string.IsNullOrWhiteSpace(settings.FastModelBaseUrl) ? settings.FastModelBaseUrl : settings.BaseUrl;
+            effective = new AppSettings
+            {
+                Provider = fp,
+                BaseUrl = fb,
+                ApiKey = SettingsService.ResolveApiKey("", fp, fb),
+                Model = settings.FastModel,
+                MaxTokens = settings.MaxTokens
+            };
+        }
+        var provider = ProviderFactory.Create(effective);
         var readOnlyTools = ToolCatalog.Definitions(planOnly: true);
 
         // Remove delegate_research and update_plan from subagent tools to prevent
@@ -66,14 +80,14 @@ internal static class ResearchSubagent
             emitEvent("agent_status", new { status = $"Research subagent (step {step}/{MaxSteps})..." });
             var req = new ChatRequest
             {
-                Provider = settings.Provider,
-                BaseUrl = settings.BaseUrl,
-                ApiKey = settings.ApiKey,
-                Model = settings.Model,
+                Provider = effective.Provider,
+                BaseUrl = effective.BaseUrl,
+                ApiKey = effective.ApiKey,
+                Model = effective.Model,
                 Messages = messages,
                 Tools = subTools,
                 Temperature = 0.1,
-                MaxTokens = Math.Min(Math.Max(settings.MaxTokens, 2048), 4096),
+                MaxTokens = Math.Min(Math.Max(effective.MaxTokens, 2048), 4096),
                 Stream = true,
                 ReasoningEffort = "low"
             };

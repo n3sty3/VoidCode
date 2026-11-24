@@ -29,6 +29,8 @@ public static class V110Routes
     public const string GitHunkApply = "git_hunk_apply";
     public const string SymbolIndexQuery = "symbol_index_query";
     public const string SymbolGraphFind = "symbol_graph_find";
+    public const string WslListDistros = "wsl_list_distros";
+    public const string UpdateDownloadInstall = "update_download_install";
 }
 
 /// <summary>
@@ -156,6 +158,11 @@ public sealed class V110Handlers
         public int MaxReferences { get; init; } = 35;
     }
 
+    public sealed class UpdateDownloadRequest
+    {
+        public required string DownloadUrl { get; init; }
+    }
+
     public void Register(BridgeRouter router)
     {
         router.Register<EmptyPayload, List<MemoryItem>>(V110Routes.MemoryList, MemoryListAsync, envelope: true);
@@ -179,6 +186,8 @@ public sealed class V110Handlers
         router.Register<GitHunkApplyRequest, GitPowerResult>(V110Routes.GitHunkApply, GitHunkApplyAsync, envelope: true);
         router.Register<SymbolIndexQueryRequest, List<SymbolMatch>>(V110Routes.SymbolIndexQuery, SymbolIndexQueryAsync, envelope: true);
         router.Register<SymbolGraphFindRequest, SymbolGraphReport>(V110Routes.SymbolGraphFind, SymbolGraphFindAsync, envelope: true);
+        router.Register<EmptyPayload, List<WslDistroInfo>>(V110Routes.WslListDistros, WslListDistrosAsync, envelope: true);
+        router.Register<UpdateDownloadRequest, UpdateInstallResult>(V110Routes.UpdateDownloadInstall, UpdateDownloadInstallAsync, envelope: true);
     }
 
     private Task<List<MemoryItem>> MemoryListAsync(EmptyPayload _, BridgeContext __)
@@ -282,6 +291,12 @@ public sealed class V110Handlers
 
     private Task<SymbolGraphReport> SymbolGraphFindAsync(SymbolGraphFindRequest req, BridgeContext _)
         => Task.Run(() => SymbolGraphService.FindSymbolGraph(_workspace(), req.Symbol, req.MaxReferences));
+
+    private Task<List<WslDistroInfo>> WslListDistrosAsync(EmptyPayload _, BridgeContext __)
+        => WslService.ListDistrosAsync();
+
+    private Task<UpdateInstallResult> UpdateDownloadInstallAsync(UpdateDownloadRequest req, BridgeContext _)
+        => UpdateCheckService.DownloadAndInstallAsync(req.DownloadUrl, _settings().UpdateRepo);
 
     private string ResolveDbPath(string rawPath)
     {

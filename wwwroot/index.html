@@ -1785,10 +1785,47 @@
               <div class="control-well">
                 <div class="label-row">
                   <label for="settings-max-turns">Max agent steps</label>
-                  <span class="val-badge" id="lbl-turns-val">25 steps</span>
+                  <span class="val-badge" id="lbl-turns-val">60 steps</span>
                 </div>
-                <input type="range" class="glass-slider" id="settings-max-turns" min="0" max="100" step="1" value="25" />
+                <input type="range" class="glass-slider" id="settings-max-turns" min="0" max="100" step="1" value="60" />
                 <small>Consecutive tool calls before pausing (0 = unlimited).</small>
+              </div>
+            </div>
+
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-disabled);padding:10px 2px 4px;border-top:1px solid var(--seam);margin-top:6px;">Notifications, power &amp; composer</div>
+            <div class="toggles-grid-2">
+              <label class="setting-switch-row" for="settings-agent-sound">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Agent sound chimes</span>
+                  <span class="toggle-sub">Play subtle chime on turn completion or tool approval</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-agent-sound" checked />
+              </label>
+
+              <label class="setting-switch-row" for="settings-agent-notifications">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Desktop notifications</span>
+                  <span class="toggle-sub">Notify OS when VoidAgent finishes while alt-tabbed</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-agent-notifications" checked />
+              </label>
+
+              <label class="setting-switch-row" for="settings-prevent-sleep">
+                <div class="toggle-copy">
+                  <span class="toggle-title">Prevent sleep while running</span>
+                  <span class="toggle-sub">Keep computer awake during long autonomous runs</span>
+                </div>
+                <input type="checkbox" class="glass-switch" id="settings-prevent-sleep" checked />
+              </label>
+
+              <div class="control-well" style="margin:0;">
+                <div class="label-row">
+                  <label for="settings-send-key">Send message key</label>
+                </div>
+                <select id="settings-send-key">
+                  <option value="enter">Enter (Shift+Enter for newline)</option>
+                  <option value="ctrl+enter">Ctrl+Enter (Enter for newline)</option>
+                </select>
               </div>
             </div>
 

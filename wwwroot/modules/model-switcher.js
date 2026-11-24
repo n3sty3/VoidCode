@@ -83,13 +83,39 @@ function applyModelSelection(item) {
   globalThis.showToast?.(`Switched active model to ${item.label || item.model}`, 'success');
 }
 
+function applyFallbackSelection(item) {
+  const s = { ...(window.VoidState?.get?.('settings') || {}) };
+  s.FallbackProvider = item.provider;
+  s.FallbackBaseUrl = item.baseUrl;
+  s.FallbackModel = item.model;
+  window.VoidState?.set?.('settings', s);
+  hostSend('save_settings', { settings: s });
+  renderList();
+  globalThis.showToast?.(`Set 429 Fallback model to ${item.label || item.model}`, 'success');
+}
+
+function applyFastModelSelection(item) {
+  const s = { ...(window.VoidState?.get?.('settings') || {}) };
+  s.FastModelProvider = item.provider;
+  s.FastModelBaseUrl = item.baseUrl;
+  s.FastModel = item.model;
+  window.VoidState?.set?.('settings', s);
+  hostSend('save_settings', { settings: s });
+  renderList();
+  globalThis.showToast?.(`Set Fast/Research model to ${item.label || item.model}`, 'success');
+}
+
 function renderList() {
   const listEl = document.getElementById('qms-list');
   const filterEl = /** @type {HTMLInputElement | null} */ (document.getElementById('qms-filter'));
   if (!listEl) return;
 
   const q = (filterEl?.value || '').trim().toLowerCase();
-  const currentModel = (window.VoidState?.get?.('settings')?.Model || '').trim().toLowerCase();
+  const s = window.VoidState?.get?.('settings') || {};
+  const currentModel = (s.Model || '').trim().toLowerCase();
+  const fallbackModel = (s.FallbackModel || '').trim().toLowerCase();
+  const fastModel = (s.FastModel || '').trim().toLowerCase();
+  const configuredSet = new Set((s.ConfiguredProviders || []).map((p) => String(p || '').toLowerCase()));
 
   const localItems = localModelsCache.map((m) => ({
     group: 'Local AI (Detected)',
@@ -97,7 +123,7 @@ function renderList() {
     provider: m.provider,
     baseUrl: m.baseUrl,
     model: m.model,
-    tier: 'Free'
+    tier: 'Local'
   }));
 
   const all = [...localItems, ...CURATED_MODELS].filter((item) => {
@@ -121,19 +147,46 @@ function renderList() {
       listEl.appendChild(g);
     }
 
-    const isActive = item.model.toLowerCase() === currentModel;
+    const mLow = item.model.toLowerCase();
+    const isActive = mLow === currentModel;
+    const isFallback = fallbackModel && mLow === fallbackModel;
+    const isFast = fastModel && mLow === fastModel;
+    const hasKey = item.provider === 'ollama' || item.provider === 'lmstudio' || configuredSet.has(item.provider.toLowerCase());
+
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex;align-items:center;gap:4px;border-radius:7px;padding-right:4px;${isActive ? 'background:var(--glacier-wash);' : ''}`;
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ctx-item';
-    btn.style.cssText = `width:100%;height:34px;${isActive ? 'background:var(--glacier-wash);color:var(--glacier);' : ''}`;
+    btn.style.cssText = `flex:1;min-width:0;height:34px;${isActive ? 'background:transparent;color:var(--glacier);' : ''}`;
     setHtml(btn, html`
-      <span class="ctx-label" style="display:flex;align-items:center;gap:6px;">
+      <span class="ctx-label" style="display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;">
         <span>${isActive ? '● ' : ''}${item.label}</span>
+        ${hasKey ? html`<span title="Key saved in vault or local" style="font-size:10px;opacity:0.75;">🔑</span>` : ''}
       </span>
-      <span class="ctx-hint">${item.provider} · ${item.tier}</span>
+      <span class="ctx-hint">${item.provider}</span>
     `);
     btn.addEventListener('click', () => applyModelSelection(item));
-    listEl.appendChild(btn);
+
+    const fbBtn = document.createElement('button');
+    fbBtn.type = 'button';
+    fbBtn.className = 'btn btn--quiet btn--xs';
+    fbBtn.textContent = isFallback ? 'FB ✓' : 'FB';
+    fbBtn.title = 'Set as automatic 429/503 Fallback model';
+    fbBtn.style.cssText = `height:24px;padding:0 6px;font-size:10px;flex-shrink:0;${isFallback ? 'color:#f5b963;border-color:rgba(245,185,99,0.45);' : 'opacity:0.65;'}`;
+    fbBtn.addEventListener('click', (e) => { e.stopPropagation(); applyFallbackSelection(item); });
+
+    const fastBtn = document.createElement('button');
+    fastBtn.type = 'button';
+    fastBtn.className = 'btn btn--quiet btn--xs';
+    fastBtn.textContent = isFast ? '⚡✓' : '⚡';
+    fastBtn.title = 'Set as Fast/Research Executor model (saves primary quota)';
+    fastBtn.style.cssText = `height:24px;padding:0 6px;font-size:10px;flex-shrink:0;${isFast ? 'color:#6be2b3;border-color:rgba(107,226,179,0.45);' : 'opacity:0.65;'}`;
+    fastBtn.addEventListener('click', (e) => { e.stopPropagation(); applyFastModelSelection(item); });
+
+    row.append(btn, fbBtn, fastBtn);
+    listEl.appendChild(row);
   }
 }
 

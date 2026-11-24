@@ -67,6 +67,23 @@ public class AppSettings
     public bool AutocompleteEnabled { get; set; } = true;
     public string AutocompleteModel { get; set; } = "";
     public string AutocompleteBaseUrl { get; set; } = "";
+    // Automatic 429 / 503 fallback model slot (uses per-provider key vault automatically).
+    public string FallbackProvider { get; set; } = "";
+    public string FallbackBaseUrl { get; set; } = "";
+    public string FallbackModel { get; set; } = "";
+    // Fast/cheap model slot for research subagent & compaction summaries (leaves primary for core coding).
+    public string FastModelProvider { get; set; } = "";
+    public string FastModelBaseUrl { get; set; } = "";
+    public string FastModel { get; set; } = "";
+    // Non-secret list of providers that currently have an encrypted key stored in SecretService.
+    public List<string> ConfiguredProviders { get; set; } = new();
+    // Agent ergonomics & desktop signals
+    public bool AgentSoundEnabled { get; set; } = true;
+    public int AgentSoundVolume { get; set; } = 65;
+    public bool AgentDesktopNotifications { get; set; } = true;
+    public bool PreventSleepWhileRunning { get; set; } = true;
+    public string ComposerSendKey { get; set; } = "enter";
+    public string PreferredWslDistro { get; set; } = "";
     public string Theme { get; set; } = "harbor";
     public int GlassBlur { get; set; } = 28;
     public int FieldOpacity { get; set; } = 75;
@@ -123,13 +140,21 @@ public static class SettingsService
                     migrated = SecretService.SaveApiKey(legacyApiKey);
                 }
 
-                settings.ApiKey = SecretService.LoadApiKey();
+                var perProviderKey = SecretService.LoadProviderApiKey(settings.Provider);
+                settings.ApiKey = !string.IsNullOrEmpty(perProviderKey)
+                    ? perProviderKey
+                    : SecretService.LoadApiKey();
                 if (string.IsNullOrEmpty(settings.ApiKey) && !string.IsNullOrWhiteSpace(legacyApiKey))
                 {
                     // Keep the current session usable if DPAPI was temporarily unavailable.
                     settings.ApiKey = legacyApiKey;
                 }
+                if (!string.IsNullOrWhiteSpace(settings.ApiKey) && !SecretService.HasProviderApiKey(settings.Provider))
+                {
+                    SecretService.SaveProviderApiKey(settings.Provider, settings.ApiKey);
+                }
                 settings.ApiKeyConfigured = !string.IsNullOrWhiteSpace(settings.ApiKey);
+                settings.ConfiguredProviders = SecretService.ListConfiguredProviders();
 
                 if (migrated)
                 {
@@ -144,11 +169,11 @@ public static class SettingsService
             LoggingService.LogError("Could not load settings; defaults will be used.", ex, nameof(SettingsService));
         }
 
-        var defaults = new AppSettings
-        {
-            ApiKey = SecretService.LoadApiKey()
-        };
+        var defaults = new AppSettings();
+        var defaultProviderKey = SecretService.LoadProviderApiKey(defaults.Provider);
+        defaults.ApiKey = !string.IsNullOrEmpty(defaultProviderKey) ? defaultProviderKey : SecretService.LoadApiKey();
         defaults.ApiKeyConfigured = !string.IsNullOrWhiteSpace(defaults.ApiKey);
+        defaults.ConfiguredProviders = SecretService.ListConfiguredProviders();
         return defaults;
     }
 
@@ -159,9 +184,13 @@ public static class SettingsService
             Directory.CreateDirectory(SettingsDir);
             if (!string.IsNullOrWhiteSpace(settings.ApiKey))
             {
+                SecretService.SaveProviderApiKey(settings.Provider, settings.ApiKey);
                 SecretService.SaveApiKey(settings.ApiKey);
             }
-            settings.ApiKeyConfigured = SecretService.HasApiKey;
+            settings.ApiKeyConfigured = !string.IsNullOrWhiteSpace(settings.ApiKey)
+                || SecretService.HasProviderApiKey(settings.Provider)
+                || SecretService.HasApiKey;
+            settings.ConfiguredProviders = SecretService.ListConfiguredProviders();
 
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             var tempPath = SettingsFile + ".tmp";
@@ -199,8 +228,14 @@ public static class SettingsService
     {
         if (!string.IsNullOrWhiteSpace(explicitKey)) return explicitKey;
 
-        var readEnv = envReader ?? Environment.GetEnvironmentVariable;
         var p = (provider ?? string.Empty).Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(p))
+        {
+            var stored = SecretService.LoadProviderApiKey(p);
+            if (!string.IsNullOrWhiteSpace(stored)) return stored;
+        }
+
+        var readEnv = envReader ?? Environment.GetEnvironmentVariable;
         var u = (baseUrl ?? string.Empty).Trim().ToLowerInvariant();
 
         string[] candidates;
