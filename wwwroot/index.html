@@ -1613,15 +1613,16 @@
             <div class="control-well">
               <div class="form-group">
                 <div class="label-row">
-                  <label for="settings-system-prompt">Custom system instructions</label>
-                  <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-system-prompt">Reset to VoidAgent Core</button>
+                  <label for="settings-system-prompt">Specialist profile &amp; extra operator rules</label>
+                  <button type="button" class="btn btn--quiet btn--xs" id="btn-reset-system-prompt">Reset to Default</button>
                 </div>
-                <textarea id="settings-system-prompt" rows="8"></textarea>
-                <div class="agent-contract-chips" aria-label="Built-in VoidCode runtime capabilities">
-                  <span class="val-badge is-muted">+ Live Editor &amp; @-Context</span>
-                  <span class="val-badge is-muted">+ Auto-Checkpoints &amp; Hunk Review</span>
-                  <span class="val-badge is-muted">+ LSP Diagnostics Loop</span>
-                  <span class="val-badge is-muted">+ AGENTS.md &amp; .voidcode/rules</span>
+                <small style="margin-bottom:4px;">VoidAgent Core's built-in engineering engine is always active under the hood (parallel exploration, multi-hunk patching, live plans &amp; LSP verification). Rules below layer cleanly on top.</small>
+                <textarea id="settings-system-prompt" rows="6"></textarea>
+                <div class="agent-contract-chips" aria-label="Built-in VoidAgent Core capabilities">
+                  <span class="val-badge is-ok">VoidAgent Core Built-In</span>
+                  <span class="val-badge is-muted">+ Parallel Tools &amp; Repo Map</span>
+                  <span class="val-badge is-muted">+ Live Plans &amp; Unified Diffs</span>
+                  <span class="val-badge is-muted">+ Memory Bank &amp; AGENTS.md</span>
                 </div>
               </div>
             </div>

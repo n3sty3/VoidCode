@@ -27,7 +27,7 @@ public class AgentSplitTests
             "read_file", "view_image", "write_file", "patch_file", "multi_patch_file", "delete_file", "move_file",
             "list_dir", "glob_files", "search_code", "search_codebase", "run_command", "git_status_diff",
             "get_diagnostics", "get_lsp_diagnostics", "inspect_binary", "web_fetch", "save_memory", "delete_memory",
-            "delegate_research"
+            "delegate_research", "update_plan"
         };
         var names = ToolNames();
 
@@ -135,7 +135,8 @@ public class AgentSplitTests
         var act = Prompts.SystemPrompt(settings, workspace, isPlanMode: false).ToString();
         var plan = Prompts.SystemPrompt(settings, workspace, isPlanMode: true).ToString();
 
-        Assert.StartsWith("BASE RULES", act, StringComparison.Ordinal);
+        Assert.StartsWith("You are VoidAgent", act, StringComparison.Ordinal);
+        Assert.Contains("BASE RULES", act);
         Assert.Contains(workspace, act);
         Assert.Contains("Available Tools:", act);
         Assert.DoesNotContain("PLAN MODE", act);

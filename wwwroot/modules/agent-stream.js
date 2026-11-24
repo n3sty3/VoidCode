@@ -122,7 +122,8 @@ const TOOL_VERBS = {
   web_fetch: 'Fetched',
   save_memory: 'Remembered',
   delete_memory: 'Forgot',
-  delegate_research: 'Researched'
+  delegate_research: 'Researched',
+  update_plan: 'Updated plan'
 };
 
 const FILE_TOOLS = new Set([
@@ -243,6 +244,64 @@ function renderChangedFilesDock() {
 export function clearSessionChangedFiles() {
   sessionChangedFiles.clear();
   renderChangedFilesDock();
+  document.getElementById('agent-live-plan-widget')?.remove();
+}
+
+function renderLivePlanWidget(steps) {
+  const sidebar = document.getElementById('sidebar-agent');
+  const chatEl = document.getElementById('agent-chat-container');
+  if (!sidebar || !chatEl || !Array.isArray(steps) || steps.length === 0) return;
+
+  let widget = document.getElementById('agent-live-plan-widget');
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'agent-live-plan-widget';
+    widget.className = 'agent-plan-widget';
+    sidebar.insertBefore(widget, chatEl);
+  }
+
+  const doneCount = steps.filter((s) => s.status === 'done').length;
+  const isCollapsed = widget.classList.contains('is-collapsed');
+  setHtml(widget, '');
+
+  const head = document.createElement('div');
+  head.className = 'agent-plan-widget-head';
+  setHtml(head, html`
+    <span>Plan · ${doneCount}/${steps.length} done</span>
+    <span style="opacity:0.65;font-size:10px;">${isCollapsed ? '▸' : '▾'}</span>
+  `);
+  head.addEventListener('click', () => {
+    const next = widget.classList.toggle('is-collapsed');
+    const arrow = head.lastElementChild;
+    if (arrow) arrow.textContent = next ? '▸' : '▾';
+  });
+  widget.appendChild(head);
+
+  const list = document.createElement('div');
+  list.className = 'agent-plan-widget-list';
+  steps.forEach((s) => {
+    const row = document.createElement('div');
+    row.className = 'agent-plan-step' + (s.status === 'done' ? ' is-done' : (s.status === 'in_progress' ? ' is-progress' : ''));
+    const icon = s.status === 'done' ? '✓' : (s.status === 'in_progress' ? '●' : '○');
+    setHtml(row, html`<span style="flex-shrink:0;">${icon}</span><span>${s.title}</span>`);
+    list.appendChild(row);
+  });
+  widget.appendChild(list);
+}
+
+function appendLiveToolOutputDelta(id, line) {
+  const card = document.getElementById(`tool-card-${id}`);
+  if (!card) return;
+  const details = card.querySelector('.tool-card-details');
+  if (!details) return;
+  card.classList.add('expanded');
+  if (!/** @type {any} */ (card)._streamedLiveOutput) {
+    /** @type {any} */ (card)._streamedLiveOutput = true;
+    details.textContent = `${details.textContent ? details.textContent + '\n' : ''}${line}`;
+  } else {
+    details.textContent += `\n${line}`;
+  }
+  details.scrollTop = details.scrollHeight;
 }
 
 export function getStreamMessageEl() {
@@ -562,12 +621,21 @@ function ensureToolGroup() {
     body: el.querySelector('.tool-run-body'),
     head,
     count: 0,
+    finished: 0,
     reads: 0,
     searches: 0,
     edits: 0,
     cmds: 0,
-    startTs: Date.now()
+    startTs: Date.now(),
+    timer: null
   };
+  activeToolGroup.timer = setInterval(() => {
+    if (!activeToolGroup || !document.body.contains(activeToolGroup.el)) {
+      if (activeToolGroup?.timer) clearInterval(activeToolGroup.timer);
+      return;
+    }
+    updateToolGroupHeader();
+  }, 250);
 }
 
 function updateToolGroupHeader() {
@@ -590,6 +658,10 @@ function updateToolGroupHeader() {
 
 export function finalizeToolGroup() {
   if (!activeToolGroup) return;
+  if (activeToolGroup.timer) {
+    clearInterval(activeToolGroup.timer);
+    activeToolGroup.timer = null;
+  }
   activeToolGroup.el.classList.remove('is-running');
   activeToolGroup.el.classList.add('is-done');
   updateToolGroupHeader();
@@ -629,6 +701,7 @@ export function renderToolCardStart(id, tool, argsRaw) {
   setHtml(card, html`
     <div class="tool-card-header">
       <div class="tool-name-wrap">
+        <span class="tool-status-dot" aria-hidden="true"></span>
         <span class="tool-verb">${verb}</span>
         <span class="tool-target ${isClickableFile ? 'chat-file-link' : ''}" data-open-file="${isClickableFile ? parsedArgs.path : ''}" title="${isClickableFile ? `Open ${parsedArgs.path} in editor` : target}">${target}</span>
       </div>
@@ -689,8 +762,15 @@ export function renderToolApprovalPrompt(id) {
   const card = document.getElementById(`tool-card-${id}`);
   if (!card) return;
   card.classList.add('expanded', 'is-awaiting-approval');
+  const tool = card.dataset.tool || '';
+  const isFileEdit = EDIT_CATEGORY_TOOLS.has(tool);
+  const isCommand = tool === 'run_command';
   const pill = card.querySelector('.tool-badge-pill');
-  if (pill) pill.textContent = 'Review edit';
+  if (pill) {
+    pill.textContent = isCommand ? 'Run command?' : (tool === 'web_fetch' ? 'Fetch URL?' : 'Review edit');
+  }
+  const verbEl = card.querySelector('.tool-verb');
+  if (verbEl && isCommand) verbEl.textContent = 'Run';
 
   const meta = toolMetaById.get(id) || {};
   const detailsEl = card.querySelector('.tool-card-details');
@@ -698,12 +778,11 @@ export function renderToolApprovalPrompt(id) {
     setHtml(detailsEl, raw(formatColorizedDiffHtml(meta.diffPreview)));
   }
 
-  // Remove any previous approval bar to stay idempotent.
   card.querySelector('.approval-v2-bar')?.remove();
 
   const bar = document.createElement('div');
   bar.className = 'approval-v2-bar';
-  bar.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(245,185,99,0.25);';
+  bar.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(245,185,99,0.22);';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
@@ -712,14 +791,7 @@ export function renderToolApprovalPrompt(id) {
   approveBtn.type = 'button';
   approveBtn.className = 'btn btn--primary btn--xs';
   approveBtn.style.cssText = 'white-space:nowrap;flex-shrink:0;';
-  approveBtn.textContent = 'Approve';
-
-  const approveTurnBtn = document.createElement('button');
-  approveTurnBtn.type = 'button';
-  approveTurnBtn.className = 'btn btn--quiet btn--xs';
-  approveTurnBtn.style.cssText = 'white-space:nowrap;flex-shrink:0;';
-  approveTurnBtn.title = 'Approve this edit and auto-approve remaining in-workspace file edits for this turn';
-  approveTurnBtn.textContent = 'Approve Turn';
+  approveBtn.textContent = isCommand ? 'Allow' : 'Approve';
 
   const denyBtn = document.createElement('button');
   denyBtn.type = 'button';
@@ -730,17 +802,17 @@ export function renderToolApprovalPrompt(id) {
   const reasonInput = document.createElement('input');
   reasonInput.type = 'text';
   reasonInput.placeholder = 'Optional note if denying (Enter to send)...';
-  reasonInput.style.cssText = 'flex:1;min-width:140px;height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--seam);background:rgba(0,0,0,0.25);color:var(--text);font-size:11px;';
+  reasonInput.style.cssText = 'width:100%;height:26px;padding:0 9px;border-radius:7px;border:1px solid var(--seam);background:rgba(0,0,0,0.28);color:var(--text);font-size:11px;';
 
   function resolve(approved, approveTurn = false, reason = '') {
     card.classList.remove('is-awaiting-approval');
     bar.remove();
     if (pill) pill.textContent = approved ? 'Running' : 'Denied';
+    if (verbEl && isCommand && approved) verbEl.textContent = 'Ran';
     sendHost('resolve_tool_approval', { id, approved, approveTurn, reason });
   }
 
   approveBtn.addEventListener('click', (e) => { e.stopPropagation(); resolve(true, false); });
-  approveTurnBtn.addEventListener('click', (e) => { e.stopPropagation(); resolve(true, true); });
   denyBtn.addEventListener('click', (e) => { e.stopPropagation(); resolve(false, false, reasonInput.value.trim()); });
   reasonInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -750,8 +822,19 @@ export function renderToolApprovalPrompt(id) {
     }
   });
 
-  btnRow.append(approveBtn, approveTurnBtn, denyBtn, reasonInput);
-  bar.appendChild(btnRow);
+  btnRow.append(approveBtn);
+  if (isFileEdit) {
+    const approveTurnBtn = document.createElement('button');
+    approveTurnBtn.type = 'button';
+    approveTurnBtn.className = 'btn btn--quiet btn--xs';
+    approveTurnBtn.style.cssText = 'white-space:nowrap;flex-shrink:0;';
+    approveTurnBtn.title = 'Approve this edit and auto-approve remaining in-workspace file edits for this turn';
+    approveTurnBtn.textContent = 'Approve Turn';
+    approveTurnBtn.addEventListener('click', (e) => { e.stopPropagation(); resolve(true, true); });
+    btnRow.append(approveTurnBtn);
+  }
+  btnRow.append(denyBtn);
+  bar.append(btnRow, reasonInput);
   card.appendChild(bar);
   scrollAgentToBottom();
 }
@@ -792,6 +875,14 @@ export function renderToolCardFinish(id, tool, output, checkpointId) {
   if (!card) return;
   const failed = /^(error|tool execution error|blocked)\b/i.test((output || '').trim());
   card.classList.add(failed ? 'is-error' : 'is-done');
+  if (activeToolGroup) {
+    activeToolGroup.finished++;
+    updateToolGroupHeader();
+    if (activeToolGroup.finished >= activeToolGroup.count) {
+      activeToolGroup.el.classList.remove('is-running');
+      activeToolGroup.el.classList.add('is-done');
+    }
+  }
   const actionsRight = card.querySelector('.tool-actions-right');
   const pill = card.querySelector('.tool-badge-pill');
   if (pill) pill.textContent = failed ? 'Failed' : 'Done';
@@ -833,6 +924,9 @@ export function renderToolCardFinish(id, tool, output, checkpointId) {
     } else if (/** @type {any} */ (card)._patch && (/** @type {any} */ (card)._patch.search || /** @type {any} */ (card)._patch.replace)) {
       const diffText = buildPatchPreview(/** @type {any} */ (card)._patch);
       setHtml(details, raw(formatColorizedDiffHtml(diffText, out)));
+    } else if (/** @type {any} */ (card)._streamedLiveOutput) {
+      const exitMatch = /^(Exit code:\s*-?\d+)/m.exec(out);
+      if (exitMatch) details.textContent += `\n\n${exitMatch[1]}`;
     } else {
       const preview = out.substring(0, 2200);
       details.textContent = `${details.textContent ? details.textContent + '\n\n' : ''}${preview}${out.length > 2200 ? '\n…[truncated]' : ''}`;
@@ -850,8 +944,17 @@ export function init(ctx = {}) {
         updateLiveTurnStatus(payload.status);
         return;
       }
+      if (action === 'agent_plan_update' && Array.isArray(payload?.steps)) {
+        renderLivePlanWidget(payload.steps);
+        return;
+      }
+      if (action === 'agent_tool_output_delta' && payload?.id && typeof payload.line === 'string') {
+        appendLiveToolOutputDelta(payload.id, payload.line);
+        return;
+      }
       if (action === 'agent_done' || action === 'agent_error') {
         clearLiveTurnCard(true);
+        finalizeToolGroup();
         return;
       }
       if (!payload) return;

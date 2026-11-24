@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using VoidCode.Agent;
+using VoidCode.Agent.Tools;
 using VoidCode.Services;
 using Xunit;
 
@@ -138,6 +141,7 @@ public class AgentV2Tests
             Assert.False(AgentLoop.IsParallelizableReadOnlyTool("multi_patch_file", "{\"path\":\"a.cs\"}", ws, false));
             Assert.False(AgentLoop.IsParallelizableReadOnlyTool("run_command", "{\"command\":\"ls\"}", ws, false));
             Assert.False(AgentLoop.IsParallelizableReadOnlyTool("delegate_research", "{\"question\":\"hi\"}", ws, false));
+            Assert.False(AgentLoop.IsParallelizableReadOnlyTool("update_plan", "{\"steps\":[]}", ws, false));
             Assert.False(AgentLoop.IsParallelizableReadOnlyTool("read_file", "{\"path\":\"../escape.txt\"}", ws, false));
         }
         finally
@@ -193,6 +197,153 @@ public class AgentV2Tests
         finally
         {
             try { Directory.Delete(dir, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public void RepoMapService_BuildsCompactMapWithTopLevelSymbols()
+    {
+        var dir = CreateTempDir("repomap");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "src"));
+            Directory.CreateDirectory(Path.Combine(dir, "node_modules", "ignored"));
+            File.WriteAllText(Path.Combine(dir, "src", "Engine.cs"),
+                "namespace Demo;\npublic class InferenceEngine\n{\n    public void RunLoop() {}\n}\n");
+            File.WriteAllText(Path.Combine(dir, "src", "utils.ts"),
+                "export interface TokenBudget { max: number; }\nexport async function computeScore(x: number) { return x; }\n");
+            File.WriteAllText(Path.Combine(dir, "node_modules", "ignored", "Noise.js"),
+                "export function shouldNotAppear() {}\n");
+
+            var map = RepoMapService.BuildCompactMap(dir);
+            Assert.Contains("src/Engine.cs", map);
+            Assert.Contains("InferenceEngine", map);
+            Assert.Contains("src/utils.ts", map);
+            Assert.Contains("TokenBudget", map);
+            Assert.Contains("computeScore", map);
+            Assert.DoesNotContain("shouldNotAppear", map);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public void JsonToolArgsRepair_RepairsTrailingCommasFencesAndTruncatedTail()
+    {
+        var fenced = JsonToolArgsRepair.ParseOrRepair("```json\n{\"path\":\"src/app.js\",}\n```");
+        Assert.NotNull(fenced);
+        Assert.Equal("src/app.js", fenced!["path"]?.GetValue<string>());
+
+        var truncated = JsonToolArgsRepair.ParseOrRepair("{\"path\":\"foo.cs\",\"content\":\"hello world");
+        Assert.NotNull(truncated);
+        Assert.Equal("foo.cs", truncated!["path"]?.GetValue<string>());
+        Assert.Equal("hello world", truncated!["content"]?.GetValue<string>());
+
+        var empty = JsonToolArgsRepair.ParseOrRepair("   ");
+        Assert.NotNull(empty);
+        Assert.Empty(empty!.AsObject());
+    }
+
+    [Fact]
+    public void AgentSessionMemory_RecordsAndReplaysCompactedToolExchanges()
+    {
+        var ws = CreateTempDir("transcript-mem");
+        try
+        {
+            AgentSessionMemory.ClearWorkspace(ws);
+
+            var assistant = new JsonObject
+            {
+                ["role"] = "assistant",
+                ["content"] = "",
+                ["tool_calls"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["id"] = "call_1",
+                        ["type"] = "function",
+                        ["function"] = new JsonObject
+                        {
+                            ["name"] = "read_file",
+                            ["arguments"] = "{\"path\":\"Program.cs\"}"
+                        }
+                    }
+                }
+            };
+            var toolResults = new List<JsonObject>
+            {
+                new()
+                {
+                    ["role"] = "tool",
+                    ["tool_call_id"] = "call_1",
+                    ["content"] = new string('x', 5000)
+                }
+            };
+
+            AgentSessionMemory.RecordToolExchange(ws, assistant, toolResults);
+            var replay = AgentSessionMemory.GetRecentToolTranscript(ws);
+            Assert.Equal(2, replay.Count);
+            Assert.Equal("assistant", replay[0]["role"]?.GetValue<string>());
+            Assert.Equal("tool", replay[1]["role"]?.GetValue<string>());
+            Assert.Equal("call_1", replay[1]["tool_call_id"]?.GetValue<string>());
+            var content = replay[1]["content"]?.GetValue<string>() ?? "";
+            Assert.True(content.Length < 2600, "Compacted tool transcript should cap oversized outputs");
+            Assert.Contains("prior turn tool result compacted", content);
+        }
+        finally
+        {
+            AgentSessionMemory.ClearWorkspace(ws);
+            try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public async Task ToolExecutor_UpdatePlan_EmitsNormalizedSteps()
+    {
+        var ws = CreateTempDir("plan-tool");
+        try
+        {
+            string? capturedEvent = null;
+            object? capturedPayload = null;
+            var args = "{\"steps\":[{\"title\":\"Inspect parser\",\"status\":\"completed\"},{\"title\":\"Fix edge case\",\"status\":\"in_progress\"},{\"title\":\"Run tests\",\"status\":\"pending\"}]}";
+
+            var (output, _, _) = await ToolExecutor.ExecuteAsync(
+                "update_plan",
+                args,
+                ws,
+                (ev, payload) => { capturedEvent = ev; capturedPayload = payload; });
+
+            Assert.Equal("agent_plan_update", capturedEvent);
+            Assert.NotNull(capturedPayload);
+            Assert.Contains("Updated live plan (3 steps)", output);
+        }
+        finally
+        {
+            try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
+        }
+    }
+
+    [Fact]
+    public void Prompts_LayersCustomOperatorRulesOnTopOfBuiltInVoidAgentCore()
+    {
+        var ws = CreateTempDir("prompt-core");
+        try
+        {
+            var settings = new AppSettings
+            {
+                SystemPrompt = "Always prefer immutable record structs."
+            };
+            var prompt = Prompts.SystemPrompt(settings, ws, isPlanMode: false).ToString();
+            Assert.Contains("VoidAgent", prompt);
+            Assert.Contains("OPERATOR SPECIALIST PROFILE & EXTRA RULES", prompt);
+            Assert.Contains("Always prefer immutable record structs.", prompt);
+            Assert.Contains("update_plan", prompt);
+        }
+        finally
+        {
+            try { Directory.Delete(ws, true); } catch (IOException) { /* cleanup */ }
         }
     }
 }

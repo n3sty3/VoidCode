@@ -28,14 +28,14 @@ internal static class ToolExecutor
         TurnTransaction? turn = null,
         AppSettings? settings = null,
         bool autoVerify = false,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? toolCallId = null)
     {
-        JsonNode? argsNode = null;
-        try
+        JsonNode? argsNode = JsonToolArgsRepair.ParseOrRepair(argsJson);
+        if (argsNode == null)
         {
-            argsNode = JsonNode.Parse(argsJson);
+            return ("Error: Malformed JSON tool arguments. Emit valid JSON matching the tool schema.", null, null);
         }
-        catch (Exception ex) { LoggingService.Swallowed(ex, "AgentEngine.ParseToolArguments"); }
 
         switch (name)
         {
@@ -223,10 +223,19 @@ internal static class ToolExecutor
                 emitEvent("terminal_stream", new { text = $"\nPS {workspacePath}> {cmd}\n", isError = false });
                 turn?.RecordIrreversible("run_command", cmd);
 
+                int streamedLines = 0;
                 var result = await TerminalService.ExecuteCommandAsync(
                     cmd,
                     workspacePath,
-                    (line, isErr) => emitEvent("terminal_stream", new { text = line + "\n", isError = isErr })
+                    (line, isErr) =>
+                    {
+                        emitEvent("terminal_stream", new { text = line + "\n", isError = isErr });
+                        if (!string.IsNullOrEmpty(toolCallId) && streamedLines < 120)
+                        {
+                            streamedLines++;
+                            emitEvent("agent_tool_output_delta", new { id = toolCallId, line, isError = isErr });
+                        }
+                    }
                 );
 
                 var combined = $"Exit code: {result.ExitCode}\nOutput:\n{result.Output}\n{(string.IsNullOrEmpty(result.Error) ? "" : "Stderr:\n" + result.Error)}";
@@ -351,6 +360,27 @@ internal static class ToolExecutor
                     return ("Error: Model settings unavailable for research subagent.", null, null);
                 var brief = await ResearchSubagent.RunAsync(question, workspacePath, settings, emitEvent, cancellationToken);
                 return (ToolOutputPolicy.Truncate(brief, ToolOutputPolicy.ReadFileMaxChars, "research summary clipped"), null, null);
+            }
+
+            case "update_plan":
+            {
+                var rawSteps = argsNode?["steps"] as JsonArray;
+                if (rawSteps == null || rawSteps.Count == 0)
+                    return ("Error: 'steps' must be a non-empty array of { title, status } items.", null, null);
+
+                var normalized = new List<object>();
+                foreach (var item in rawSteps)
+                {
+                    if (item is not JsonObject obj) continue;
+                    var title = (obj["title"]?.GetValue<string>() ?? "").Trim();
+                    if (string.IsNullOrEmpty(title)) continue;
+                    var status = (obj["status"]?.GetValue<string>() ?? "pending").Trim().ToLowerInvariant();
+                    if (status is not ("pending" or "in_progress" or "done")) status = "pending";
+                    normalized.Add(new { title, status });
+                    if (normalized.Count >= 12) break;
+                }
+                emitEvent("agent_plan_update", new { steps = normalized });
+                return ($"Updated live plan ({normalized.Count} step{(normalized.Count == 1 ? "" : "s")}).", null, null);
             }
 
             default:

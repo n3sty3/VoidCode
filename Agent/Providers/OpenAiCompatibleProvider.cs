@@ -96,16 +96,30 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
                 messagesArray.Add(JsonNode.Parse(m.ToJsonString()));
             }
 
+            var isReasoning = IsOpenAiReasoningModel(modelId);
+            var isDirectOpenAi = string.Equals(request.Provider, "openai", StringComparison.OrdinalIgnoreCase)
+                || baseUrl.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase);
+
             var body = new JsonObject
             {
                 ["model"] = modelId,
                 ["messages"] = messagesArray,
-                ["temperature"] = request.Temperature,
-                ["max_tokens"] = request.MaxTokens,
                 ["stream"] = request.Stream
             };
+            if (isReasoning && isDirectOpenAi)
+            {
+                body["max_completion_tokens"] = request.MaxTokens;
+            }
+            else
+            {
+                body["max_tokens"] = request.MaxTokens;
+                if (!isReasoning)
+                {
+                    body["temperature"] = request.Temperature;
+                }
+            }
             var effort = (request.ReasoningEffort ?? "medium").Trim().ToLowerInvariant();
-            if (effort is "low" or "high" && IsOpenAiReasoningModel(modelId))
+            if (effort is "low" or "high" && isReasoning)
             {
                 body["reasoning_effort"] = effort;
             }

@@ -32,12 +32,14 @@ internal static class ResearchSubagent
         var provider = ProviderFactory.Create(settings);
         var readOnlyTools = ToolCatalog.Definitions(planOnly: true);
 
-        // Remove delegate_research from subagent tools to prevent recursive nesting.
+        // Remove delegate_research and update_plan from subagent tools to prevent
+        // recursive nesting or clobbering the main agent's live plan checklist.
         var subTools = new JsonArray();
         foreach (var t in readOnlyTools)
         {
             var n = t?["function"]?["name"]?.GetValue<string>();
-            if (!string.Equals(n, "delegate_research", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(n, "delegate_research", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(n, "update_plan", StringComparison.OrdinalIgnoreCase))
                 subTools.Add(t?.DeepClone());
         }
 
@@ -142,7 +144,8 @@ internal static class ResearchSubagent
                 tasks.Add(Task.Run(async () =>
                 {
                     if (!ToolCatalog.PlanModeTools.Contains(call.Name) ||
-                        string.Equals(call.Name, "delegate_research", StringComparison.OrdinalIgnoreCase))
+                        string.Equals(call.Name, "delegate_research", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(call.Name, "update_plan", StringComparison.OrdinalIgnoreCase))
                     {
                         return (call.Id, $"Blocked: '{call.Name}' is not permitted in read-only research subagent.");
                     }

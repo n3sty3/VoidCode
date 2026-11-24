@@ -40,6 +40,7 @@ internal static class AgentLoop
         if (McpManager.IsMcpTool(toolName)) return false;
         if (!ToolCatalog.PlanModeTools.Contains(toolName)) return false;
         if (string.Equals(toolName, "delegate_research", StringComparison.OrdinalIgnoreCase)) return false;
+        if (string.Equals(toolName, "update_plan", StringComparison.OrdinalIgnoreCase)) return false;
         if (ToolExecutor.AccessesOutsideWorkspace(toolName, argsJson, workspacePath)) return false;
         return true;
     }
@@ -77,28 +78,13 @@ internal static class AgentLoop
         var messages = new List<JsonObject>();
         var systemPrompt = Prompts.SystemPrompt(settings, workspacePath, isPlanMode);
 
-        // Inject compact prior-turn tool trace when continuing a conversation so follow-up turns
-        // remember which files were already read, patched, or verified.
-        if (conversationHistory.Count > 0)
-        {
-            var traceBlock = AgentSessionMemory.FormatRecentWorkForPrompt(workspacePath);
-            if (!string.IsNullOrEmpty(traceBlock))
-                systemPrompt.Append(traceBlock);
-        }
-
-        // Load root AGENTS.md + .voidcode/rules/*.md (capped at 16 KB).
+        // Keep system prompt byte-stable across turns (only static rules + memories) so
+        // Anthropic/OpenAI/Gemini prompt caches hit on follow-up turns!
         var projectRules = ContextBuilder.LoadProjectRules(workspacePath);
         if (!string.IsNullOrEmpty(projectRules))
         {
             systemPrompt.Append("\n\n");
             systemPrompt.Append(projectRules);
-        }
-
-        var contextBlock = ContextBuilder.BuildEditorContextBlock(editorContext);
-        if (!string.IsNullOrEmpty(contextBlock))
-        {
-            systemPrompt.Append("\n\n");
-            systemPrompt.Append(contextBlock);
         }
 
         messages.Add(new JsonObject
@@ -113,8 +99,36 @@ internal static class AgentLoop
             if (cloned != null) messages.Add(cloned);
         }
 
+        // Replay real compacted tool-call/result transcript from prior turns in this session
+        // right before the new user turn so follow-up prompts remember exact code read & edited.
+        if (conversationHistory.Count > 0)
+        {
+            var priorTools = AgentSessionMemory.GetRecentToolTranscript(workspacePath);
+            if (priorTools.Count > 0)
+            {
+                int insertAt = messages.Count;
+                if (insertAt > 1 && messages[^1]["role"]?.GetValue<string>() == "user")
+                    insertAt--;
+                messages.InsertRange(insertAt, priorTools);
+            }
+        }
+
         var imageDataUris = new List<string>();
         var enrichedPrompt = ContextBuilder.EnrichPromptWithReferencedFiles(userPrompt, workspacePath, imageDataUris);
+
+        // Attach dynamic editor buffer & Turn-1 Repo Map on the user message (cache-friendly!).
+        var dynamicPrefix = new StringBuilder();
+        if (conversationHistory.Count == 0)
+        {
+            var repoMap = RepoMapService.BuildCompactMap(workspacePath);
+            if (!string.IsNullOrEmpty(repoMap))
+                dynamicPrefix.AppendLine(repoMap).AppendLine();
+        }
+        var contextBlock = ContextBuilder.BuildEditorContextBlock(editorContext);
+        if (!string.IsNullOrEmpty(contextBlock))
+            dynamicPrefix.AppendLine(contextBlock).AppendLine();
+        if (dynamicPrefix.Length > 0)
+            enrichedPrompt = dynamicPrefix + enrichedPrompt;
 
         JsonNode userContentNode;
         if (imageDataUris.Count > 0 && settings.ModelSupportsVision)
@@ -393,6 +407,7 @@ internal static class AgentLoop
 
             var authorityMode = AgentPolicy.ResolveAuthorityMode(settings);
             var orderedCalls = toolCallsMap.Values.ToList();
+            var stepToolResultMsgs = new List<JsonObject>();
             int cursor = 0;
 
             while (cursor < orderedCalls.Count && !cancellationToken.IsCancellationRequested)
@@ -462,12 +477,14 @@ internal static class AgentLoop
                     var batchResults = await Task.WhenAll(batchTasks);
                     foreach (var br in batchResults)
                     {
-                        messages.Add(new JsonObject
+                        var trMsg = new JsonObject
                         {
                             ["role"] = "tool",
                             ["tool_call_id"] = br.Id,
                             ["content"] = br.Output
-                        });
+                        };
+                        messages.Add(trMsg);
+                        stepToolResultMsgs.Add(trMsg);
                     }
                     continue;
                 }
@@ -595,7 +612,8 @@ internal static class AgentLoop
                                 turn,
                                 settings,
                                 settings.AgentAutoVerify,
-                                cancellationToken);
+                                cancellationToken,
+                                toolId);
                             toolResultOutput = execResult.output;
                             checkpointId = execResult.checkpointId;
                             modifiedFilePath = execResult.modifiedFilePath;
@@ -642,12 +660,19 @@ internal static class AgentLoop
                     removedLines = diffPreview?.Removed ?? 0
                 });
 
-                messages.Add(new JsonObject
+                var singleToolMsg = new JsonObject
                 {
                     ["role"] = "tool",
                     ["tool_call_id"] = toolId,
                     ["content"] = toolResultOutput
-                });
+                };
+                messages.Add(singleToolMsg);
+                stepToolResultMsgs.Add(singleToolMsg);
+            }
+
+            if (stepToolResultMsgs.Count > 0)
+            {
+                AgentSessionMemory.RecordToolExchange(workspacePath, assistantMsg, stepToolResultMsgs);
             }
 
             if (!runImages.IsEmpty)

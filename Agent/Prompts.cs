@@ -4,45 +4,63 @@ using VoidCode.Services;
 namespace VoidCode.Agent;
 
 /// <summary>
-/// The prompt text the agent sends, in one place. Three prompts exist - the turn's
-/// System prompt (user's own prompt plus workspace metadata, and the plan-mode rules when active), the
-/// Inline-assist transformation contract, and the Conventional Commit contract. Moving them here keeps
-/// The loop readable and makes a prompt change a reviewable diff on its own.
+/// VoidAgent Core's built-in engineering doctrine and runtime prompt contracts.
+/// Like OpenCode / Claude Code, VoidAgent Core's core operating prompt is always active
+/// and stable across turns (maximizing Anthropic/OpenAI/Gemini prompt-cache hit rates),
+/// while operator specialist profiles and custom rules layer cleanly on top.
 /// </summary>
 internal static class Prompts
 {
+    internal const string BuiltInCoreDoctrine =
+        "You are VoidAgent, the built-in autonomous software engineering agent of VoidCode IDE.\n\n" +
+        "OPERATING DISCIPLINE:\n" +
+        "1. Read before editing: Never guess file contents, symbol names, or line layouts. Batch parallel read-only calls (glob_files, search_code, search_codebase, read_file, get_lsp_diagnostics) in a single turn to map the problem fast.\n" +
+        "2. Plan multi-step work visibly: For tasks spanning 3+ steps or multiple files, call update_plan early with a concise checklist and keep step statuses (in_progress/done) current so the operator sees live progress.\n" +
+        "3. Surgical, complete edits: Use multi_patch_file for multiple changes in one file, patch_file for a single block, and write_file for new files. Deliver complete, production-ready code matching the repository's existing style — never leave TODO stubs or truncated placeholders.\n" +
+        "4. Isolate deep exploration: For broad unfamiliar subsystems, call delegate_research so exploratory reads stay out of the main conversation context.\n" +
+        "5. Verify before finishing: Inspect get_lsp_diagnostics after edits and run targeted build/test commands with run_command when allowed. Fix any regressions you introduce before reporting completion.\n" +
+        "6. Concise, high-signal communication: Cite exact relative file paths (`path/file.ext:line`) and concrete verification results. Skip filler, apologies, and generic disclaimers.";
+
     /// <summary>
-    /// The system prompt for one turn. The caller keeps appending the editor context and history to the
-    /// Returned builder, which is why this hands back a <see cref="StringBuilder"/> rather than a string.
+    /// Builds a cache-stable system prompt for one turn. Dynamic per-turn editor buffers and repo maps
+    /// are attached on the user turn rather than mutating this prefix, preserving provider prompt caches.
     /// </summary>
     internal static StringBuilder SystemPrompt(AppSettings settings, string workspacePath, bool isPlanMode)
     {
         var systemPrompt = new StringBuilder();
-        systemPrompt.Append(settings.SystemPrompt);
+        systemPrompt.Append(BuiltInCoreDoctrine);
+
+        var custom = (settings.SystemPrompt ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(custom) &&
+            !string.Equals(custom, AppSettings.DefaultSystemPrompt.Trim(), System.StringComparison.Ordinal))
+        {
+            systemPrompt.Append("\n\n=== OPERATOR SPECIALIST PROFILE & EXTRA RULES ===\n");
+            systemPrompt.Append(custom);
+        }
+
         systemPrompt.Append($"\n\nActive Workspace: {workspacePath}");
         var osLabel = OperatingSystem.IsMacOS() ? "macOS (zsh)"
             : OperatingSystem.IsLinux() ? "Linux (bash)"
             : "Windows (PowerShell)";
         systemPrompt.Append($"\nOS: {osLabel}");
-        systemPrompt.Append("\nAvailable Tools: read_file, view_image, write_file, patch_file, multi_patch_file, delete_file, move_file, list_dir, glob_files, search_code, search_codebase, run_command, git_status_diff, get_diagnostics, get_lsp_diagnostics, inspect_binary, web_fetch, save_memory, delete_memory, delegate_research");
+        systemPrompt.Append("\nAvailable Tools: read_file, view_image, write_file, patch_file, multi_patch_file, delete_file, move_file, list_dir, glob_files, search_code, search_codebase, run_command, git_status_diff, get_diagnostics, get_lsp_diagnostics, inspect_binary, web_fetch, save_memory, delete_memory, delegate_research, update_plan");
 
         if (isPlanMode)
         {
             systemPrompt.Append("\n\n=== PLAN MODE (READ-ONLY) ===");
-            systemPrompt.Append("\nYou are in PLAN MODE. Do NOT modify files, run commands, or use the network. Investigate only with read-only tools (read_file, view_image, list_dir, glob_files, search_code, search_codebase, git_status_diff, get_lsp_diagnostics, delegate_research).");
+            systemPrompt.Append("\nYou are in PLAN MODE. Do NOT modify files, run commands, or use the network. Investigate only with read-only tools (read_file, view_image, list_dir, glob_files, search_code, search_codebase, git_status_diff, get_lsp_diagnostics, delegate_research, update_plan).");
             systemPrompt.Append("\nProduce a concrete plan and then STOP: a one-line goal, an ordered numbered list of steps, the exact files each step touches, and the key risks. Do not start executing; the operator approves the plan first.");
         }
         else
         {
             systemPrompt.Append("\n\n=== VOIDCODE IDE RUNTIME CONTRACT ===");
-            systemPrompt.Append("\n- Parallel Exploration: You may emit multiple read-only tool calls (read_file, glob_files, search_code, search_codebase, list_dir, get_lsp_diagnostics) in the same turn — VoidCode executes them concurrently.");
-            systemPrompt.Append("\n- Surgical Multi-Hunk Editing: Prefer multi_patch_file when making 2+ changes in the same file, patch_file for single edits, and write_file for new files. Every edit is snapshotted atomically for hunk-level review and per-turn rewind.");
-            systemPrompt.Append("\n- Isolated Research: For broad unfamiliar subsystems, call delegate_research so exploratory reads stay out of the main context window.");
+            systemPrompt.Append("\n- Parallel Exploration: Emit multiple read-only tool calls in the same turn — VoidCode executes them concurrently.");
+            systemPrompt.Append("\n- Transactional Checkpoints: Every write_file, patch_file, multi_patch_file, move_file, or delete_file call is snapshotted atomically for hunk review and per-turn rewind.");
             if (settings.AgentAutoVerify)
             {
-                systemPrompt.Append("\n- Autonomous Verification: Prefer acting with tools over asking permission. Check live get_lsp_diagnostics (and run_command for tests/builds when allowed) to confirm a clean state before concluding.");
+                systemPrompt.Append("\n- Autonomous Verification: Prefer acting with tools over asking permission. Check live get_lsp_diagnostics (and run_command for tests/builds when allowed) before concluding.");
             }
-            systemPrompt.Append("\n- Persistent Memory Bank: When the operator states a durable preference, build command, or repo invariant worth remembering across sessions, call save_memory. Use delete_memory if an older memory becomes obsolete.");
+            systemPrompt.Append("\n- Persistent Memory Bank: Call save_memory for durable project build commands, repo invariants, or operator preferences; delete_memory when obsolete.");
         }
 
         var memoryBlock = AgentMemoryService.FormatForPrompt(workspacePath);

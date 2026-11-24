@@ -7,6 +7,64 @@ let hostSend = (action, data) => globalThis.VoidBridge.send(action, data);
 let latestSummary = null;
 /** @type {Set<string>} */
 const acceptedKeys = new Set();
+/** @type {Map<string, number[]>} */
+const addedLinesByFile = new Map();
+/** @type {string[]} */
+let activeDecorations = [];
+
+function extractAddedLineNumbers(diffText) {
+  const nums = [];
+  if (!diffText) return nums;
+  let curNewLine = 1;
+  for (const line of String(diffText).split('\n')) {
+    const hdr = /^@@\s+-\d+(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/.exec(line);
+    if (hdr) {
+      curNewLine = parseInt(hdr[1], 10) || 1;
+      continue;
+    }
+    if (line.startsWith('+ ') || (line.startsWith('+') && !line.startsWith('+++'))) {
+      nums.push(curNewLine);
+      curNewLine++;
+    } else if (line.startsWith('- ') || (line.startsWith('-') && !line.startsWith('---'))) {
+      // Removed line does not advance new line counter.
+    } else if (line.startsWith(' ')) {
+      curNewLine++;
+    }
+  }
+  return nums;
+}
+
+function clearMonacoAiDecorations() {
+  const editor = globalThis.getMonacoEditor?.();
+  if (editor && activeDecorations.length > 0) {
+    activeDecorations = editor.deltaDecorations(activeDecorations, []);
+  }
+}
+
+function applyMonacoAiDecorations(filePath) {
+  const editor = globalThis.getMonacoEditor?.();
+  const monaco = globalThis.monaco;
+  if (!editor || !monaco) return;
+  const lines = addedLinesByFile.get(normalizePathKey(filePath)) || [];
+  if (lines.length === 0) {
+    clearMonacoAiDecorations();
+    return;
+  }
+  const model = editor.getModel?.();
+  const maxLine = model?.getLineCount?.() || 99999;
+  const decos = lines
+    .filter((ln) => ln >= 1 && ln <= maxLine)
+    .slice(0, 120)
+    .map((ln) => ({
+      range: new monaco.Range(ln, 1, ln, 1),
+      options: {
+        isWholeLine: true,
+        className: 'voidcode-ai-added-line',
+        linesDecorationsClassName: 'voidcode-ai-added-gutter'
+      }
+    }));
+  activeDecorations = editor.deltaDecorations(activeDecorations, decos);
+}
 
 function normalizePathKey(p) {
   return String(p || '').replace(/\//g, '\\').toLowerCase();
@@ -84,6 +142,7 @@ export function refreshInlineDiffBar() {
   const pending = findActivePendingEntry();
   if (!pending) {
     bar.style.display = 'none';
+    clearMonacoAiDecorations();
     return;
   }
   const label = document.getElementById('inline-ai-review-label');
@@ -91,12 +150,15 @@ export function refreshInlineDiffBar() {
     label.textContent = `VoidAgent edited ${fileBasename(pending.file.path)}`;
   }
   bar.style.display = 'inline-flex';
+  applyMonacoAiDecorations(pending.file.path);
 }
 
 export function acceptActiveFileEdit() {
   const pending = findActivePendingEntry();
   if (!pending) return;
   acceptedKeys.add(pending.key);
+  addedLinesByFile.delete(normalizePathKey(pending.file.path));
+  clearMonacoAiDecorations();
   refreshInlineDiffBar();
   globalThis.showToast?.(`Accepted AI edits in ${fileBasename(pending.file.path)}`, 'info');
 }
@@ -104,11 +166,28 @@ export function acceptActiveFileEdit() {
 export function revertActiveFileEdit() {
   const pending = findActivePendingEntry();
   if (!pending) return;
+  addedLinesByFile.delete(normalizePathKey(pending.file.path));
+  clearMonacoAiDecorations();
   hostSend('revert_turn_file', { turnId: pending.turnId, path: pending.file.path });
 }
 
 export function init(ctx = {}) {
   if (typeof ctx.sendHost === 'function') hostSend = ctx.sendHost;
+
+  if (window.VoidBridge && typeof window.VoidBridge.subscribe === 'function') {
+    window.VoidBridge.subscribe((action, payload) => {
+      if (action === 'agent_tool_finish' && payload?.diffPreview && payload?.modifiedFilePath) {
+        const added = extractAddedLineNumbers(payload.diffPreview);
+        if (added.length > 0) {
+          addedLinesByFile.set(normalizePathKey(payload.modifiedFilePath), added);
+          const tab = window.VoidState?.get?.('activeTab');
+          if (tab?.path && normalizePathKey(tab.path) === normalizePathKey(payload.modifiedFilePath)) {
+            applyMonacoAiDecorations(payload.modifiedFilePath);
+          }
+        }
+      }
+    });
+  }
 
   window.addEventListener('voidcode:turn-review', (e) => {
     const detail = /** @type {CustomEvent} */ (e).detail;

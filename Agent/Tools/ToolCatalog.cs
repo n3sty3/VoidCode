@@ -20,7 +20,7 @@ internal static class ToolCatalog
     internal static readonly HashSet<string> PlanModeTools = new(StringComparer.OrdinalIgnoreCase)
     {
         "read_file", "view_image", "list_dir", "glob_files", "search_code", "search_codebase",
-        "git_status_diff", "get_lsp_diagnostics", "delegate_research"
+        "git_status_diff", "get_lsp_diagnostics", "delegate_research", "update_plan"
     };
 
 
@@ -414,6 +414,38 @@ internal static class ToolCatalog
                             ["question"] = new JsonObject { ["type"] = "string", ["description"] = "Specific research question about the codebase architecture, call sites, or symbols." }
                         },
                         ["required"] = new JsonArray { "question" }
+                    }
+                }
+            },
+            new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = "update_plan",
+                    ["description"] = "Publish or update a live visible checklist of steps (3-8 items) for the operator in VoidCode's Agent pane.",
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["steps"] = new JsonObject
+                            {
+                                ["type"] = "array",
+                                ["description"] = "Ordered list of steps with title and status ('pending', 'in_progress', 'done').",
+                                ["items"] = new JsonObject
+                                {
+                                    ["type"] = "object",
+                                    ["properties"] = new JsonObject
+                                    {
+                                        ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Short step title (2-8 words)." },
+                                        ["status"] = new JsonObject { ["type"] = "string", ["description"] = "One of: pending, in_progress, done." }
+                                    },
+                                    ["required"] = new JsonArray { "title", "status" }
+                                }
+                            }
+                        },
+                        ["required"] = new JsonArray { "steps" }
                     }
                 }
             }
