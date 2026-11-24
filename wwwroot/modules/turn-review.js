@@ -283,6 +283,7 @@ export function renderTurnReviewCard(turnEdits, turnSummary = null) {
     card.dataset.turnId = summary.turnId;
     turnCardMap.set(summary.turnId, card);
   }
+  window.dispatchEvent(new CustomEvent('voidcode:turn-review', { detail: activeTurnSummary }));
 
   const head = document.createElement('div');
   head.className = 'turn-review-head';
@@ -433,6 +434,7 @@ function handleTurnFileReverted(payload) {
   if (activeTurnSummary && activeTurnSummary.turnId === payload.turnId) {
     const f = activeTurnSummary.files?.find(x => normalizePathKey(x.path) === normalizePathKey(payload.path));
     if (f) f.reverted = true;
+    window.dispatchEvent(new CustomEvent('voidcode:turn-review', { detail: activeTurnSummary }));
   }
   if (activeReviewDiff && activeReviewDiff.turnId === payload.turnId && normalizePathKey(activeReviewDiff.path) === normalizePathKey(payload.path)) {
     renderReviewToolbarAndHunks({ ...activeReviewDiff, afterContent: payload.content || '', hunks: [] });
@@ -450,6 +452,10 @@ function handleTurnReverted(payload) {
     markFileStatusInCard(payload.turnId, f.path, 'Reverted');
     syncOpenEditorTab(f.path, !!f.exists, f.content);
   });
+  if (activeTurnSummary && activeTurnSummary.turnId === payload.turnId && Array.isArray(activeTurnSummary.files)) {
+    activeTurnSummary.files.forEach(f => { f.reverted = true; });
+    window.dispatchEvent(new CustomEvent('voidcode:turn-review', { detail: activeTurnSummary }));
+  }
   const card = turnCardMap.get(payload.turnId);
   if (card) {
     const btn = /** @type {HTMLButtonElement | null} */ (card.querySelector('[data-act="undo-turn"]'));

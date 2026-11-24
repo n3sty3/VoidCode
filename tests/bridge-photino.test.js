@@ -39,4 +39,12 @@ assert.equal(received.length, 1);
 assert.equal(received[0].action, 'toast');
 assert.equal(received[0].payload.message, 'hello mac');
 
-console.log('PASS: Photino/macOS bridge transport handshakes, queues, and dispatches cleanly');
+// Typed envelope responses (`{ id, ok, data }`) resolve pending VoidBridge.request() automatically.
+const pendingEnv = VoidBridge.request('ai_inline_complete', { prefix: 'const x = ' }, 500);
+const sentEnv = JSON.parse(sent[sent.length - 1]);
+receiveCallback(JSON.stringify({ action: 'ai_inline_complete_response', payload: { id: sentEnv.id, ok: true, data: { completion: '42;' } } }));
+const resolvedEnv = await pendingEnv;
+assert.equal(resolvedEnv.ok, true);
+assert.equal(resolvedEnv.data.completion, '42;');
+
+console.log('PASS: Photino/macOS bridge transport handshakes, queues, dispatches, and resolves envelopes cleanly');

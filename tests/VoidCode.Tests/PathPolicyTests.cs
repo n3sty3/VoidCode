@@ -237,8 +237,9 @@ public class PathPolicyTests
                 return;
             }
 
+            Assert.True(PathPolicy.TryResolveInsideWorkspace(root, target, out var realTarget));
             Assert.True(PathPolicy.TryResolveInsideWorkspace(root, Path.Combine(target, "a.cs"), out var plain));
-            Assert.Equal(Path.Combine(target, "a.cs"), plain, ignoreCase: true);
+            Assert.Equal(Path.Combine(realTarget, "a.cs"), plain, ignoreCase: true);
         }
         finally { Cleanup(link, root); }
     }

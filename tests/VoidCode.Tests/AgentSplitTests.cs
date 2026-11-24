@@ -77,8 +77,9 @@ public class AgentSplitTests
     {
         var root = Path.Combine(Path.GetTempPath(), "voidcode-agent-root");
 
+        var absPath = OperatingSystem.IsWindows() ? @"C:\Windows\win.ini" : "/etc/hosts";
         Assert.Equal(Path.Combine(root, "src", "Program.cs"), ToolExecutor.ResolvePath(root, Path.Combine("src", "Program.cs")));
-        Assert.Equal(@"C:\Windows\win.ini", ToolExecutor.ResolvePath(root, @"C:\Windows\win.ini"));
+        Assert.Equal(absPath, ToolExecutor.ResolvePath(root, absPath));
         Assert.Equal(root, ToolExecutor.ResolvePath(root, "  "));
     }
 

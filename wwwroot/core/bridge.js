@@ -102,6 +102,11 @@ export function installBridge(global = globalThis) {
     if (!message || typeof message.action !== 'string') return;
     // The handshake is consumed here and never dispatched to the app.
     if (message.action === 'bridge_handshake') { adoptNonce(message.payload); return; }
+    // Typed envelope routes (`{ id, ok, data|error }`) resolve pending VoidBridge.request() promises directly.
+    if (message.payload && typeof message.payload.id === 'string' && pending.has(message.payload.id)) {
+      resolve(message.payload.id, message.payload);
+      return;
+    }
     if (subscribers.size === 0) {
       earlyMessages.push([message.action, message.payload]);
       return;

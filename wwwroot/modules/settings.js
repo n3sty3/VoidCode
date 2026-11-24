@@ -64,9 +64,11 @@ export function applySettingsToUI(s, settingScopes = null) {
     ? 'Stored securely. Enter a new key to replace it'
     : 'Enter an API key (not required for local providers)';
   if (apiKeyHelp) {
+    const isMac = /mac/i.test(navigator.platform || navigator.userAgent || '');
+    const storeLabel = isMac ? 'macOS Keychain' : 'this Windows account (DPAPI)';
     apiKeyHelp.textContent = s.ApiKeyConfigured
-      ? 'A key is encrypted for this Windows account. Leave this field empty to keep it.'
-      : 'Keys are encrypted for your Windows account and stored separately from settings.json.';
+      ? `A key is encrypted in ${storeLabel}. Leave this field empty to keep it.`
+      : `Keys are encrypted in ${storeLabel} and stored separately from settings.json.`;
   }
   if (clearApiKeyButton) clearApiKeyButton.style.display = s.ApiKeyConfigured ? 'inline-flex' : 'none';
   // The flag lives in this module now (the modal's clear-key button owns it - )
@@ -135,6 +137,9 @@ export function gatherSettingsFromModal() {
     EditorMinimap: control('settings-minimap').checked,
     EditorWordWrap: control('settings-word-wrap').checked,
     FormatOnSave: control('settings-format-on-save') ? control('settings-format-on-save').checked : false,
+    AutocompleteEnabled: control('settings-autocomplete-enabled') ? control('settings-autocomplete-enabled').checked : (settings.AutocompleteEnabled !== false),
+    AutocompleteBaseUrl: control('settings-autocomplete-url') ? control('settings-autocomplete-url').value.trim() : (settings.AutocompleteBaseUrl || ''),
+    AutocompleteModel: control('settings-autocomplete-model') ? control('settings-autocomplete-model').value.trim() : (settings.AutocompleteModel || ''),
     Theme: settings.Theme || 'harbor',
     GlassBlur: settings.GlassBlur ?? 22,
     FieldOpacity: settings.FieldOpacity ?? 55,

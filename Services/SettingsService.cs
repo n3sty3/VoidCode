@@ -48,6 +48,9 @@ public class AppSettings
     public bool EditorWordWrap { get; set; } = false;
     public bool EditorMinimap { get; set; } = true;
     public bool FormatOnSave { get; set; } = false;
+    public bool AutocompleteEnabled { get; set; } = true;
+    public string AutocompleteModel { get; set; } = "";
+    public string AutocompleteBaseUrl { get; set; } = "";
     public string Theme { get; set; } = "harbor";
     public int GlassBlur { get; set; } = 28;
     public int FieldOpacity { get; set; } = 75;

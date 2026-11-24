@@ -160,7 +160,25 @@ internal sealed class AnthropicProvider : IChatProvider
 
         if (systemParts.Count > 0)
         {
-            body["system"] = string.Join("\n\n", systemParts);
+            var joinedSystem = string.Join("\n\n", systemParts);
+            // Enable Anthropic prompt caching automatically on real agent prompts (>= 2048 chars / ~500+ tok)
+            // while keeping short single-line prompts as plain strings for compatibility.
+            if (joinedSystem.Length >= 2048)
+            {
+                body["system"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "text",
+                        ["text"] = joinedSystem,
+                        ["cache_control"] = new JsonObject { ["type"] = "ephemeral" }
+                    }
+                };
+            }
+            else
+            {
+                body["system"] = joinedSystem;
+            }
         }
 
         if (request.Tools != null && request.Tools.Count > 0)
@@ -186,6 +204,10 @@ internal sealed class AnthropicProvider : IChatProvider
             }
             if (anthropicTools.Count > 0)
             {
+                if (anthropicTools[^1] is JsonObject lastTool)
+                {
+                    lastTool["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
+                }
                 body["tools"] = anthropicTools;
             }
         }
@@ -273,6 +295,8 @@ internal sealed class AnthropicProvider : IChatProvider
             int nextToolIndex = 0;
             int inputTokens = 0;
             int outputTokens = 0;
+            int cachedReadTokens = 0;
+            int cacheCreationTokens = 0;
             bool usageSeen = false;
 
             string? line;
@@ -316,6 +340,8 @@ internal sealed class AnthropicProvider : IChatProvider
                         {
                             inputTokens = usage["input_tokens"]?.GetValue<int>() ?? inputTokens;
                             outputTokens = usage["output_tokens"]?.GetValue<int>() ?? outputTokens;
+                            cachedReadTokens = usage["cache_read_input_tokens"]?.GetValue<int>() ?? cachedReadTokens;
+                            cacheCreationTokens = usage["cache_creation_input_tokens"]?.GetValue<int>() ?? cacheCreationTokens;
                             usageSeen = true;
                         }
                         break;
@@ -381,9 +407,9 @@ internal sealed class AnthropicProvider : IChatProvider
                 }
             }
 
-            if (usageSeen && (inputTokens > 0 || outputTokens > 0))
+            if (usageSeen && (inputTokens > 0 || outputTokens > 0 || cachedReadTokens > 0))
             {
-                yield return new ChatUsageEvent(inputTokens, outputTokens);
+                yield return new ChatUsageEvent(inputTokens, outputTokens, cachedReadTokens, cacheCreationTokens);
             }
         }
     }

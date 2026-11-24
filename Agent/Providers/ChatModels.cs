@@ -35,7 +35,11 @@ internal sealed record ChatToolCallDelta(
     string? Name,
     string? ArgumentsDelta,
     string? ExtraContentJson = null) : ChatEvent;
-internal sealed record ChatUsageEvent(int PromptTokens, int CompletionTokens) : ChatEvent;
+internal sealed record ChatUsageEvent(
+    int PromptTokens,
+    int CompletionTokens,
+    int CachedInputTokens = 0,
+    int CacheCreationTokens = 0) : ChatEvent;
 internal sealed record ChatStatusEvent(string Status) : ChatEvent;
 internal sealed record ChatErrorEvent(string Message, int? StatusCode = null) : ChatEvent;
 

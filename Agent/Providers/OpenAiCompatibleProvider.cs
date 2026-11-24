@@ -285,9 +285,12 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
                 {
                     var pt = usageNode["prompt_tokens"]?.GetValue<int>() ?? 0;
                     var ct = usageNode["completion_tokens"]?.GetValue<int>() ?? 0;
+                    var cached = usageNode["prompt_tokens_details"]?["cached_tokens"]?.GetValue<int>()
+                        ?? usageNode["prompt_cache_hit_tokens"]?.GetValue<int>()
+                        ?? 0;
                     if (pt > 0 || ct > 0)
                     {
-                        yield return new ChatUsageEvent(pt, ct);
+                        yield return new ChatUsageEvent(pt, ct, cached);
                     }
                 }
 

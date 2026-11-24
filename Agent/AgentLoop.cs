@@ -154,7 +154,7 @@ internal static class AgentLoop
         var runImages = new List<(string path, string dataUri, string mime)>();
         bool taintedByUntrustedWeb = false;
         var runStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int promptTokens = 0, completionTokens = 0, assistantChars = 0, toolCallsExecuted = 0;
+        int promptTokens = 0, completionTokens = 0, cachedInputTokens = 0, cacheCreationTokens = 0, assistantChars = 0, toolCallsExecuted = 0;
         bool usageReported = false;
 
         Task<string> SummarizeForCompactionAsync(string transcript, CancellationToken ct)
@@ -259,6 +259,8 @@ internal static class AgentLoop
                     case ChatUsageEvent usageEvt:
                         promptTokens += usageEvt.PromptTokens;
                         completionTokens += usageEvt.CompletionTokens;
+                        cachedInputTokens += usageEvt.CachedInputTokens;
+                        cacheCreationTokens += usageEvt.CacheCreationTokens;
                         usageReported = true;
                         break;
 
@@ -354,6 +356,7 @@ internal static class AgentLoop
                     break;
                 }
                 var completion = usageReported ? completionTokens : Math.Max(completionTokens, assistantChars / 4);
+                var cost = CostEstimator.Estimate(settings.Provider, settings.BaseUrl, settings.Model, promptTokens, completion, cachedInputTokens, cacheCreationTokens);
                 emitEvent("agent_done", new
                 {
                     finalMessage = finalText,
@@ -361,8 +364,14 @@ internal static class AgentLoop
                     toolCalls = toolCallsExecuted,
                     promptTokens,
                     completionTokens = completion,
+                    cachedTokens = cachedInputTokens,
                     totalTokens = promptTokens + completion,
                     estimated = !usageReported,
+                    estimatedCostUsd = cost.EstimatedCostUsd,
+                    cacheSavingsUsd = cost.CacheSavingsUsd,
+                    costLabel = cost.FormattedCost,
+                    savingsLabel = cost.FormattedSavings,
+                    isLocalModel = cost.IsLocal,
                     elapsedMs = runStopwatch.ElapsedMilliseconds,
                     turnId = turn.TurnId,
                     turnSummary = turn.ToSummaryPayload()
@@ -506,6 +515,7 @@ internal static class AgentLoop
         if (currentTurn >= maxTurns)
         {
             var completion = usageReported ? completionTokens : Math.Max(completionTokens, assistantChars / 4);
+            var cost = CostEstimator.Estimate(settings.Provider, settings.BaseUrl, settings.Model, promptTokens, completion, cachedInputTokens, cacheCreationTokens);
             emitEvent("agent_done", new
             {
                 finalMessage = unlimitedTurns
@@ -515,8 +525,14 @@ internal static class AgentLoop
                 toolCalls = toolCallsExecuted,
                 promptTokens,
                 completionTokens = completion,
+                cachedTokens = cachedInputTokens,
                 totalTokens = promptTokens + completion,
                 estimated = !usageReported,
+                estimatedCostUsd = cost.EstimatedCostUsd,
+                cacheSavingsUsd = cost.CacheSavingsUsd,
+                costLabel = cost.FormattedCost,
+                savingsLabel = cost.FormattedSavings,
+                isLocalModel = cost.IsLocal,
                 elapsedMs = runStopwatch.ElapsedMilliseconds,
                 turnId = turn.TurnId,
                 turnSummary = turn.ToSummaryPayload()

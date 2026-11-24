@@ -179,8 +179,22 @@ export function renderRunFooter(p) {
   if (p.steps) parts.push(`${p.steps} step${p.steps === 1 ? '' : 's'}`);
   if (p.toolCalls) parts.push(`${p.toolCalls} tool call${p.toolCalls === 1 ? '' : 's'}`);
   if (typeof p.totalTokens === 'number') parts.push(`${approx}${fmt(p.totalTokens)} tok`);
+  if (p.cachedTokens > 0) parts.push(`⚡ ${fmt(p.cachedTokens)} cached`);
+  if (p.costLabel) {
+    const saved = p.savingsLabel ? ` (saved ${p.savingsLabel})` : '';
+    parts.push(`${p.costLabel}${saved}`);
+  }
   if (p.elapsedMs) parts.push(`${(p.elapsedMs / 1000).toFixed(1)}s`);
   if (!parts.length) return;
+
+  if (typeof p.totalTokens === 'number' && globalThis.updateAgentTokenPill) {
+    globalThis.updateAgentTokenPill({
+      totalTokens: p.totalTokens,
+      costLabel: p.costLabel || '',
+      savingsLabel: p.savingsLabel || '',
+      cachedTokens: p.cachedTokens || 0
+    });
+  }
 
   const el = document.createElement('div');
   el.className = 'agent-run-footer';

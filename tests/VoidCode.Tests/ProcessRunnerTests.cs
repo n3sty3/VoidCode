@@ -107,8 +107,12 @@ public class ProcessRunnerTests : IDisposable
     {
         var runner = new SystemProcessRunner();
 
-        var echo = await runner.RunAsync("cmd.exe", "/c echo seam-check");
-        var failure = await runner.RunAsync("cmd.exe", new[] { "/c", "exit", "3" });
+        var echo = OperatingSystem.IsWindows()
+            ? await runner.RunAsync("cmd.exe", "/c echo seam-check")
+            : await runner.RunAsync("/bin/sh", "-c \"echo seam-check\"");
+        var failure = OperatingSystem.IsWindows()
+            ? await runner.RunAsync("cmd.exe", new[] { "/c", "exit", "3" })
+            : await runner.RunAsync("/bin/sh", new[] { "-c", "exit 3" });
 
         Assert.Equal(0, echo.ExitCode);
         Assert.Contains("seam-check", echo.Stdout);

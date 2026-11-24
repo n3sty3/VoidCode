@@ -41,6 +41,16 @@ public static class PathPolicy
         var realRoot = ResolveFinalTarget(root);
 
         var path = candidatePath!;
+        // Validate unsafe path shapes (UNC, device prefixes, ADS, trailing dots/spaces) BEFORE
+        // combining with root — otherwise on POSIX `Path.Combine(root, "\\\\server\\share")` hides the prefix.
+        if (HasUnsafeShape(path)) return false;
+        if (!OperatingSystem.IsWindows())
+        {
+            // Reject Windows drive-qualified paths ("C:\...") on POSIX and treat backslashes as separators
+            // so Windows-style traversal ("..\outside.txt") can never slip past containment on macOS/Linux.
+            if (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':') return false;
+            path = path.Replace('\\', '/');
+        }
         if (!Path.IsPathRooted(path)) path = Path.Combine(root, path);
         if (!TryCanonicalize(path, out var candidate)) return false;
 

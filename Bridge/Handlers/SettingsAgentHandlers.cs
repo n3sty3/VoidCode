@@ -38,6 +38,7 @@ public sealed class SettingsAgentHandlers
     private readonly Action<AppSettings> _persist;
     private CancellationTokenSource? _agentCts;
     private CancellationTokenSource? _inlineAssistCts;
+    private CancellationTokenSource? _autocompleteCts;
 
     public SettingsAgentHandlers(
         Func<string?> workspace,
@@ -62,6 +63,7 @@ public sealed class SettingsAgentHandlers
     {
         _agentCts?.Cancel();
         _inlineAssistCts?.Cancel();
+        _autocompleteCts?.Cancel();
     }
 
     /// <summary>An action that carries nothing the host needs.</summary>
@@ -188,6 +190,8 @@ public sealed class SettingsAgentHandlers
         router.Register<NoPayload, object?>(SettingsAgentRoutes.GetCapabilities, GetCapabilitiesAsync, envelope: false);
         router.Register<InstallLspServerRequest, object?>(SettingsAgentRoutes.InstallLspServer, InstallLspServerAsync, envelope: false);
         router.Register<CheckForUpdatesRequest, object?>(SettingsAgentRoutes.CheckForUpdates, CheckForUpdatesAsync, envelope: false);
+        router.Register<InlineCompleteRequest, InlineCompleteResponse>(SettingsAgentRoutes.AiInlineComplete, AiInlineCompleteAsync, envelope: true);
+        router.Register<NoPayload, LocalDiscoveryReport>(SettingsAgentRoutes.DiscoverLocalModels, DiscoverLocalModelsAsync, envelope: true);
     }
 
     private Task<object?> TestConnectionAsync(ProviderProbeRequest request, BridgeContext context)
@@ -533,6 +537,20 @@ public sealed class SettingsAgentHandlers
         return Task.FromResult<object?>(null);
     }
 
+    private async Task<InlineCompleteResponse> AiInlineCompleteAsync(InlineCompleteRequest request, BridgeContext context)
+    {
+        _autocompleteCts?.Cancel();
+        _autocompleteCts?.Dispose();
+        _autocompleteCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var ct = _autocompleteCts.Token;
+        return await AutocompleteService.CompleteAsync(request, _settings(), ct);
+    }
+
+    private Task<LocalDiscoveryReport> DiscoverLocalModelsAsync(NoPayload request, BridgeContext context)
+    {
+        return LocalModelDiscoveryService.DiscoverAsync();
+    }
+
     private void RefreshWorkspaceTreeIfPresent()
     {
         var workspace = _workspace();
@@ -569,4 +587,6 @@ public static class SettingsAgentRoutes
     public const string GetCapabilities = "get_capabilities";
     public const string InstallLspServer = "install_lsp_server";
     public const string CheckForUpdates = "check_for_updates";
+    public const string AiInlineComplete = "ai_inline_complete";
+    public const string DiscoverLocalModels = "discover_local_models";
 }

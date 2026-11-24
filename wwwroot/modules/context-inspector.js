@@ -50,7 +50,11 @@ export function updateAgentTokenPill(info) {
   if (!pill) return;
   if (info && typeof info.totalTokens === 'number' && info.totalTokens > 0) {
     const pct = typeof info.percentUsed === 'number' && info.percentUsed > 0 ? ` \u00b7 ${Math.round(info.percentUsed)}%` : '';
-    pill.textContent = `${fmtTokens(info.totalTokens)} tok${pct}`;
+    const cost = info.costLabel ? ` \u00b7 ${info.costLabel}` : '';
+    pill.textContent = `${fmtTokens(info.totalTokens)} tok${pct}${cost}`;
+    if (info.cachedTokens > 0 || info.savingsLabel) {
+      pill.title = `Prompt cache: ${fmtTokens(info.cachedTokens || 0)} cached tokens${info.savingsLabel ? ` (saved ${info.savingsLabel})` : ''}`;
+    }
     pill.style.display = 'inline-flex';
     return;
   }
