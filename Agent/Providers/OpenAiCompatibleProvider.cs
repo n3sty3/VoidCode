@@ -90,15 +90,25 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
 
         JsonObject BuildBody(bool withTools, bool withStreamUsage)
         {
-            var messagesArray = new JsonArray();
-            foreach (var m in request.Messages)
-            {
-                messagesArray.Add(JsonNode.Parse(m.ToJsonString()));
-            }
-
             var isReasoning = IsOpenAiReasoningModel(modelId);
             var isDirectOpenAi = string.Equals(request.Provider, "openai", StringComparison.OrdinalIgnoreCase)
                 || baseUrl.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase);
+
+            var messagesArray = new JsonArray();
+            foreach (var m in request.Messages)
+            {
+                var copy = JsonNode.Parse(m.ToJsonString())?.AsObject();
+                if (copy == null) continue;
+                // Strip internal Anthropic-only signed thinking metadata before sending to OpenAI-compatible gateways.
+                copy.Remove("_thinking_blocks");
+                // Direct api.openai.com does not accept reasoning_content on chat/completions assistant messages,
+                // whereas DeepSeek / Kimi / GLM / MiniMax / Qwen3 / OpenRouter rely on it across multi-step tool calls.
+                if (isDirectOpenAi)
+                {
+                    copy.Remove("reasoning_content");
+                }
+                messagesArray.Add(copy);
+            }
 
             var body = new JsonObject
             {
@@ -119,7 +129,7 @@ internal sealed class OpenAiCompatibleProvider : IChatProvider
                 }
             }
             var effort = (request.ReasoningEffort ?? "medium").Trim().ToLowerInvariant();
-            if (effort is "low" or "high" && isReasoning)
+            if (effort is "low" or "medium" or "high" && isReasoning)
             {
                 body["reasoning_effort"] = effort;
             }

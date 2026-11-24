@@ -43,6 +43,25 @@ internal sealed class AnthropicProvider : IChatProvider
         return AgentHttp.CombineUrl(raw, endpoint);
     }
 
+    internal static bool SupportsExtendedThinking(string? model)
+    {
+        var m = (model ?? "").Trim().ToLowerInvariant();
+        if (!m.Contains("claude", StringComparison.Ordinal)) return false;
+        // Legacy Claude 2 / Claude 3.0 / Claude 3.5 models do not support extended thinking.
+        if (m.Contains("claude-2", StringComparison.Ordinal)
+            || m.Contains("claude-instant", StringComparison.Ordinal)
+            || m.Contains("claude-3-opus", StringComparison.Ordinal)
+            || m.Contains("claude-3-sonnet", StringComparison.Ordinal)
+            || m.Contains("claude-3-haiku", StringComparison.Ordinal)
+            || m.Contains("claude-3-5", StringComparison.Ordinal)
+            || m.Contains("claude-3.5", StringComparison.Ordinal))
+        {
+            return false;
+        }
+        // Claude 3.7+, Claude 4/4.5/4.6+, Claude 5+ (Sonnet, Opus, Haiku) all support extended thinking.
+        return true;
+    }
+
     internal static JsonObject BuildMessagesPayload(ChatRequest request)
     {
         var systemParts = new List<string>();
@@ -94,7 +113,47 @@ internal sealed class AnthropicProvider : IChatProvider
 
             if (string.Equals(role, "assistant", StringComparison.OrdinalIgnoreCase))
             {
-                var blocks = ConvertContentToBlocks(msg["content"]);
+                var blocks = new JsonArray();
+                // Replay signed thinking / redacted_thinking blocks FIRST — required by Anthropic API
+                // when continuing a multi-step tool_use / tool_result turn with extended thinking enabled.
+                if (msg["_thinking_blocks"] is JsonArray thinkingBlocks)
+                {
+                    foreach (var tb in thinkingBlocks)
+                    {
+                        if (tb == null) continue;
+                        var tbType = tb["type"]?.GetValue<string>() ?? "";
+                        if (tbType == "thinking")
+                        {
+                            var thinkingText = tb["thinking"]?.GetValue<string>() ?? "";
+                            var sig = tb["signature"]?.GetValue<string>() ?? "";
+                            if (!string.IsNullOrEmpty(sig))
+                            {
+                                blocks.Add(new JsonObject
+                                {
+                                    ["type"] = "thinking",
+                                    ["thinking"] = thinkingText,
+                                    ["signature"] = sig
+                                });
+                            }
+                        }
+                        else if (tbType == "redacted_thinking")
+                        {
+                            var data = tb["data"]?.GetValue<string>() ?? "";
+                            if (!string.IsNullOrEmpty(data))
+                            {
+                                blocks.Add(new JsonObject
+                                {
+                                    ["type"] = "redacted_thinking",
+                                    ["data"] = data
+                                });
+                            }
+                        }
+                    }
+                }
+                foreach (var cb in ConvertContentToBlocks(msg["content"]))
+                {
+                    if (cb != null) blocks.Add(JsonNode.Parse(cb.ToJsonString()));
+                }
                 if (msg["tool_calls"] is JsonArray toolCalls)
                 {
                     foreach (var tc in toolCalls)
@@ -160,21 +219,18 @@ internal sealed class AnthropicProvider : IChatProvider
         };
 
         var effort = (request.ReasoningEffort ?? "medium").Trim().ToLowerInvariant();
-        var modelLower = (request.Model ?? "").Trim().ToLowerInvariant();
-        bool supportsExtendedThinking = modelLower.Contains("claude-3-7", StringComparison.Ordinal)
-            || modelLower.Contains("claude-sonnet-4", StringComparison.Ordinal)
-            || modelLower.Contains("claude-opus-4", StringComparison.Ordinal)
-            || modelLower.Contains("claude-4", StringComparison.Ordinal);
-        if (effort == "high" && supportsExtendedThinking && maxTokens >= 2048)
+        if (effort is "medium" or "high" && SupportsExtendedThinking(request.Model) && maxTokens >= 2048)
         {
-            var budget = Math.Clamp(maxTokens / 2, 1024, 16000);
-            if (budget >= maxTokens) budget = maxTokens - 512;
-            if (budget >= 1024)
+            var desiredBudget = effort == "high"
+                ? Math.Clamp((maxTokens * 2) / 3, 2048, 16000)
+                : Math.Clamp(maxTokens / 3, 1024, 6000);
+            if (desiredBudget >= maxTokens) desiredBudget = maxTokens - 512;
+            if (desiredBudget >= 1024)
             {
                 body["thinking"] = new JsonObject
                 {
                     ["type"] = "enabled",
-                    ["budget_tokens"] = budget
+                    ["budget_tokens"] = desiredBudget
                 };
                 // Anthropic requires temperature = 1 when extended thinking is enabled.
                 body["temperature"] = 1;
@@ -315,6 +371,8 @@ internal sealed class AnthropicProvider : IChatProvider
 
             // Maps Anthropic content_block index -> dense tool call index for ChatToolCallDelta.
             var blockToToolIndex = new Dictionary<int, int>();
+            // Tracks active thinking blocks so their full text + signature can be replayed on tool turns.
+            var activeThinkingBlocks = new Dictionary<int, (StringBuilder Thinking, StringBuilder Signature)>();
             int nextToolIndex = 0;
             int inputTokens = 0;
             int outputTokens = 0;
@@ -387,6 +445,25 @@ internal sealed class AnthropicProvider : IChatProvider
                             var initialText = block?["text"]?.GetValue<string>();
                             if (!string.IsNullOrEmpty(initialText)) yield return new ChatContentDelta(initialText);
                         }
+                        else if (blockType == "thinking")
+                        {
+                            var tb = (new StringBuilder(), new StringBuilder());
+                            var initialThinking = block?["thinking"]?.GetValue<string>();
+                            if (!string.IsNullOrEmpty(initialThinking))
+                            {
+                                tb.Item1.Append(initialThinking);
+                                yield return new ChatReasoningDelta(initialThinking);
+                            }
+                            var initialSig = block?["signature"]?.GetValue<string>();
+                            if (!string.IsNullOrEmpty(initialSig)) tb.Item2.Append(initialSig);
+                            activeThinkingBlocks[blockIdx] = tb;
+                        }
+                        else if (blockType == "redacted_thinking")
+                        {
+                            var data = block?["data"]?.GetValue<string>();
+                            if (!string.IsNullOrEmpty(data))
+                                yield return new ChatThinkingBlockEvent("redacted_thinking", Data: data);
+                        }
                         break;
                     }
                     case "content_block_delta":
@@ -402,12 +479,37 @@ internal sealed class AnthropicProvider : IChatProvider
                         else if (deltaType == "thinking_delta")
                         {
                             var thinking = delta?["thinking"]?.GetValue<string>();
-                            if (!string.IsNullOrEmpty(thinking)) yield return new ChatReasoningDelta(thinking);
+                            if (!string.IsNullOrEmpty(thinking))
+                            {
+                                if (activeThinkingBlocks.TryGetValue(blockIdx, out var tb))
+                                    tb.Thinking.Append(thinking);
+                                yield return new ChatReasoningDelta(thinking);
+                            }
+                        }
+                        else if (deltaType == "signature_delta")
+                        {
+                            var sig = delta?["signature"]?.GetValue<string>();
+                            if (!string.IsNullOrEmpty(sig) && activeThinkingBlocks.TryGetValue(blockIdx, out var tb))
+                            {
+                                tb.Signature.Append(sig);
+                            }
                         }
                         else if (deltaType == "input_json_delta" && blockToToolIndex.TryGetValue(blockIdx, out var toolIdx))
                         {
                             var partial = delta?["partial_json"]?.GetValue<string>();
                             if (!string.IsNullOrEmpty(partial)) yield return new ChatToolCallDelta(toolIdx, null, null, partial);
+                        }
+                        break;
+                    }
+                    case "content_block_stop":
+                    {
+                        var blockIdx = node?["index"]?.GetValue<int>() ?? 0;
+                        if (activeThinkingBlocks.Remove(blockIdx, out var finishedTb) && finishedTb.Signature.Length > 0)
+                        {
+                            yield return new ChatThinkingBlockEvent(
+                                "thinking",
+                                Thinking: finishedTb.Thinking.ToString(),
+                                Signature: finishedTb.Signature.ToString());
                         }
                         break;
                     }
@@ -541,7 +643,14 @@ internal sealed class AnthropicProvider : IChatProvider
                     else if (type == "thinking")
                     {
                         var thinking = block?["thinking"]?.GetValue<string>();
+                        var sig = block?["signature"]?.GetValue<string>();
                         if (!string.IsNullOrEmpty(thinking)) events.Add(new ChatReasoningDelta(thinking));
+                        if (!string.IsNullOrEmpty(sig)) events.Add(new ChatThinkingBlockEvent("thinking", Thinking: thinking ?? "", Signature: sig));
+                    }
+                    else if (type == "redacted_thinking")
+                    {
+                        var data = block?["data"]?.GetValue<string>();
+                        if (!string.IsNullOrEmpty(data)) events.Add(new ChatThinkingBlockEvent("redacted_thinking", Data: data));
                     }
                     else if (type == "tool_use")
                     {

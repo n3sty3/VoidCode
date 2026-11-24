@@ -97,6 +97,11 @@ public sealed class V110Handlers
         public required string Message { get; init; }
     }
 
+    public sealed class AgentClearTraceRequest
+    {
+        public string? SessionId { get; init; }
+    }
+
     public sealed class SimpleOkResult
     {
         [System.Text.Json.Serialization.JsonPropertyName("ok")]
@@ -150,7 +155,7 @@ public sealed class V110Handlers
         router.Register<DbPathRequest, DbSchemaReport>(V110Routes.DbSchema, DbSchemaAsync, envelope: true);
         router.Register<DbQueryRequest, DbQueryResult>(V110Routes.DbQuery, DbQueryAsync, envelope: true);
         router.Register<AgentSteerRequest, SimpleOkResult>(V110Routes.AgentSteer, AgentSteerAsync, envelope: true);
-        router.Register<EmptyPayload, SimpleOkResult>(V110Routes.AgentClearTrace, AgentClearTraceAsync, envelope: true);
+        router.Register<AgentClearTraceRequest, SimpleOkResult>(V110Routes.AgentClearTrace, AgentClearTraceAsync, envelope: true);
         router.Register<GitCloneRequest, GitPowerResult>(V110Routes.GitCloneRepo, GitCloneRepoAsync, envelope: true);
         router.Register<GitCommitGraphRequest, List<GitGraphCommit>>(V110Routes.GitCommitGraph, GitCommitGraphAsync, envelope: true);
         router.Register<GitCommitShowRequest, GitPowerResult>(V110Routes.GitCommitShow, GitCommitShowAsync, envelope: true);
@@ -219,8 +224,10 @@ public sealed class V110Handlers
         return Task.FromResult(new SimpleOkResult { Ok = true });
     }
 
-    private Task<SimpleOkResult> AgentClearTraceAsync(EmptyPayload _, BridgeContext __)
+    private Task<SimpleOkResult> AgentClearTraceAsync(AgentClearTraceRequest req, BridgeContext __)
     {
+        if (!string.IsNullOrWhiteSpace(req.SessionId))
+            VoidCode.Agent.AgentSessionMemory.ClearSession(VoidCode.Agent.AgentSessionMemory.ResolveSessionKey(_workspace(), req.SessionId));
         VoidCode.Agent.AgentSessionMemory.ClearWorkspace(_workspace());
         VoidCode.Agent.AgentSessionMemory.ClearSteers();
         return Task.FromResult(new SimpleOkResult { Ok = true });

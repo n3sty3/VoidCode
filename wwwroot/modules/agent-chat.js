@@ -195,7 +195,7 @@ export function refreshUserMessageRewindButton(msgEl) {
       allNodes[i].remove();
     }
     globalThis.clearSessionChangedFiles?.();
-    globalThis.VoidBridge?.request?.('agent_clear_trace', {});
+    globalThis.VoidBridge?.request?.('agent_clear_trace', { sessionId: globalThis.getActiveSessionId?.() || '' });
     globalThis.saveCurrentSessionToStorage?.();
     globalThis.showToast?.(`Restored workspace to checkpoint (${toRestore.length} edit${toRestore.length === 1 ? '' : 's'} reverted)`, 'success');
   });
@@ -228,12 +228,14 @@ export function regenerateLastAnswer() {
   const cancelBtn = control('btn-cancel-agent');
   if (sendBtn) sendBtn.style.display = 'none';
   if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+  globalThis.VoidBridge?.request?.('agent_clear_trace', { sessionId: globalThis.getActiveSessionId?.() || '' });
   globalThis.setAgentStatus?.('Starting', true);
   sendHost('start_agent', {
     prompt: userText,
     history: history.slice(),
     context: globalThis.buildAgentContext?.(),
-    mode: agentMode
+    mode: agentMode,
+    sessionId: globalThis.getActiveSessionId?.() || ''
   });
 }
 

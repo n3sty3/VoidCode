@@ -30,6 +30,15 @@ internal sealed class ChatRequest
 internal abstract record ChatEvent;
 internal sealed record ChatContentDelta(string Text) : ChatEvent;
 internal sealed record ChatReasoningDelta(string Text) : ChatEvent;
+/// <summary>
+/// Complete signed thinking / redacted_thinking block emitted by Anthropic extended thinking
+/// so it can be passed back verbatim on subsequent tool-result steps.
+/// </summary>
+internal sealed record ChatThinkingBlockEvent(
+    string Type,
+    string? Thinking = null,
+    string? Signature = null,
+    string? Data = null) : ChatEvent;
 internal sealed record ChatToolCallDelta(
     int Index,
     string? Id,
@@ -115,16 +124,16 @@ internal sealed class ProviderCapabilityCache
             return 200_000;
         if (m.Contains("gpt-4o", StringComparison.Ordinal) || m.Contains("gpt-4-turbo", StringComparison.Ordinal) || m.Contains("o1", StringComparison.Ordinal) || m.Contains("o3", StringComparison.Ordinal) || m.Contains("o4", StringComparison.Ordinal))
             return 128_000;
-        if (m.Contains("deepseek", StringComparison.Ordinal))
-            return 64_000;
+        if (m.Contains("deepseek", StringComparison.Ordinal) || m.Contains("kimi", StringComparison.Ordinal) || m.Contains("moonshot", StringComparison.Ordinal) || m.Contains("glm", StringComparison.Ordinal) || m.Contains("minimax", StringComparison.Ordinal))
+            return 128_000;
         if (m.Contains("qwen-2.5", StringComparison.Ordinal) || m.Contains("qwen2.5", StringComparison.Ordinal) || m.Contains("qwen3", StringComparison.Ordinal))
-            return p is "ollama" or "lmstudio" ? 32_768 : 128_000;
+            return p is "ollama" or "lmstudio" ? 64_000 : 128_000;
         if (m.Contains("llama-3", StringComparison.Ordinal) || m.Contains("llama3", StringComparison.Ordinal))
-            return p is "ollama" or "lmstudio" ? 32_768 : 128_000;
+            return p is "ollama" or "lmstudio" ? 64_000 : 128_000;
         if (p is "ollama" or "lmstudio")
-            return 32_768;
+            return 64_000;
 
-        return 64_000;
+        return 128_000;
     }
 }
 

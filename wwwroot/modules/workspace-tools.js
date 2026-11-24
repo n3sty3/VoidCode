@@ -173,8 +173,13 @@ export function renderHistorySessions() {
   });
 }
 
+export function getActiveSessionId() {
+  return activeSessionId;
+}
+
 export function loadSessionIntoChat(sess) {
   activeSessionId = sess.id;
+  globalThis.VoidBridge?.request?.('agent_clear_trace', { sessionId: activeSessionId });
   const msgs = [...sess.messages];
   stateSet('chatHistory', msgs);
   const titleEl = document.getElementById('active-session-title');
@@ -203,6 +208,7 @@ export function loadSessionIntoChat(sess) {
 
 export function startNewSession() {
   activeSessionId = 'sess_' + Date.now();
+  globalThis.VoidBridge?.request?.('agent_clear_trace', { sessionId: activeSessionId });
   stateSet('chatHistory', []);
   globalThis.updateAgentTokenPill?.();
   const titleEl = document.getElementById('active-session-title');
@@ -658,6 +664,7 @@ export function init(ctx = {}) {
     loadStoredState,
     hydrateSessions,
     hydrateCheckpoints,
+    getActiveSessionId,
     saveCurrentSessionToStorage,
     renderHistorySessions,
     loadSessionIntoChat,

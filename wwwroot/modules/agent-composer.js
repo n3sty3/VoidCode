@@ -18,7 +18,7 @@ let attachedContextItems = [];
 export function shouldOfferContinue(finalMessage) {
   if (typeof finalMessage !== 'string') return false;
   const s = finalMessage.trim();
-  return /^Reached (the safety limit|maximum autonomous turns)/i.test(s) || /^cancell?ed\.?$/i.test(s);
+  return /^Reached (the (\d+-step )?safety limit|maximum autonomous turns)/i.test(s) || /^cancell?ed\.?$/i.test(s);
 }
 
 export function renderContinueAction() {
@@ -61,7 +61,8 @@ export function continueAgentRun() {
     prompt,
     history: stateGet('chatHistory', []).slice(),
     context: buildAgentContext(),
-    mode
+    mode,
+    sessionId: globalThis.getActiveSessionId?.() || ''
   });
 }
 
@@ -252,7 +253,8 @@ export function renderPlanActions() {
       prompt: text,
       history: stateGet('chatHistory', []).slice(),
       context: buildAgentContext(),
-      mode
+      mode,
+      sessionId: globalThis.getActiveSessionId?.() || ''
     });
   });
 
@@ -439,7 +441,8 @@ export function setupAgentComposer() {
       prompt: text,
       history: stateGet('chatHistory', []).slice(),
       context: buildAgentContext(),
-      mode
+      mode,
+      sessionId: globalThis.getActiveSessionId?.() || ''
     });
   }
 

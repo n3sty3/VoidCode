@@ -111,6 +111,9 @@ public sealed class SettingsAgentHandlers
 
         /// <summary>Optional: a one-run mode override (Review/Edit/Agent).</summary>
         public string? Mode { get; init; }
+
+        /// <summary>Optional: active chat session identifier for ordered transcript persistence.</summary>
+        public string? SessionId { get; init; }
     }
 
     public sealed class ResolveToolApprovalRequest
@@ -347,7 +350,8 @@ public sealed class SettingsAgentHandlers
                     (evt, payload) => _send(evt, payload),
                     token,
                     editorContext,
-                    modeOverride
+                    modeOverride,
+                    request.SessionId
                 );
             }
             catch (OperationCanceledException)

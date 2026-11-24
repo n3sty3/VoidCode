@@ -22,7 +22,24 @@ internal static class TokenEstimator
     internal static int EstimateText(string? text)
     {
         if (string.IsNullOrEmpty(text)) return 0;
-        return (text.Length + 3) / 4;
+        // Code, JSON, and stack traces tokenize denser (~3.0-3.2 chars/token) than English prose (~4.0 chars/token).
+        // Sample up to 2048 chars to detect code/punctuation density cheaply without allocations.
+        int sampleLen = Math.Min(text.Length, 2048);
+        int denseChars = 0;
+        for (int i = 0; i < sampleLen; i++)
+        {
+            char c = text[i];
+            if (c == '\n' || c == '{' || c == '}' || c == '(' || c == ')' || c == '[' || c == ']' ||
+                c == ';' || c == ':' || c == '=' || c == '<' || c == '>' || c == '"' || c == '\'' ||
+                c == '/' || c == '\\' || c == '.' || c == ',' || c == '_')
+            {
+                denseChars++;
+            }
+        }
+        bool isCodeHeavy = sampleLen >= 24 && (denseChars * 100 / sampleLen) >= 10;
+        return isCodeHeavy
+            ? (int)Math.Ceiling(text.Length / 3.1)
+            : (text.Length + 3) / 4;
     }
 
     internal static int EstimateMessage(JsonObject? message)
@@ -58,6 +75,16 @@ internal static class TokenEstimator
         if (message["tool_calls"] is JsonArray toolCalls)
         {
             tokens += EstimateText(toolCalls.ToJsonString());
+        }
+
+        if (message["reasoning_content"] is JsonValue reasoningVal && reasoningVal.TryGetValue<string>(out var reasoningStr))
+        {
+            tokens += EstimateText(reasoningStr);
+        }
+
+        if (message["_thinking_blocks"] is JsonArray thinkingBlocks)
+        {
+            tokens += EstimateText(thinkingBlocks.ToJsonString());
         }
 
         return tokens;

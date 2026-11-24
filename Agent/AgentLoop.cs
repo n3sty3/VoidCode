@@ -53,7 +53,8 @@ internal static class AgentLoop
         Action<string, object> emitEvent,
         CancellationToken cancellationToken = default,
         JsonObject? editorContext = null,
-        string? modeOverride = null)
+        string? modeOverride = null,
+        string? sessionId = null)
     {
         if (string.IsNullOrWhiteSpace(settings.BaseUrl) || string.IsNullOrWhiteSpace(settings.Model))
         {
@@ -93,32 +94,59 @@ internal static class AgentLoop
             ["content"] = systemPrompt.ToString()
         });
 
+        // Build clean prior history (excluding the trailing duplicate of userPrompt that the UI
+        // pushes into chatHistory right before calling start_agent).
+        var priorFrontendHistory = new List<JsonObject>(conversationHistory.Count);
         foreach (var msg in conversationHistory)
         {
             var cloned = JsonNode.Parse(msg.ToJsonString())?.AsObject();
-            if (cloned != null) messages.Add(cloned);
+            if (cloned != null) priorFrontendHistory.Add(cloned);
+        }
+        if (priorFrontendHistory.Count > 0 &&
+            string.Equals(priorFrontendHistory[^1]["role"]?.GetValue<string>(), "user", StringComparison.OrdinalIgnoreCase) &&
+            priorFrontendHistory[^1]["content"] is JsonValue trailingVal &&
+            trailingVal.TryGetValue<string>(out var trailingText) &&
+            trailingText == userPrompt)
+        {
+            priorFrontendHistory.RemoveAt(priorFrontendHistory.Count - 1);
         }
 
-        // Replay real compacted tool-call/result transcript from prior turns in this session
-        // right before the new user turn so follow-up prompts remember exact code read & edited.
-        if (conversationHistory.Count > 0)
+        var sessionKey = AgentSessionMemory.ResolveSessionKey(workspacePath, sessionId);
+        bool hasPriorAssistant = priorFrontendHistory.Any(m =>
+            string.Equals(m["role"]?.GetValue<string>(), "assistant", StringComparison.OrdinalIgnoreCase));
+        bool isFirstTurn = !hasPriorAssistant && priorFrontendHistory.Count == 0;
+
+        if (isFirstTurn)
         {
-            var priorTools = AgentSessionMemory.GetRecentToolTranscript(workspacePath);
-            if (priorTools.Count > 0)
+            // Brand-new chat: never leak turns or tool calls from an earlier session.
+            AgentSessionMemory.ClearSession(sessionKey);
+        }
+        else
+        {
+            var storedTranscript = AgentSessionMemory.GetOrderedTranscript(sessionKey);
+            var frontendUserTurns = AgentSessionMemory.CountUserTurns(priorFrontendHistory);
+            var storedUserTurns = AgentSessionMemory.CountUserTurns(storedTranscript);
+
+            // Replay the authoritative chronologically-ordered transcript (including assistant tool_calls,
+            // tool results, and preserved reasoning/thinking) whenever it matches the active session's turn count.
+            if (storedTranscript.Count > 0 && storedUserTurns == frontendUserTurns)
             {
-                int insertAt = messages.Count;
-                if (insertAt > 1 && messages[^1]["role"]?.GetValue<string>() == "user")
-                    insertAt--;
-                messages.InsertRange(insertAt, priorTools);
+                messages.AddRange(storedTranscript);
+            }
+            else
+            {
+                // Fallback for sessions loaded from disk or rewound in UI.
+                messages.AddRange(priorFrontendHistory);
             }
         }
 
         var imageDataUris = new List<string>();
         var enrichedPrompt = ContextBuilder.EnrichPromptWithReferencedFiles(userPrompt, workspacePath, imageDataUris);
 
-        // Attach dynamic editor buffer & Turn-1 Repo Map on the user message (cache-friendly!).
+        // Attach Turn-1 Repo Map (now fires reliably on Turn 1 even when UI already pushed the prompt)
+        // and per-turn dynamic editor context on the user message to keep the system prompt cache-stable.
         var dynamicPrefix = new StringBuilder();
-        if (conversationHistory.Count == 0)
+        if (isFirstTurn)
         {
             var repoMap = RepoMapService.BuildCompactMap(workspacePath);
             if (!string.IsNullOrEmpty(repoMap))
@@ -152,22 +180,11 @@ internal static class AgentLoop
             userContentNode = JsonValue.Create(enrichedPrompt)!;
         }
 
-        if (messages.Count > 1 &&
-            messages[^1]["role"]?.GetValue<string>() == "user" &&
-            messages[^1]["content"] is JsonValue lastContent &&
-            lastContent.TryGetValue<string>(out var lastUserText) &&
-            lastUserText == userPrompt)
+        messages.Add(new JsonObject
         {
-            messages[^1]["content"] = userContentNode;
-        }
-        else
-        {
-            messages.Add(new JsonObject
-            {
-                ["role"] = "user",
-                ["content"] = userContentNode
-            });
-        }
+            ["role"] = "user",
+            ["content"] = userContentNode
+        });
 
         for (int i = 0; i < messages.Count - 1; i++)
         {
@@ -284,6 +301,7 @@ internal static class AgentLoop
 
             var contentBuilder = new StringBuilder();
             var reasoningBuilder = new StringBuilder();
+            var thinkingBlocks = new List<JsonObject>();
             var toolCallsMap = new SortedDictionary<int, StreamedToolCall>();
             var toolCallExtraContent = new Dictionary<int, string>();
             bool startedMessageStream = false;
@@ -320,6 +338,26 @@ internal static class AgentLoop
                         emitEvent("agent_reasoning_delta", new { delta = r.Text });
                         break;
 
+                    case ChatThinkingBlockEvent tb:
+                        if (tb.Type == "thinking" && !string.IsNullOrEmpty(tb.Signature))
+                        {
+                            thinkingBlocks.Add(new JsonObject
+                            {
+                                ["type"] = "thinking",
+                                ["thinking"] = tb.Thinking ?? "",
+                                ["signature"] = tb.Signature
+                            });
+                        }
+                        else if (tb.Type == "redacted_thinking" && !string.IsNullOrEmpty(tb.Data))
+                        {
+                            thinkingBlocks.Add(new JsonObject
+                            {
+                                ["type"] = "redacted_thinking",
+                                ["data"] = tb.Data
+                            });
+                        }
+                        break;
+
                     case ChatContentDelta c:
                         if (!startedMessageStream)
                         {
@@ -353,7 +391,8 @@ internal static class AgentLoop
                 emitEvent("agent_stream_end", new
                 {
                     fullContent = contentBuilder.ToString(),
-                    fullReasoning = reasoningBuilder.ToString()
+                    fullReasoning = reasoningBuilder.ToString(),
+                    isIntermediate = toolCallsMap.Count > 0
                 });
             }
 
@@ -364,6 +403,19 @@ internal static class AgentLoop
                 ["role"] = "assistant",
                 ["content"] = contentBuilder.ToString()
             };
+
+            // Carry reasoning_content (DeepSeek/Kimi/GLM/MiniMax/Qwen3) and signed thinking blocks (Anthropic)
+            // across multi-step tool calls so models retain their exact chain-of-thought and satisfy API validation.
+            if (reasoningBuilder.Length > 0)
+            {
+                assistantMsg["reasoning_content"] = reasoningBuilder.ToString();
+            }
+            if (thinkingBlocks.Count > 0)
+            {
+                var tbArray = new JsonArray();
+                foreach (var tb in thinkingBlocks) tbArray.Add(tb);
+                assistantMsg["_thinking_blocks"] = tbArray;
+            }
 
             if (toolCallsMap.Count > 0)
             {
@@ -401,6 +453,7 @@ internal static class AgentLoop
                     emitEvent("agent_error", new { message = "The model returned an empty response. Check that the model name is valid, that the provider supports streaming/tools, and that the API key and base URL are correct." });
                     break;
                 }
+                AgentSessionMemory.SaveOrderedTranscript(sessionKey, messages.Skip(1).ToList());
                 EmitDone(finalText);
                 break;
             }
@@ -672,7 +725,7 @@ internal static class AgentLoop
 
             if (stepToolResultMsgs.Count > 0)
             {
-                AgentSessionMemory.RecordToolExchange(workspacePath, assistantMsg, stepToolResultMsgs);
+                AgentSessionMemory.SaveOrderedTranscript(sessionKey, messages.Skip(1).ToList());
             }
 
             if (!runImages.IsEmpty)
@@ -695,6 +748,7 @@ internal static class AgentLoop
 
         if (currentTurn >= maxTurns)
         {
+            AgentSessionMemory.SaveOrderedTranscript(sessionKey, messages.Skip(1).ToList());
             EmitDone($"Reached the {maxTurns}-step safety limit. Review the completed work above or raise Max Agent Steps in Settings (set to 0 for unlimited) to continue.");
         }
 

@@ -459,7 +459,7 @@ export function appendStreamContentDelta(delta) {
   });
 }
 
-export function finalizeAssistantStreamMessage(fullContent) {
+export function finalizeAssistantStreamMessage(fullContent, isIntermediate = false) {
   if (currentStreamReasoningEl && currentReasoningBuffer.trim()) {
     const label = currentStreamReasoningEl.querySelector('.reasoning-label');
     if (label) {
@@ -474,8 +474,12 @@ export function finalizeAssistantStreamMessage(fullContent) {
   if (currentStreamContentEl && fullContent) {
     setHtml(currentStreamContentEl, raw(renderSafeMarkdown(fullContent)));
     enhanceChatCodeBlocks(currentStreamContentEl);
-    window.VoidState.get('chatHistory').push({ role: 'assistant', content: fullContent });
-    globalThis.saveCurrentSessionToStorage?.();
+    // Do NOT push intermediate tool-call narration ("Let me read X...") as standalone
+    // assistant turns into chatHistory — only persist the final turn response.
+    if (!isIntermediate) {
+      window.VoidState.get('chatHistory').push({ role: 'assistant', content: fullContent });
+      globalThis.saveCurrentSessionToStorage?.();
+    }
   }
   if (currentStreamMsgEl) {
     const msgContent = currentStreamMsgEl.querySelector('.msg-content');

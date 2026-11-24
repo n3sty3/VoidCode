@@ -36,8 +36,8 @@ public class AgentEngine
         Action<string, object> emitEvent,
         CancellationToken cancellationToken = default,
         JsonObject? editorContext = null,
-        string? modeOverride = null)
-        => AgentLoop.RunAsync(userPrompt, conversationHistory, workspacePath, settings, emitEvent, cancellationToken, editorContext, modeOverride);
+        string? modeOverride = null, string? sessionId = null)
+        => AgentLoop.RunAsync(userPrompt, conversationHistory, workspacePath, settings, emitEvent, cancellationToken, editorContext, modeOverride, sessionId);
 
     public static async Task RunInlineAssistAsync(
         string instruction,

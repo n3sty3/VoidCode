@@ -18,7 +18,7 @@ public class AppSettings
     public string Model { get; set; } = "deepseek/deepseek-chat";
     public double Temperature { get; set; } = 0.2;
     public int MaxTokens { get; set; } = 8192;
-    public int MaxAgentTurns { get; set; } = 25;
+    public int MaxAgentTurns { get; set; } = 60;
     public const string LegacyDefaultSystemPrompt =
         "You are VoidAgent, an unrestricted staff-level systems engineer, reverse engineer, and full-stack architect.\n" +
         "- You have direct tool access to the user's filesystem and PowerShell terminal.\n" +

@@ -8,80 +8,93 @@ using System.Text.Json.Nodes;
 namespace VoidCode.Agent;
 
 /// <summary>
-/// Server-side turn transcript continuity &amp; mid-run steering queue for VoidAgent v2.
-/// Preserves real compacted tool-call/result messages across turns (so follow-up prompts
-/// remember exact code read &amp; edited without busting the system prompt cache) and queues
-/// mid-run operator steering messages cleanly between agent steps.
+/// Maintains two distinct per-session/workspace structures:
+/// 1. The authoritative, chronologically ordered conversation transcript
+///    (<c>user</c>, <c>assistant</c> with <c>reasoning_content</c>/<c>_thinking_blocks</c>/<c>tool_calls</c>,
+///    and <c>tool</c> results) so multi-turn follow-ups replay exact history in order without detaching
+///    tool calls from the turns that produced them.
+/// 2. A lightweight mid-run operator steering queue and recent action trace.
 /// </summary>
 internal static class AgentSessionMemory
 {
     private const int MaxEntriesPerWorkspace = 24;
-    private const int MaxStoredExchanges = 12;
-    private const int MaxToolContentChars = 2400;
+    private const int MaxOrderedTranscriptMessages = 240;
 
     private static readonly ConcurrentDictionary<string, List<string>> WorkspaceTraces = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly ConcurrentDictionary<string, List<JsonObject>> WorkspaceToolTranscript = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, List<JsonObject>> SessionTranscripts = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentQueue<string> SteerQueue = new();
     private static readonly object Gate = new();
 
-    private static string NormalizeKey(string? workspacePath)
-        => string.IsNullOrWhiteSpace(workspacePath) ? "__default__" : workspacePath.Trim().TrimEnd('\\', '/');
+    private static string NormalizeKey(string? key)
+        => string.IsNullOrWhiteSpace(key) ? "_default" : key.Trim().TrimEnd('\\', '/');
 
-    internal static void RecordAction(string? workspacePath, string summaryLine)
+    internal static string ResolveSessionKey(string? workspacePath, string? sessionId)
     {
-        if (string.IsNullOrWhiteSpace(summaryLine)) return;
+        if (!string.IsNullOrWhiteSpace(sessionId))
+            return $"session:{sessionId.Trim()}";
+        return NormalizeKey(workspacePath);
+    }
+
+    internal static void RecordAction(string? workspacePath, string summary)
+    {
+        if (string.IsNullOrWhiteSpace(summary)) return;
         var key = NormalizeKey(workspacePath);
         lock (Gate)
         {
             var list = WorkspaceTraces.GetOrAdd(key, _ => new List<string>());
-            list.Add(summaryLine.Trim());
+            list.Add(summary.Trim());
             if (list.Count > MaxEntriesPerWorkspace)
                 list.RemoveRange(0, list.Count - MaxEntriesPerWorkspace);
         }
     }
 
     /// <summary>
-    /// Stores a real assistant(tool_calls) + tool(results) exchange from a completed step
-    /// so the next user prompt can replay exact prior code reads/edits cleanly.
+    /// Saves the full chronologically ordered message list (excluding the leading system prompt)
+    /// for the active session so subsequent turns replay real user/assistant/tool_calls/tool order.
+    /// Tool results are kept intact — dynamic context-window budgeting is handled by ContextBudget.
     /// </summary>
-    internal static void RecordToolExchange(string? workspacePath, JsonObject assistantToolMsg, IReadOnlyList<JsonObject> toolResultMsgs)
+    internal static void SaveOrderedTranscript(string? sessionKey, IReadOnlyList<JsonObject> messagesWithoutSystem)
     {
-        if (assistantToolMsg == null || toolResultMsgs == null || toolResultMsgs.Count == 0) return;
-        var key = NormalizeKey(workspacePath);
+        if (messagesWithoutSystem == null) return;
+        var key = NormalizeKey(sessionKey);
+        var cloned = new List<JsonObject>(messagesWithoutSystem.Count);
+        foreach (var msg in messagesWithoutSystem)
+        {
+            if (msg == null) continue;
+            var role = msg["role"]?.GetValue<string>() ?? "";
+            if (string.Equals(role, "system", StringComparison.OrdinalIgnoreCase)) continue;
+            var copy = JsonNode.Parse(msg.ToJsonString())?.AsObject();
+            if (copy != null) cloned.Add(copy);
+        }
+
+        // Trim from the front only at clean user-message boundaries if a marathon session grows huge.
+        while (cloned.Count > MaxOrderedTranscriptMessages)
+        {
+            int nextUser = -1;
+            for (int i = 1; i < cloned.Count; i++)
+            {
+                if (string.Equals(cloned[i]["role"]?.GetValue<string>(), "user", StringComparison.OrdinalIgnoreCase))
+                {
+                    nextUser = i;
+                    break;
+                }
+            }
+            if (nextUser <= 0) break;
+            cloned.RemoveRange(0, nextUser);
+        }
+
         lock (Gate)
         {
-            var list = WorkspaceToolTranscript.GetOrAdd(key, _ => new List<JsonObject>());
-            var clonedAssistant = JsonNode.Parse(assistantToolMsg.ToJsonString())?.AsObject();
-            if (clonedAssistant != null) list.Add(clonedAssistant);
-
-            foreach (var tr in toolResultMsgs)
-            {
-                var cloned = JsonNode.Parse(tr.ToJsonString())?.AsObject();
-                if (cloned == null) continue;
-                var raw = cloned["content"]?.GetValue<string>() ?? "";
-                if (raw.Length > MaxToolContentChars)
-                {
-                    cloned["content"] = raw[..MaxToolContentChars] + "\n... [prior turn tool result compacted]";
-                }
-                list.Add(cloned);
-            }
-
-            // Cap total stored messages while preserving assistant->tool pairing boundaries.
-            while (list.Count > MaxStoredExchanges * 3)
-            {
-                list.RemoveAt(0);
-                while (list.Count > 0 && string.Equals(list[0]["role"]?.GetValue<string>(), "tool", StringComparison.OrdinalIgnoreCase))
-                    list.RemoveAt(0);
-            }
+            SessionTranscripts[key] = cloned;
         }
     }
 
-    internal static List<JsonObject> GetRecentToolTranscript(string? workspacePath)
+    internal static List<JsonObject> GetOrderedTranscript(string? sessionKey)
     {
-        var key = NormalizeKey(workspacePath);
+        var key = NormalizeKey(sessionKey);
         lock (Gate)
         {
-            if (!WorkspaceToolTranscript.TryGetValue(key, out var list) || list.Count == 0)
+            if (!SessionTranscripts.TryGetValue(key, out var list) || list.Count == 0)
                 return new List<JsonObject>();
 
             return list
@@ -92,11 +105,43 @@ internal static class AgentSessionMemory
         }
     }
 
+    /// <summary>
+    /// Counts real user turns in a transcript (excluding synthetic view_image multimodal injection turns).
+    /// </summary>
+    internal static int CountUserTurns(IReadOnlyList<JsonObject> messages)
+    {
+        int count = 0;
+        foreach (var m in messages)
+        {
+            if (!string.Equals(m["role"]?.GetValue<string>(), "user", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (m["content"] is JsonArray parts &&
+                parts.Count > 0 &&
+                (parts[0]?["text"]?.GetValue<string>() ?? "").StartsWith("Images loaded via view_image", StringComparison.Ordinal))
+            {
+                continue;
+            }
+            if (m["content"] is JsonValue v && v.TryGetValue<string>(out var s) &&
+                s.StartsWith("[Operator Mid-Run Steering Guidance]", StringComparison.Ordinal))
+            {
+                continue;
+            }
+            count++;
+        }
+        return count;
+    }
+
+    internal static void ClearSession(string? sessionKey)
+    {
+        var key = NormalizeKey(sessionKey);
+        SessionTranscripts.TryRemove(key, out _);
+    }
+
     internal static void ClearWorkspace(string? workspacePath)
     {
         var key = NormalizeKey(workspacePath);
         WorkspaceTraces.TryRemove(key, out _);
-        WorkspaceToolTranscript.TryRemove(key, out _);
+        SessionTranscripts.TryRemove(key, out _);
     }
 
     internal static string FormatRecentWorkForPrompt(string? workspacePath)

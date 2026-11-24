@@ -407,7 +407,7 @@ function createHostEventHandlers() {
     'agent_stream_start': () => startAssistantStreamMessage(),
     'agent_reasoning_delta': (payload) => appendStreamReasoningDelta(payload.delta),
     'agent_stream_delta': (payload) => appendStreamContentDelta(payload.delta),
-    'agent_stream_end': (payload) => finalizeAssistantStreamMessage(payload.fullContent),
+    'agent_stream_end': (payload) => finalizeAssistantStreamMessage(payload.fullContent, payload.isIntermediate),
     'agent_image': (payload) => renderChatImage(payload.path, payload.dataUri, payload.sizeBytes),
     'agent_tool_start': (payload) => renderToolCardStart(payload.id, payload.tool, payload.args),
     'agent_tool_approval_needed': (payload) => renderToolApprovalPrompt(payload.id),
