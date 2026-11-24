@@ -10,7 +10,8 @@ set -euo pipefail
 #   ./scripts/package-mac.sh [osx-arm64|osx-x64]
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${VOIDCODE_VERSION:-1.0.0}"
+CSPROJ_VER="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' "$ROOT_DIR/VoidCode.Mac/VoidCode.Mac.csproj" | head -n 1)"
+VERSION="${VOIDCODE_VERSION:-${CSPROJ_VER:-1.1.0}}"
 
 if [[ $# -ge 1 ]]; then
   RID="$1"

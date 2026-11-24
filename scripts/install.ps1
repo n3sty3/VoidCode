@@ -72,10 +72,15 @@ if (-not $NoContextMenu) {
     }
 }
 
+$appVer = "1.1.0"
+if (Test-Path $exePath) {
+    $fv = (Get-Item $exePath).VersionInfo.ProductVersion
+    if ($fv) { $appVer = ($fv -split '\+')[0] }
+}
 $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\VoidCode"
 New-Item -Path $uninstallKey -Force | Out-Null
 Set-ItemProperty -Path $uninstallKey -Name "DisplayName" -Value "VoidCode IDE"
-Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value "1.0.0"
+Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion" -Value $appVer
 Set-ItemProperty -Path $uninstallKey -Name "Publisher" -Value "VoidCode Contributors"
 Set-ItemProperty -Path $uninstallKey -Name "DisplayIcon" -Value "$exePath,0"
 Set-ItemProperty -Path $uninstallKey -Name "InstallLocation" -Value $InstallDir
@@ -84,7 +89,7 @@ Set-ItemProperty -Path $uninstallKey -Name "NoModify" -Value 1 -Type DWord
 Set-ItemProperty -Path $uninstallKey -Name "NoRepair" -Value 1 -Type DWord
 
 Write-Host "=================================================" -ForegroundColor Green
-Write-Host " VoidCode v1.0.0 Installed Successfully!" -ForegroundColor Green
+Write-Host " VoidCode v$appVer Installed Successfully!" -ForegroundColor Green
 Write-Host " Location: $InstallDir" -ForegroundColor White
 Write-Host " CLI:      voidcode .  (open a new terminal to use)" -ForegroundColor White
 Write-Host "=================================================" -ForegroundColor Green
