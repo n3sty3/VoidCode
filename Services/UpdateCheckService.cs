@@ -196,6 +196,7 @@ public static class UpdateCheckService
             var newer = !string.IsNullOrWhiteSpace(tagName) && IsNewerVersion(currentVer, tagName);
 
             string downloadUrl = "";
+            string fallbackUrl = "";
             if (node?["assets"] is JsonArray assets)
             {
                 bool isMac = OperatingSystem.IsMacOS();
@@ -207,6 +208,13 @@ public static class UpdateCheckService
                     var name = asset?["name"]?.GetValue<string>() ?? "";
                     var browserUrl = asset?["browser_download_url"]?.GetValue<string>() ?? "";
                     if (string.IsNullOrEmpty(browserUrl) || name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    if (string.IsNullOrEmpty(fallbackUrl) &&
+                        ((name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                         || name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        fallbackUrl = browserUrl;
+                    }
 
                     if (isMac)
                     {
@@ -247,6 +255,7 @@ public static class UpdateCheckService
                     }
                 }
             }
+            if (string.IsNullOrEmpty(downloadUrl)) downloadUrl = fallbackUrl;
 
             return new UpdateCheckResult
             {
