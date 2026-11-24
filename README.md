@@ -1,35 +1,35 @@
 # VoidCode
 
-**The Native, Local-First AI-Native IDE for Windows & macOS — Powered by VoidAgent Core.**
+**The Native, Local-First AI-Native IDE for Windows, macOS & Linux — Powered by VoidAgent Core.**
 
-[![Release](https://img.shields.io/badge/release-v1.0.0-38bdf8?style=flat-square)](../../releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS%2012%2B%20(Apple%20Silicon%20%26%20Intel)-0ea5e9?style=flat-square)](#quick-start-install-in-10-seconds)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0%20WPF%2FWebView2%20%2B%20WKWebView-512bd4?style=flat-square)](#build-test-and-package-from-source)
-[![Tests](https://img.shields.io/badge/tests-290%20.NET%20%2B%2094%20Playwright%20UI-10b981?style=flat-square)](#build-test-and-package-from-source)
+[![Release](https://img.shields.io/badge/release-v1.1.1-38bdf8?style=flat-square)](../../releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS%2012%2B%20%7C%20Linux-0ea5e9?style=flat-square)](#quick-start-install-in-10-seconds)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0%20WPF%2FWebView2%20%2B%20Photino-512bd4?style=flat-square)](#build-test-and-package-from-source)
+[![Tests](https://img.shields.io/badge/tests-338%20.NET%20%2B%2091%20Playwright%20UI-10b981?style=flat-square)](#build-test-and-package-from-source)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square)](LICENSE)
 
 ![VoidCode Obsidian Glass Workbench](docs/hero-workbench.png)
 
-**VoidCode** is a fast, native Windows IDE (~70 MB self-contained `.NET 10` + WebView2 + Monaco + ConPTY) built around **VoidAgent Core**: an autonomous software and systems engineering agent with **100% Bring-Your-Own-Key (BYOK) & Local LLM freedom** (**Google Gemini 2.5**, **Anthropic Claude 4**, **OpenAI GPT-4.1 / o4-mini**, **OpenRouter**, **xAI Grok 3**, **Groq**, **DeepSeek**, **Ollama**, and **LM Studio**), atomic hunk-level turn rollbacks, real DAP debuggers, managed language servers, and a built-in PE/binary reverse-engineering inspector.
+**VoidCode** is a fast, native cross-platform IDE (~70 MB self-contained `.NET 10` + WebView2 / WKWebView / WebKitGTK + Monaco + ConPTY/POSIX PTY) built around **VoidAgent Core**: an autonomous software and systems engineering agent with **100% Bring-Your-Own-Key (BYOK) & Local LLM freedom** (**Google Gemini 2.5**, **Anthropic Claude 4**, **OpenAI GPT-4.1 / o4-mini**, **OpenRouter**, **xAI Grok 3**, **Groq**, **DeepSeek**, **Ollama**, and **LM Studio**), per-provider encrypted key vaulting, automatic 429 fallback routing, native editor tool tabs (SQLite Explorer, HTTP Client, Git Graph, Live Localhost Preview), clickable gutter test runners, atomic hunk-level turn rollbacks, real DAP debuggers, managed language servers, and a built-in PE/Mach-O/ELF binary reverse-engineering workbench.
 
 ---
 
 ## Quick Start (Install in 10 Seconds)
 
 ### Option A: Windows GUI Setup Installer (Recommended)
-1. Download **`VoidCode-Setup-1.0.0-win-x64.exe`** from [**Releases**](../../releases).
-2. Double-click **`VoidCode-Setup-1.0.0-win-x64.exe`** (installs per-user to `%LOCALAPPDATA%\Programs\VoidCode` — **no Administrator / UAC prompt required**).
+1. Download **`VoidCode-Setup-1.1.1-win-x64.exe`** from [**Releases**](../../releases).
+2. Double-click **`VoidCode-Setup-1.1.1-win-x64.exe`** (installs per-user to `%LOCALAPPDATA%\Programs\VoidCode` — **no Administrator / UAC prompt required**).
    - Creates **Desktop** & **Start Menu** shortcuts
    - Registers **`voidcode .`** and **`voidcode file.cs:42`** on your `PATH`
    - Adds **"Open with VoidCode"** to the Windows Explorer right-click menu
    - Registers in **Windows Settings -> Installed Apps** for one-click uninstall
-3. Connect any AI provider in **Settings (`Ctrl+,`) -> Model endpoint** (or export `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `XAI_API_KEY` in your environment for zero-config startup — or select **Ollama (Local)** with no API key required).
+3. Connect any AI provider in **Settings (`Ctrl+,`) -> Model endpoint** (per-provider encrypted vault preserves separate keys for every provider, or export `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `XAI_API_KEY` — or select **Ollama (Local)** with no API key required).
 
 ### Option B: Portable Windows Archive
-Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`** (or run `Install-VoidCode.cmd` inside the folder).
+Download **`VoidCode-win-x64.zip`** (or **`VoidCode-win-arm64.zip`**), extract anywhere, and run **`VoidCode.exe`** (or run `Install-VoidCode.cmd` inside the folder).
 
-### Option C: macOS Installer (Apple Silicon & Intel)
-1. Download **`VoidCode-1.0.0-osx-arm64.dmg`** (Apple Silicon M1–M4) or **`VoidCode-1.0.0-osx-x64.dmg`** (Intel Mac) from [**Releases**](../../releases).
+### Option C: macOS Installer (Apple Silicon & Intel) & Linux
+1. Download **`VoidCode-1.1.1-osx-arm64.dmg`** (Apple Silicon M1–M4), **`VoidCode-1.1.1-osx-x64.dmg`** (Intel Mac), or **`VoidCode-1.1.1-linux-x64.tar.gz`** from [**Releases**](../../releases).
 2. Drag **`VoidCode.app`** into **Applications** and open it (uses native macOS **WKWebView**, **Keychain** credential storage, **Zsh/Bash POSIX PTY** with OSC 133 command blocks, **⌘** shortcuts, and **Mach-O** binary inspection).
 3. *(Optional)* Enable the `voidcode` CLI in Terminal:
    ```bash
@@ -102,7 +102,11 @@ Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`*
 | `Ctrl+\` | Split Editor Right |
 | `Ctrl+W` / `Ctrl+Tab` | Close active tab / Cycle open tabs |
 | `Ctrl+Shift+T` | Reopen last closed editor tab |
-| `Ctrl+Shift+Z` / `Alt+Z` | Toggle Zen Mode / Toggle Word Wrap |
+| `Ctrl+Alt+M` | Quick Model Switcher (`🔑` vault, 429 Fallback & Fast Model) |
+| `Ctrl+Alt+T` | Go to Symbol in Workspace (SQLite Symbol & Call-Graph Index) |
+| `Ctrl+Shift+V` | Open **Live Localhost / Web Preview** (Native Tab + Console) |
+| `Ctrl+Shift+R` | Open **API & HTTP Client** (Native Tab) |
+| `Ctrl+Alt+Z` / `Alt+Z` | Toggle Zen Mode / Toggle Word Wrap |
 | `Ctrl+Shift+B` (`⌘⇧B`) | Open **Mission Control** (Parallel Git-Worktree Agents) |
 | `Ctrl+Shift+X` (`⌘⇧X`) | Open **Binary Workbench** (`Iced` x86-64 Disassembler & Hex Viewer) |
 | `Ctrl+Shift+N` (`⌘⇧N`) | Open New VoidCode Window (Multi-Window) |
@@ -121,7 +125,7 @@ Download **`VoidCode-win-x64.zip`**, extract anywhere, and run **`VoidCode.exe`*
 - [Node.js 20+](https://nodejs.org/) (for ESLint, TypeScript `checkJs`, and Playwright UI tests)
 
 ```powershell
-# Build & run .NET 10 unit/integration test suite (290 tests)
+# Build & run .NET 10 unit/integration test suite (338 tests)
 dotnet build VoidCode.slnx -c Release
 dotnet test VoidCode.slnx -c Release
 
@@ -133,7 +137,7 @@ npm run test:unit
 npm run audit:payloads
 node scripts/metrics.js --check
 
-# Run Playwright Chromium UI test suite (94 tests)
+# Run Playwright Chromium UI test suite (91 tests)
 npx playwright test
 ```
 
@@ -144,7 +148,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package.ps1
 ```
 
 Produces:
-- **`dist\VoidCode-Setup-1.0.0-win-x64.exe`** (+ `.sha256`) — Standalone Windows GUI Setup Wizard (also supports silent install via `/S`)
+- **`dist\VoidCode-Setup-1.1.1-win-x64.exe`** (+ `.sha256`) — Standalone Windows GUI Setup Wizard (also supports silent install via `/S`)
 - **`dist\VoidCode-win-x64.zip`** (+ `.sha256`) — Self-contained portable release archive
 
 ### Build the macOS `.app` Bundle & `.dmg` Installer
@@ -155,7 +159,7 @@ chmod +x ./scripts/package-mac.sh
 ```
 
 Produces:
-- **`dist/VoidCode-1.0.0-osx-arm64.dmg`** (+ `.sha256`) — macOS drag-to-Applications disk image
+- **`dist/VoidCode-1.1.1-osx-arm64.dmg`** (+ `.sha256`) — macOS drag-to-Applications disk image
 - **`dist/VoidCode-osx-arm64.zip`** (+ `.sha256`) — Portable `VoidCode.app` archive
 
 ---

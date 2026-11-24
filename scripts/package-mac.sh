@@ -11,7 +11,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CSPROJ_VER="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' "$ROOT_DIR/VoidCode.Mac/VoidCode.Mac.csproj" | head -n 1)"
-VERSION="${VOIDCODE_VERSION:-${CSPROJ_VER:-1.1.0}}"
+VERSION="${VOIDCODE_VERSION:-${CSPROJ_VER:-1.1.1}}"
 
 if [[ $# -ge 1 ]]; then
   RID="$1"

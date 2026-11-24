@@ -1,11 +1,11 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Native, local-first AI IDE powered by VoidAgent Core (BYOK & Ollama, Tab Autocomplete, Parallel Worktree Agents, Iced Disassembler)",
   "homepage": "https://github.com/n3sty3/VoidCode",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/n3sty3/VoidCode/releases/download/v1.1.0/VoidCode-win-x64.zip",
+      "url": "https://github.com/n3sty3/VoidCode/releases/download/v1.1.1/VoidCode-win-x64.zip",
       "bin": "VoidCode.exe",
       "shortcuts": [
         [
@@ -15,7 +15,7 @@
       ]
     },
     "arm64": {
-      "url": "https://github.com/n3sty3/VoidCode/releases/download/v1.1.0/VoidCode-win-arm64.zip",
+      "url": "https://github.com/n3sty3/VoidCode/releases/download/v1.1.1/VoidCode-win-arm64.zip",
       "bin": "VoidCode.exe",
       "shortcuts": [
         [

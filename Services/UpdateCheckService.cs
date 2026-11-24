@@ -76,7 +76,7 @@ public static class UpdateCheckService
         {
             return $"{v.Major}.{v.Minor}.{(v.Build < 0 ? 0 : v.Build)}";
         }
-        return "1.1.0";
+        return "1.1.1";
     }
 
     private static readonly Regex RepoSlugRegex = new(@"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", RegexOptions.Compiled);

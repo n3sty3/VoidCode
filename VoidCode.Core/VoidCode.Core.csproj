@@ -7,7 +7,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RootNamespace>VoidCode</RootNamespace>
     <AssemblyName>VoidCode.Core</AssemblyName>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Product>VoidCode Core</Product>
     <Company>VoidCode</Company>
     <NoWarn>$(NoWarn);CA1416</NoWarn>

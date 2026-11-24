@@ -72,7 +72,7 @@ if (-not $NoContextMenu) {
     }
 }
 
-$appVer = "1.1.0"
+$appVer = "1.1.1"
 if (Test-Path $exePath) {
     $fv = (Get-Item $exePath).VersionInfo.ProductVersion
     if ($fv) { $appVer = ($fv -split '\+')[0] }

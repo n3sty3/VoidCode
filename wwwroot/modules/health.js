@@ -56,7 +56,7 @@ export function openAboutModal() {
   const runtime = window.VoidState?.get?.('selectedRuntime');
   const trust = lastCapabilities?.workspaceTrust || 'trusted';
   setHtml(body, '');
-  const appVer = lastUpdateResult?.currentVersion || '1.1.0';
+  const appVer = lastUpdateResult?.currentVersion || '1.1.1';
   const verBadge = byId('about-version-badge');
   if (verBadge) verBadge.textContent = `v${appVer}`;
   const infoSec = makeSection('Release & Runtime Environment');
@@ -336,7 +336,7 @@ function setupHealthModal() {
     byId('btn-about-copy-info')?.addEventListener('click', () => {
       const settings = window.VoidState?.get?.('settings') || {};
       const ws = window.VoidState?.get?.('workspace') || 'none';
-      const appVer = lastUpdateResult?.currentVersion || '1.1.0';
+      const appVer = lastUpdateResult?.currentVersion || '1.1.1';
       const info = [
         `VoidCode IDE v${appVer} (.NET 10 / Desktop)`,
         `Agent: VoidAgent Core (${settings.Provider || 'openrouter'} / ${settings.Model || 'default'})`,

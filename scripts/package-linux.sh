@@ -6,7 +6,7 @@ set -euo pipefail
 #   dist/VoidCode-linux-x64.tar.gz (+ .sha256)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${VOIDCODE_VERSION:-1.1.0}"
+VERSION="${VOIDCODE_VERSION:-1.1.1}"
 RID="${1:-linux-x64}"
 PUBLISH_DIR="$ROOT_DIR/publish/$RID"
 DIST_DIR="$ROOT_DIR/dist"

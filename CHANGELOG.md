@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.1 — Native Tool Tabs, Live Localhost Preview, Gutter Test Runner & VoidAgent Resilience
+
+### Native Workbench Tabs & Live Web Preview
+- **First-Class Native Editor Tool Tabs (`#editor-tool-pane`):** **SQLite Database Explorer**, **API & HTTP Client (`Ctrl+Shift+R`)**, **Git Commit Graph & Stash**, and **Live Web Preview (`Ctrl+Shift+V`)** now open as full-height native tabs directly in the editor tab bar beside your code — drag-reorderable, pinnable, closeable with `Ctrl+W`, while Explorer, Terminal, and VoidAgent stay live side-by-side. Clicking any `.db` / `.sqlite` / `.sqlite3` file in Explorer opens it directly in a native SQLite tab.
+- **Dock-as-Tab for Settings & Turn Diff Review:** Added **Open as Tab / Undock** buttons in the Settings modal and Turn Diff Review headers without breaking keyboard-trapped modal workflows.
+- **Built-In Live Localhost & Web Preview Tab (`Ctrl+Shift+V`):** Preview local dev servers (`:3000`, `:5173`, `:8080`, `:4200` plus auto-detected `localhost` URLs printed in Terminal) or live-edited `.html` / `.svg` / `.md` files with **Desktop / Tablet (768px) / Mobile (390px)** viewport frames and a sandboxed runtime **Preview Console** that forwards `console.error`, `console.warn`, and uncaught exceptions straight to VoidAgent with 1-click **Fix in AI**.
+
+### Code Intelligence, Editor Ergonomics & Testing
+- **Clickable In-Editor Gutter Test Runner:** Automatically detects tests across **C#** (`[Fact]`/`[Theory]`/`[Test]`/`[TestMethod]`), **JS/TS** (`test`/`it`), **Python** (`def test_`), **Rust** (`#[test]`), and **Go** (`func Test`), paints clickable `▶` / `◌` / `✓` / `✕` glyphs in the Monaco margin without conflicting with breakpoints, runs single tests via expanded multi-runner filtering (`dotnet test`, `pytest`, `go test`, `cargo test`, `npm test` for Vitest/Jest/Playwright/Mocha/node:test), and opens inline failure popovers with **Re-run** and **Fix with AI**.
+- **Incremental SQLite Symbol & Call-Graph Index (`.voidcode/symbols.db`):** Fast workspace symbol definitions & cross-file references (`SymbolGraphService`), exposed to both **Workspace Symbol Jump (`Ctrl+Alt+T`)** and VoidAgent's **`find_symbol_graph`** tool.
+- **Native Zero-Dependency Vim Mode for Monaco:** Normal, Insert, Visual, Visual-Line, and `:command` modes with live status pill, cursor switching, motions/operators, and Ex commands (`:w`, `:q`, `:wq`).
+- **Next-Edit Prediction:** Sliding recent-edits history fed into FIM Tab Autocomplete (`<RECENT_EDITS>`) so Tab predicts cascading follow-up edits across the file.
+- **Live Git Diff Gutter Bars & Hunk Peek/Revert:** Paints green/cyan/red `HEAD` diff bars in Monaco's gutter with click-to-peek original text and 1-click **Revert Hunk**.
+- **In-Editor Red/Green AI Diff ViewZones:** Renders inline deleted-line ViewZones alongside green added lines directly inside Monaco during AI edit review, plus `← Prev` / `Next →` file navigation and Side-by-Side / Inline toggle in Turn Review.
+- **"Alive" File Explorer:** Live Git status badges/colors (`M`/`U`/`A`/`D` + dirty folder dots), live LSP red error count pills, quick **Filter files…** bar, and native drag-and-drop file/folder moving.
+- **Zen Mode, Live Accent Color Picker & Searchable Shortcuts:** Distraction-free **Zen Mode (`Ctrl+Alt+Z` / `Ctrl+K Z`)**, live accent presets + custom hex color picker in Appearance, and searchable keyboard shortcuts inside Settings.
+- **Native WSL PTY Integration:** Auto-discovers installed WSL distros (`wsl.exe -l -q`) and launches native `wsl:<distro>` terminal tabs from the terminal shell picker.
+
+### VoidAgent Core Reliability, Multi-Provider Vault & Auto-Updates
+- **Per-Provider Encrypted Key Vault:** Stores independent DPAPI / Keychain / AES-256-GCM encrypted keys per provider (`SaveProviderApiKey` / `LoadProviderApiKey`) so switching between OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, Groq, and xAI never overwrites another provider's key.
+- **Automatic `429`/`502`/`503`/`529` Fallback & Fast-Model Routing:** Automatically fails over mid-run to your configured Fallback model on rate limits/upstream outages and routes read-only research subagents & compaction to your Fast model slot — both configurable in 1 click inside **`Ctrl+Alt+M` Quick Model Switcher** (`🔑`, `FB`, `⚡`).
+- **Agent Attention Signals, Prevent Sleep & Inline Conversation Switcher:** Web Audio chimes + OS desktop notifications when alt-tabbed, compact inline `N files changed +X -Y [Review]` turn strip, OS sleep prevention (`SetThreadExecutionState` / `caffeinate -i`) during long runs, `Enter` vs `Ctrl+Enter` composer send-key setting, and an inline VoidAgent conversation dropdown switcher.
+- **Redesigned Agent API Error Cards & Custom Glass Selects:** Parses raw JSON provider errors into readable status badges with wrapped text, collapsible raw payload details, and 1-click **Switch model** on 429 rate limits; upgraded SQLite DB Explorer dropdowns to custom Obsidian Glass selects.
+- **1-Click SHA-256 Verified In-App Auto-Updater:** Downloads matching platform GitHub Release installers (`Setup.exe` / `.dmg` / `.tar.gz`), verifies `.sha256` checksums byte-for-byte, and launches the verified installer; fixed stale version badges and duplicate release notes across multi-platform CI releases.
+
 ## v1.1.0 — Cross-Platform & Flagship AI Workbench Release
 
 ### Native Cross-Platform (Windows, macOS Apple Silicon/Intel & Linux)

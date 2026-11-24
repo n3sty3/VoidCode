@@ -14,12 +14,12 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
 [assembly: AssemblyTitle("VoidCode IDE Setup")]
-[assembly: AssemblyDescription("VoidCode IDE v1.1.0 Per-User Windows Installer")]
+[assembly: AssemblyDescription("VoidCode IDE v1.1.1 Per-User Windows Installer")]
 [assembly: AssemblyCompany("VoidCode Contributors")]
 [assembly: AssemblyProduct("VoidCode IDE")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 VoidCode Contributors")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]
 
 namespace VoidCodeSetup
 {
@@ -229,7 +229,7 @@ namespace VoidCodeSetup
             <Border Width='10' Height='10' CornerRadius='5' Background='#38BDF8' Margin='0,0,10,0'/>
             <TextBlock Text='VoidCode IDE Setup' Foreground='#E2E8F0' FontWeight='SemiBold' FontSize='12.5' VerticalAlignment='Center'/>
             <Border Background='#172236' BorderBrush='#283754' BorderThickness='1' CornerRadius='4' Padding='6,1' Margin='10,0,0,0' VerticalAlignment='Center'>
-              <TextBlock Text='v1.1.0 · win-x64' Foreground='#7DD3FC' FontSize='10.5' FontFamily='Consolas'/>
+              <TextBlock Text='v1.1.1 · win-x64' Foreground='#7DD3FC' FontSize='10.5' FontFamily='Consolas'/>
             </Border>
           </StackPanel>
           <Button x:Name='BtnCloseTop' Style='{StaticResource CloseBtn}' HorizontalAlignment='Right' VerticalAlignment='Center'/>
@@ -286,7 +286,7 @@ namespace VoidCodeSetup
 
         <!-- Progress Section -->
         <Grid Margin='2,14,2,6'>
-          <TextBlock x:Name='LblStatus' Text='Ready to install VoidCode IDE v1.1.0.' Foreground='#94A3B8' FontSize='12' HorizontalAlignment='Left' TextTrimming='CharacterEllipsis' MaxWidth='460'/>
+          <TextBlock x:Name='LblStatus' Text='Ready to install VoidCode IDE v1.1.1.' Foreground='#94A3B8' FontSize='12' HorizontalAlignment='Left' TextTrimming='CharacterEllipsis' MaxWidth='460'/>
           <TextBlock x:Name='LblPercent' Text='0%' Foreground='#38BDF8' FontSize='12' FontFamily='Consolas' FontWeight='SemiBold' HorizontalAlignment='Right'/>
         </Grid>
         <Border x:Name='ProgressTrack' Height='8' CornerRadius='4' Background='#151F32' ClipToBounds='True' Margin='0,0,0,14'>
@@ -407,7 +407,7 @@ namespace VoidCodeSetup
                         win.Dispatcher.BeginInvoke((Action)(() =>
                         {
                             isInstalled = true;
-                            setProgress(100, "VoidCode IDE v1.1.0 installed successfully!");
+                            setProgress(100, "VoidCode IDE v1.1.1 installed successfully!");
                             btnInstall.Content = "Finish";
                             btnInstall.IsEnabled = true;
                             btnCancel.Visibility = Visibility.Collapsed;
@@ -568,7 +568,7 @@ namespace VoidCodeSetup
             if (onProgress != null) onProgress(98, "Registering in Windows Installed Apps...");
             RegisterUninstaller(installDir, exePath);
 
-            if (onProgress != null) onProgress(100, "VoidCode IDE v1.1.0 installed successfully!");
+            if (onProgress != null) onProgress(100, "VoidCode IDE v1.1.1 installed successfully!");
 
             if (launchAfter && File.Exists(exePath))
             {
@@ -623,7 +623,7 @@ namespace VoidCodeSetup
                 {
                     if (key == null) return;
                     key.SetValue("DisplayName", "VoidCode IDE", RegistryValueKind.String);
-                    key.SetValue("DisplayVersion", "1.1.0", RegistryValueKind.String);
+                    key.SetValue("DisplayVersion", "1.1.1", RegistryValueKind.String);
                     key.SetValue("Publisher", "VoidCode Contributors", RegistryValueKind.String);
                     key.SetValue("DisplayIcon", exePath + ",0", RegistryValueKind.String);
                     key.SetValue("InstallLocation", installDir, RegistryValueKind.String);

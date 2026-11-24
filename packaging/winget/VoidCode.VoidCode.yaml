@@ -1,5 +1,5 @@
 PackageIdentifier: VoidCode.VoidCode
-PackageVersion: 1.1.0
+PackageVersion: 1.1.1
 PackageLocale: en-US
 Publisher: VoidCode Contributors
 PublisherUrl: https://github.com/n3sty3/VoidCode
@@ -19,7 +19,7 @@ Installers:
   - Architecture: x64
     InstallerType: exe
     Scope: user
-    InstallerUrl: https://github.com/n3sty3/VoidCode/releases/download/v1.1.0/VoidCode-Setup-1.1.0-win-x64.exe
+    InstallerUrl: https://github.com/n3sty3/VoidCode/releases/download/v1.1.1/VoidCode-Setup-1.1.1-win-x64.exe
     InstallerSwitches:
       Silent: /S
       SilentWithProgress: /S

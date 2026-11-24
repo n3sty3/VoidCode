@@ -80,7 +80,7 @@ $sizeMb = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)
 
 $csprojXml = [xml](Get-Content "$root\VoidCode.csproj")
 $appVersion = ($csprojXml.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
-if (-not $appVersion) { $appVersion = "1.1.0" }
+if (-not $appVersion) { $appVersion = "1.1.1" }
 $setupExePath = "$outDir\VoidCode-Setup-$appVersion-$Runtime.exe"
 $setupShaPath = "$setupExePath.sha256"
 $cscPath = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
